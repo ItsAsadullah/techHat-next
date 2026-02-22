@@ -1,0 +1,565 @@
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Root Theme Variables - Light Mode */
+:root {
+  /* Background & Foreground */
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  
+  /* Card */
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  
+  /* Popover */
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  
+  /* Primary */
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  
+  /* Secondary */
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  
+  /* Muted */
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  
+  /* Accent */
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  
+  /* Destructive */
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  
+  /* Border & Input */
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 221.2 83.2% 53.3%;
+  
+  /* Radius */
+  --radius: 0.5rem;
+  
+  /* Chart Colors */
+  --chart-1: 12 76% 61%;
+  --chart-2: 173 58% 39%;
+  --chart-3: 197 37% 24%;
+  --chart-4: 43 74% 66%;
+  --chart-5: 27 87% 67%;
+  
+  /* Sidebar */
+  --sidebar: 0 0% 98%;
+  --sidebar-foreground: 240 5.3% 26.1%;
+  --sidebar-primary: 221.2 83.2% 53.3%;
+  --sidebar-primary-foreground: 210 40% 98%;
+  --sidebar-accent: 210 40% 96.1%;
+  --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+  --sidebar-border: 220 13% 91%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
+}
+
+/* Dark Mode Variables */
+.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  
+  --primary: 217.2 91.2% 59.8%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 224.3 76.3% 48%;
+  
+  --chart-1: 220 70% 50%;
+  --chart-2: 160 60% 45%;
+  --chart-3: 30 80% 55%;
+  --chart-4: 280 65% 60%;
+  --chart-5: 340 75% 55%;
+  
+  --sidebar: 240 5.9% 10%;
+  --sidebar-foreground: 240 4.8% 95.9%;
+  --sidebar-primary: 224.3 76.3% 48%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 240 3.7% 15.9%;
+  --sidebar-accent-foreground: 240 4.8% 95.9%;
+  --sidebar-border: 240 3.7% 15.9%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
+}
+
+/* Tailwind v4 Theme Integration */
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+  
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+/* Base Styles */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* ─── Dark Mode: Admin Panel Overrides ────────────────────────────────────────
+   The admin panel uses hardcoded Tailwind color classes (bg-white, bg-gray-50,
+   text-gray-900, etc.). These overrides remap them when .dark is active so the
+   full panel responds to theme switching.
+────────────────────────────────────────────────────────────────────────────── */
+.dark .bg-white          { background-color: hsl(240 10% 8%) !important; }
+.dark .bg-gray-50        { background-color: hsl(240 10% 6%) !important; }
+.dark .bg-gray-100       { background-color: hsl(240 10% 10%) !important; }
+.dark .bg-gray-200       { background-color: hsl(240 10% 14%) !important; }
+
+/* Opacity variants used in product form, dashboard etc. */
+.dark .bg-gray-50\/30    { background-color: hsl(240 10% 7%) !important; }
+.dark .bg-gray-50\/40    { background-color: hsl(240 10% 7%) !important; }
+.dark .bg-gray-50\/50    { background-color: hsl(240 10% 7%) !important; }
+.dark .bg-gray-50\/80    { background-color: hsl(240 10% 8%) !important; }
+.dark .bg-white\/90      { background-color: hsl(240 10% 10% / 0.9) !important; }
+
+.dark .hover\:bg-gray-50:hover   { background-color: hsl(240 10% 11%) !important; }
+.dark .hover\:bg-gray-100:hover  { background-color: hsl(240 10% 13%) !important; }
+.dark .hover\:bg-white:hover     { background-color: hsl(240 10% 11%) !important; }
+.dark .hover\:bg-gray-200:hover  { background-color: hsl(240 10% 15%) !important; }
+.dark .focus\:bg-white:focus     { background-color: hsl(240 10% 11%) !important; }
+
+.dark .border-gray-50    { border-color: hsl(240 10% 12%) !important; }
+.dark .border-gray-100   { border-color: hsl(240 10% 16%) !important; }
+.dark .border-gray-200   { border-color: hsl(240 10% 18%) !important; }
+.dark .border-gray-300   { border-color: hsl(240 10% 22%) !important; }
+.dark .divide-gray-100 > * + * { border-color: hsl(240 10% 16%) !important; }
+.dark .divide-gray-200 > * + * { border-color: hsl(240 10% 18%) !important; }
+
+/* Ring colors */
+.dark .ring-gray-100     { --tw-ring-color: hsl(240 10% 16%) !important; }
+.dark .ring-gray-200     { --tw-ring-color: hsl(240 10% 18%) !important; }
+.dark .ring-1.ring-gray-100  { box-shadow: 0 0 0 1px hsl(240 10% 18%) !important; }
+
+.dark .text-gray-900     { color: hsl(0 0% 95%) !important; }
+.dark .text-gray-800     { color: hsl(0 0% 88%) !important; }
+.dark .text-gray-700     { color: hsl(0 0% 80%) !important; }
+.dark .text-gray-600     { color: hsl(215 15% 65%) !important; }
+.dark .text-gray-500     { color: hsl(215 12% 55%) !important; }
+.dark .text-gray-400     { color: hsl(215 10% 46%) !important; }
+
+.dark .hover\:text-gray-900:hover { color: hsl(0 0% 96%) !important; }
+.dark .hover\:text-gray-600:hover { color: hsl(215 15% 70%) !important; }
+
+/* Input / textarea / select in dark mode */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.dark textarea,
+.dark select {
+  background-color: hsl(240 10% 12%);
+  border-color: hsl(240 10% 20%);
+  color: hsl(0 0% 92%);
+}
+.dark input::placeholder,
+.dark textarea::placeholder { color: hsl(215 12% 42%); }
+
+/* Table */
+.dark thead, .dark .thead { background-color: hsl(240 10% 10%) !important; }
+.dark tbody tr:hover      { background-color: hsl(240 10% 12%) !important; }
+
+/* Badges & status pills that use explicit white bg */
+.dark .bg-white\/80       { background-color: hsl(240 10% 10% / 0.8) !important; }
+
+/* White borders → dark equivalent */
+.dark .border-white       { border-color: hsl(240 10% 20%) !important; }
+
+/* Hover row for indigo tinted rows */
+.dark .hover\:bg-indigo-50\/40:hover { background-color: hsl(245 50% 25% / 0.2) !important; }
+
+/* Settings / Products page light bg wrappers */
+.dark .bg-\[\#f8f9fb\]    { background-color: hsl(240 10% 6%) !important; }
+
+/* Card shadow ring (used in product form cards) */
+.dark [class*="ring-gray-100"] { box-shadow: 0 0 0 1px hsl(240 10% 18%) !important; }
+
+/* Product form: tab trigger active state */
+.dark [data-state="active"].data-\[state\=active\]\:bg-gray-50 {
+  background-color: hsl(240 10% 12%) !important;
+  color: hsl(0 0% 95%) !important;
+}
+.dark [data-state="active"].data-\[state\=active\]\:ring-gray-200 {
+  --tw-ring-color: hsl(240 10% 20%) !important;
+}
+
+/* Product type selector buttons */
+.dark .hover\:border-gray-300:hover { border-color: hsl(240 10% 25%) !important; }
+
+/* ── Blue info / callout boxes ───────────────────────────────────────────── */
+.dark .bg-blue-50         { background-color: hsl(217 55% 9%) !important; }
+.dark .bg-blue-50\/50    { background-color: hsl(217 55% 8%) !important; }
+.dark .bg-blue-50\/30    { background-color: hsl(217 55% 6%) !important; }
+.dark .bg-blue-100       { background-color: hsl(217 55% 14%) !important; }
+.dark .border-blue-100   { border-color: hsl(217 55% 20%) !important; }
+.dark .text-blue-900     { color: hsl(213 93% 80%) !important; }
+.dark .hover\:bg-blue-50:hover  { background-color: hsl(217 55% 10%) !important; }
+.dark .hover\:bg-blue-100:hover { background-color: hsl(217 55% 14%) !important; }
+.dark .text-indigo-200   { color: hsl(245 70% 85%) !important; }
+
+/* ── Orange boxes (unique identifiers, variation serial headers) ─────────── */
+.dark .bg-orange-50\/50  { background-color: hsl(24 100% 6%) !important; }
+.dark .bg-orange-50\/30  { background-color: hsl(24 100% 5%) !important; }
+.dark .bg-orange-50      { background-color: hsl(24 100% 7%) !important; }
+.dark .border-orange-100 { border-color: hsl(24 100% 15%) !important; }
+.dark .border-orange-200 { border-color: hsl(24 80% 22%) !important; }
+.dark .text-orange-900   { color: hsl(30 100% 75%) !important; }
+.dark .text-orange-700   { color: hsl(30 100% 65%) !important; }
+.dark .hover\:bg-orange-100:hover { background-color: hsl(24 100% 11%) !important; }
+
+/* ── Indigo / Specifications boxes ──────────────────────────────────────── */
+.dark .bg-indigo-50       { background-color: hsl(245 45% 8%) !important; }
+.dark .bg-indigo-50\/30  { background-color: hsl(245 45% 7%) !important; }
+.dark .border-indigo-100 { border-color: hsl(245 45% 18%) !important; }
+.dark .bg-indigo-100     { background-color: hsl(245 45% 14%) !important; }
+.dark .text-indigo-900   { color: hsl(245 80% 82%) !important; }
+.dark .text-indigo-700   { color: hsl(245 80% 72%) !important; }
+.dark .hover\:bg-indigo-50:hover { background-color: hsl(245 45% 10%) !important; }
+.dark .border-indigo-200 { border-color: hsl(245 45% 22%) !important; }
+.dark .border-indigo-300 { border-color: hsl(245 45% 26%) !important; }
+.dark .text-indigo-600   { color: hsl(245 80% 72%) !important; }
+
+/* ── Green selling price input ───────────────────────────────────────────── */
+.dark .bg-green-50\/30   { background-color: hsl(142 40% 6%) !important; }
+.dark .border-green-200  { border-color: hsl(142 40% 18%) !important; }
+.dark .focus\:border-green-500:focus { border-color: hsl(142 60% 35%) !important; }
+
+/* ── Purple elements ─────────────────────────────────────────────────────── */
+.dark .hover\:bg-purple-50:hover { background-color: hsl(270 40% 10%) !important; }
+.dark .bg-purple-50      { background-color: hsl(270 40% 9%) !important; }
+.dark .bg-purple-100     { background-color: hsl(270 40% 13%) !important; }
+.dark .shadow-purple-200 { --tw-shadow-color: hsl(270 40% 20%); }
+
+/* ── Red elements ────────────────────────────────────────────────────────── */
+.dark .hover\:bg-red-50:hover  { background-color: hsl(0 62% 9%) !important; }
+.dark .hover\:bg-red-100:hover { background-color: hsl(0 62% 12%) !important; }
+
+/* ── group-hover:bg-white dark override (serial inputs) ─────────────────── */
+.dark .group:hover .group-hover\:bg-white {
+  background-color: hsl(240 10% 14%) !important;
+}
+
+/* ── Additional hover/focus overrides ────────────────────────────────────── */
+.dark .hover\:bg-gray-50\/50:hover { background-color: hsl(240 10% 10%) !important; }
+.dark .focus\:bg-gray-50:focus     { background-color: hsl(240 10% 10%) !important; }
+.dark .hover\:bg-gray-50\/40:hover { background-color: hsl(240 10% 10%) !important; }
+.dark .focus\:border-indigo-300:focus { border-color: hsl(245 45% 35%) !important; }
+
+/* ── Yellow boxes ────────────────────────────────────────────────────────── */
+.dark .bg-yellow-50      { background-color: hsl(47 100% 6%) !important; }
+
+/* Scrollbar in dark mode */
+.dark .custom-scrollbar::-webkit-scrollbar-track { background: hsl(240 10% 10%); }
+.dark .custom-scrollbar::-webkit-scrollbar-thumb { background: hsl(240 10% 22%); }
+
+/* Tiptap Editor Styles */
+.ProseMirror {
+  outline: none;
+}
+
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.ProseMirror h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
+}
+
+.ProseMirror h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.ProseMirror h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+.ProseMirror blockquote {
+  border-left: 4px solid hsl(var(--muted-foreground));
+  padding-left: 1rem;
+  margin-left: 0;
+  margin-right: 0;
+  font-style: italic;
+  color: hsl(var(--muted-foreground));
+}
+
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 3px solid hsl(var(--primary));
+  box-shadow: 0 0 0 4px hsl(var(--primary-foreground));
+}
+
+.ProseMirror p {
+  margin-bottom: 0.75rem;
+}
+
+/* Table Styles */
+.ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+.ProseMirror td,
+.ProseMirror th {
+  min-width: 1em;
+  border: 1px solid #ced4da;
+  padding: 3px 5px;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.ProseMirror th {
+  font-weight: bold;
+  text-align: left;
+  background-color: #f1f3f5;
+}
+
+.ProseMirror .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(200, 200, 255, 0.4);
+  pointer-events: none;
+}
+
+.ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background-color: #adf;
+  pointer-events: none;
+}
+
+.ProseMirror table p {
+  margin: 0;
+}
+
+.resize-cursor {
+  cursor: ew-resize;
+  cursor: col-resize;
+}
+
+/* Colorful Modal Theme Override */
+.colorful-modal-theme .max-h-64 {
+  @apply border-[3px] !border-blue-400 rounded-xl shadow-lg !bg-white;
+}
+
+.colorful-modal-theme .flex.items-center.gap-3 {
+  @apply gap-4 p-4 !border-b-2 !border-blue-100 hover:!bg-gradient-to-r hover:!from-blue-50 hover:!via-cyan-50 hover:!to-blue-50 transition-all duration-200;
+}
+
+.colorful-modal-theme img {
+  @apply !w-16 !h-16 rounded-xl !border-[3px] !border-blue-400 shadow-lg hover:!border-cyan-500 hover:shadow-xl transition-all duration-200 hover:scale-110;
+}
+
+.colorful-modal-theme .flex-1 p:first-child {
+  @apply !text-base !font-black !mb-1.5;
+}
+
+.colorful-modal-theme input[type="number"] {
+  @apply !text-center !text-xl !font-black !text-blue-600 !border-[3px] !border-blue-400 focus:!border-cyan-500 focus:!ring-4 focus:!ring-blue-300 !bg-gradient-to-br !from-white !to-blue-50 rounded-xl shadow-md !h-14;
+}
+
+/* ─── Scrollbar Hide Utility ──────────────────────────────── */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ─── Homepage Animations ─────────────────────────────────── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* ─── Cart / Wishlist icon animations ──────────────────────────────────────── */
+@keyframes cart-bounce {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.35); }
+  50% { transform: scale(0.9); }
+  75% { transform: scale(1.15); }
+}
+@keyframes wishlist-pulse {
+  0%, 100% { transform: scale(1); }
+  30% { transform: scale(1.4); }
+  60% { transform: scale(0.9); }
+  80% { transform: scale(1.15); }
+}
+@keyframes wishlist-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px) rotate(-5deg); }
+  40% { transform: translateX(4px) rotate(5deg); }
+  60% { transform: translateX(-3px) rotate(-3deg); }
+  80% { transform: translateX(3px); }
+}
+@keyframes badge-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.3); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.cart-bounce { animation: cart-bounce 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+.wishlist-pulse { animation: wishlist-pulse 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+.wishlist-shake { animation: wishlist-shake 0.45s ease both; }
+.badge-pop { animation: badge-pop 0.3s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+
+/* ─── Dual-range price slider ──────────────────────────────────────────────── */
+.range-thumb-style {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+  height: 20px;
+  top: -4px;
+}
+.range-thumb-style::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  pointer-events: all;
+  cursor: pointer;
+  position: relative;
+  z-index: 10;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.range-thumb-style::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.range-thumb-style::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  pointer-events: all;
+  cursor: pointer;
+}

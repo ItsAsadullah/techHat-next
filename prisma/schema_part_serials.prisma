@@ -1,0 +1,28 @@
+
+model ProductSerial {
+  id            String    @id @default(uuid())
+  variantId     String
+  serialNumber  String
+  status        SerialStatus @default(AVAILABLE)
+  
+  // Sales Info
+  isSold        Boolean   @default(false)
+  soldAt        DateTime?
+  orderId       String?   // Link to order if sold
+  
+  variant       Variant   @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([variantId, serialNumber])
+  @@map("product_serials")
+}
+
+enum SerialStatus {
+  AVAILABLE
+  SOLD
+  DEFECTIVE
+  RETURNED
+  TRANSFERRED
+}

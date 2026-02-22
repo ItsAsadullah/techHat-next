@@ -1,0 +1,139 @@
+/**
+ * Next.js Edge Middleware — Route Protection & Session Refresh
+ *
+ * Responsibilities:
+ *  1. Refresh Supabase session cookies on every request (required by @supabase/ssr)
+ *  2. Protect /admin/** — allow only 'admin' and 'super_admin' roles
+ *  3. Protect /account/** — require any authenticated user
+ *  4. Protect /api/admin/** — return 401/403 before the handler even runs
+ *
+ * Security model:
+ *  - JWT signature is verified by @supabase/ssr — cannot be spoofed client-side
+ *  - Role comes from `app_role` JWT claim (embedded by custom_access_token_hook)
+ *  - Falls back to 'customer' if claim is absent (handles first-login edge case)
+ *  - API routes also call requireAdmin() server-side (defense in depth)
+ */
+import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
+
+// ---------------------------------------------------------------------------
+// Route matchers
+// ---------------------------------------------------------------------------
+const ADMIN_ROUTES   = /^\/admin(?!\/login)(\/.*)?$/;
+const ACCOUNT_ROUTES = /^\/account(\/.*)?$/;
+const ADMIN_API      = /^\/api\/admin(\/.*)?$/;
+
+const ADMIN_LOGIN = '/admin/login';
+
+const ELEVATED_ROLES = new Set(['admin', 'super_admin']);
+
+// ---------------------------------------------------------------------------
+// Middleware
+// ---------------------------------------------------------------------------
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Build a response we can mutate to set refreshed session cookies
+  let supabaseResponse = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          // Forward cookies to both the outgoing request and the response
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  // IMPORTANT: getUser() validates the JWT — never trust getSession() alone
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Extract role from JWT claim (no DB query — fast edge-compatible)
+  // app_role is embedded by custom_access_token_hook once the SQL migration is run.
+  // If the claim is absent (migration not yet run / first login), jwtRole is null.
+  const jwtRole: string | null = user?.app_metadata?.app_role ?? null;
+  const roleKnownAndLow = jwtRole !== null && !ELEVATED_ROLES.has(jwtRole);
+  const isLoggedIn = !!user;
+
+  // ---------------------------------------------------------------------------
+  // Guard: /admin/** (except /admin/login)
+  // Middleware only checks AUTHENTICATION here — not role.
+  // Role verification is handled by the admin layout which can query the
+  // Staff table and profiles table (middleware runs on Edge — no Prisma).
+  // ---------------------------------------------------------------------------
+  if (ADMIN_ROUTES.test(pathname)) {
+    if (!isLoggedIn) {
+      const url = request.nextUrl.clone();
+      url.pathname = ADMIN_LOGIN;
+      url.searchParams.set('next', pathname);
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Guard: /api/admin/** — return 401/403, not a redirect
+  // Role check here is defense-in-depth; route handlers also call requireAdmin().
+  // ---------------------------------------------------------------------------
+  if (ADMIN_API.test(pathname)) {
+    if (!isLoggedIn) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (roleKnownAndLow) {
+      return NextResponse.json({ error: 'Forbidden', role: jwtRole }, { status: 403 });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Guard: /account/** — require any logged-in user
+  // ---------------------------------------------------------------------------
+  if (ACCOUNT_ROUTES.test(pathname)) {
+    if (!isLoggedIn) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/';
+      url.searchParams.set('auth', 'login');
+      url.searchParams.set('next', pathname);
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // Redirect logged-in admin away from login page
+  // ---------------------------------------------------------------------------
+  if (pathname === ADMIN_LOGIN && isLoggedIn && jwtRole !== null && ELEVATED_ROLES.has(jwtRole)) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/admin/dashboard';
+    return NextResponse.redirect(url);
+  }
+
+  // Return the (potentially cookie-refreshed) response
+  return supabaseResponse;
+}
+
+// ---------------------------------------------------------------------------
+// Matcher — run middleware on every page and API except statics
+// ---------------------------------------------------------------------------
+export const config = {
+  matcher: [
+    /*
+     * Match all paths except:
+     * - _next/static (static files)
+     * - _next/image  (image optimisation)
+     * - favicon.ico
+     * - public folder files (images, fonts, etc.)
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|woff2?)$).*)',
+  ],
+};

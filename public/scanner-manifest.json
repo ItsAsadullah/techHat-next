@@ -1,0 +1,26 @@
+{
+  "name": "TechHat Scanner",
+  "short_name": "TH Scanner",
+  "description": "TechHat Professional Barcode & QR Scanner",
+  "start_url": "/scanner",
+  "scope": "/scanner",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "categories": ["utilities", "business"],
+  "icons": [
+    {
+      "src": "/icons/scanner-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/scanner-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
