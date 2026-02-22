@@ -289,6 +289,7 @@ export async function updateBrandingSettings(data: BrandingSettings) {
         })
       )
     );
+    // @ts-ignore - Next.js 16 requires a second argument for revalidateTag
     revalidateTag('branding');
     revalidatePath('/');
     revalidatePath('/admin/settings/branding');

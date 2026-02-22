@@ -42,10 +42,17 @@ function isProtectedRoute(pathname: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Middleware
+// Middleware (now called Proxy in Next.js 16)
 // ---------------------------------------------------------------------------
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // ─── PUBLIC ROUTES: Skip Supabase entirely ────────────────────────────
+  // This avoids the 6-7s delay on Vercel Edge during client-side navigation.
+  // The client-side Supabase SDK handles token refresh automatically.
+  if (!isProtectedRoute(pathname)) {
+    return NextResponse.next();
+  }
 
   // Build a response we can mutate to set refreshed session cookies
   let supabaseResponse = NextResponse.next({ request });
@@ -71,14 +78,6 @@ export async function middleware(request: NextRequest) {
       },
     }
   );
-
-  // ─── PUBLIC ROUTES: just refresh cookies, no auth check ───────────────
-  // getSession() only decodes the local JWT — NO network call to Supabase.
-  // This keeps public page navigations fast.
-  if (!isProtectedRoute(pathname)) {
-    await supabase.auth.getSession();
-    return supabaseResponse;
-  }
 
   // ─── PROTECTED ROUTES: validate JWT with Supabase Auth ────────────────
   // getUser() makes a network call to verify the token is still valid.
