@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Providers } from '@/components/Providers';
 import { BrandingProvider } from '@/lib/context/branding-context';
 import { getBrandingSettings } from '@/lib/actions/invoice-settings-actions';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const revalidate = 600;
 
@@ -50,6 +51,7 @@ export default async function RootLayout({
                 {children}
               </main>
               <Toaster position="top-right" richColors offset={100} />
+              <SpeedInsights />
             </Providers>
           </BrandingProvider>
         </ThemeProvider>
