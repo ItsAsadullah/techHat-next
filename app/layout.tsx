@@ -8,7 +8,7 @@ import { Providers } from '@/components/Providers';
 import { BrandingProvider } from '@/lib/context/branding-context';
 import { getBrandingSettings } from '@/lib/actions/invoice-settings-actions';
 
-export const revalidate = 300; // re-fetch branding/navbar every 5 minutes
+export const revalidate = 600;
 
 const inter = Inter({ subsets: ['latin'] });
 

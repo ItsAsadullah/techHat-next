@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import slugify from 'slugify';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_cache } from 'next/cache';
 
 export async function getCategoryChildren(parentId: string | null) {
   try {
@@ -119,24 +119,26 @@ export async function deleteCategory(id: string) {
   }
 }
 
-export async function getCategoriesTree() {
+export const getCategoriesTree = unstable_cache(
+  async () => {
     try {
-        const categories = await prisma.category.findMany({
-            orderBy: { name: 'asc' }
-        });
-
-        const buildTree = (parentId: string | null = null): any[] => {
-            return categories
-                .filter(cat => cat.parentId === parentId)
-                .map(cat => ({
-                    ...cat,
-                    children: buildTree(cat.id)
-                }));
-        };
-
-        return buildTree(null);
+      const categories = await prisma.category.findMany({
+        orderBy: { name: 'asc' }
+      });
+      const buildTree = (parentId: string | null = null): any[] => {
+        return categories
+          .filter(cat => cat.parentId === parentId)
+          .map(cat => ({
+            ...cat,
+            children: buildTree(cat.id)
+          }));
+      };
+      return buildTree(null);
     } catch (error) {
-        console.error('Error fetching category tree:', error);
-        return [];
+      console.error('Error fetching category tree:', error);
+      return [];
     }
-}
+  },
+  ['categories-tree'],
+  { revalidate: 600, tags: ['categories'] }
+);

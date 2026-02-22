@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 
 export async function getInvoiceSettings() {
   const settings = await prisma.setting.findMany({
@@ -253,17 +253,21 @@ export async function updatePaymentMethodSettings(data: PaymentMethodSettings) {
 
 // ─── BRANDING SETTINGS ────────────────────────────────────────────────────────
 
-export async function getBrandingSettings() {
-  const rows = await prisma.setting.findMany({ where: { category: 'branding' } });
-  const m = Object.fromEntries(rows.map(r => [r.key, r.value]));
-  return {
-    siteLogo:         m['site_logo']          ?? '',
-    siteFavicon:      m['site_favicon']       ?? '',
-    topbarHotline:    m['topbar_hotline']     ?? '01700-000000',
-    topbarDelivery:   m['topbar_delivery']    ?? 'Free Delivery on Orders Over ৳2,000',
-    topbarShowDelivery: m['topbar_show_delivery'] !== 'false',
-  };
-}
+export const getBrandingSettings = unstable_cache(
+  async () => {
+    const rows = await prisma.setting.findMany({ where: { category: 'branding' } });
+    const m = Object.fromEntries(rows.map(r => [r.key, r.value]));
+    return {
+      siteLogo:           m['site_logo']          ?? '',
+      siteFavicon:        m['site_favicon']       ?? '',
+      topbarHotline:      m['topbar_hotline']     ?? '01700-000000',
+      topbarDelivery:     m['topbar_delivery']    ?? 'Free Delivery on Orders Over ৳2,000',
+      topbarShowDelivery: m['topbar_show_delivery'] !== 'false',
+    };
+  },
+  ['branding-settings'],
+  { revalidate: 300, tags: ['branding'] }
+);
 
 export type BrandingSettings = Awaited<ReturnType<typeof getBrandingSettings>>;
 
@@ -285,6 +289,7 @@ export async function updateBrandingSettings(data: BrandingSettings) {
         })
       )
     );
+    revalidateTag('branding');
     revalidatePath('/');
     revalidatePath('/admin/settings/branding');
     return { success: true };
