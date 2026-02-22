@@ -42,7 +42,7 @@ function isProtectedRoute(pathname: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Middleware (now called Proxy in Next.js 16)
+// Proxy (formerly Middleware)
 // ---------------------------------------------------------------------------
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
