@@ -14,7 +14,6 @@ const inter = Inter({ subsets: ['latin'] });
 
 export async function generateMetadata(): Promise<Metadata> {
   try {
-    const { getBrandingSettings } = await import('@/lib/actions/invoice-settings-actions');
     const { siteFavicon } = await getBrandingSettings();
     return {
       title: 'TechHat - Premium Electronics Store',

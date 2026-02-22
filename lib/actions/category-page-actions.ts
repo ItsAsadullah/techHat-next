@@ -93,16 +93,34 @@ function mapProduct(raw: any): CategoryProduct {
 }
 
 // ─── Get all descendant category IDs (including self) ────────────────────────
+// Optimized: fetch ALL categories once and build tree in memory instead of
+// recursive DB queries (1 query instead of 1+N+N*M)
 
 async function getAllDescendantIds(categoryId: string): Promise<string[]> {
-  const ids: string[] = [categoryId];
-  const children = await prisma.category.findMany({
-    where: { parentId: categoryId, isActive: true },
-    select: { id: true },
+  const allCategories = await prisma.category.findMany({
+    where: { isActive: true },
+    select: { id: true, parentId: true },
   });
-  for (const child of children) {
-    const nested = await getAllDescendantIds(child.id);
-    ids.push(...nested);
+
+  // Build parent -> children map
+  const childrenMap = new Map<string, string[]>();
+  for (const cat of allCategories) {
+    if (cat.parentId) {
+      if (!childrenMap.has(cat.parentId)) childrenMap.set(cat.parentId, []);
+      childrenMap.get(cat.parentId)!.push(cat.id);
+    }
+  }
+
+  // BFS to collect all descendants
+  const ids: string[] = [categoryId];
+  const queue = [categoryId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    const children = childrenMap.get(current) || [];
+    for (const childId of children) {
+      ids.push(childId);
+      queue.push(childId);
+    }
   }
   return ids;
 }
@@ -179,22 +197,25 @@ function buildOrderBy(sort: string): Prisma.ProductOrderByWithRelationInput[] {
 }
 
 // ─── Get category hierarchy for breadcrumb ────────────────────────────────────
+// Optimized: fetch ALL categories once and walk up in memory (1 query instead of N)
 
 async function buildBreadcrumbs(categoryId: string): Promise<{ id: string; name: string; slug: string }[]> {
+  const allCategories = await prisma.category.findMany({
+    where: { isActive: true },
+    select: { id: true, name: true, slug: true, parentId: true },
+  });
+
+  const categoryMap = new Map(allCategories.map(c => [c.id, c]));
   const crumbs: { id: string; name: string; slug: string }[] = [];
-  let current: { id: string; name: string; slug: string; parentId: string | null } | null =
-    await prisma.category.findUnique({
-      where: { id: categoryId },
-      select: { id: true, name: true, slug: true, parentId: true },
-    });
-  while (current) {
-    crumbs.unshift({ id: current.id, name: current.name, slug: current.slug });
-    if (!current.parentId) break;
-    current = await prisma.category.findUnique({
-      where: { id: current.parentId },
-      select: { id: true, name: true, slug: true, parentId: true },
-    });
+  let currentId: string | null = categoryId;
+
+  while (currentId) {
+    const cat = categoryMap.get(currentId);
+    if (!cat) break;
+    crumbs.unshift({ id: cat.id, name: cat.name, slug: cat.slug });
+    currentId = cat.parentId;
   }
+
   return crumbs;
 }
 

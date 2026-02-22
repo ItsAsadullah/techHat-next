@@ -181,6 +181,7 @@ model Category {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
+  @@index([parentId, isActive])
   @@map("categories")
 }
 
@@ -294,6 +295,16 @@ model Product {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
+  @@index([categoryId, isActive])
+  @@index([isActive, isFlashSale])
+  @@index([isActive, isBestSeller])
+  @@index([isActive, isFeatured])
+  @@index([isActive, soldCount])
+  @@index([isActive, viewCount])
+  @@index([isActive, createdAt])
+  @@index([brandId])
+  @@index([isActive, price])
+  @@index([isActive, offerPrice])
   @@map("products")
 }
 
@@ -311,6 +322,8 @@ model ProductImage {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@index([productId, displayOrder])
+  @@index([productId, isThumbnail])
   @@map("product_images")
 }
 

@@ -158,10 +158,12 @@ export default async function ProductPage({ params }: Props) {
 
   if (!product) notFound();
 
-  const relatedProducts = await getRelatedProducts(product.categoryId, product.id);
+  // Parallel fetch: related products + review stats (both depend on product but not on each other)
+  const [relatedProducts, reviewStatsResult] = await Promise.all([
+    getRelatedProducts(product.categoryId, product.id),
+    getProductReviewStats(product.id),
+  ]);
 
-  // Fetch review stats
-  const reviewStatsResult = await getProductReviewStats(product.id);
   const reviewStats = reviewStatsResult.success && reviewStatsResult.stats
     ? reviewStatsResult.stats
     : { averageRating: 0, totalReviews: 0, ratingBreakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } };

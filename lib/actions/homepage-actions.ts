@@ -14,7 +14,7 @@ import {
   DEFAULT_HOMEPAGE_SECTIONS,
   DEFAULT_PROMO_BANNERS,
 } from '@/lib/homepage-types';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_cache } from 'next/cache';
 
 // ─────────────────────────────────────────────────────────────
 // SETTING HELPERS
@@ -42,8 +42,15 @@ async function saveSettingJson(key: string, value: any, category = 'homepage') {
 // ─────────────────────────────────────────────────────────────
 
 export async function getHomepageBanners(): Promise<HomepageBanner[]> {
-  const banners = await getSettingJson<HomepageBanner[]>('homepage_banners', DEFAULT_BANNERS);
-  return banners.filter((b) => b.isActive).sort((a, b) => a.order - b.order);
+  const _fetch = unstable_cache(
+    async () => {
+      const banners = await getSettingJson<HomepageBanner[]>('homepage_banners', DEFAULT_BANNERS);
+      return banners.filter((b) => b.isActive).sort((a, b) => a.order - b.order);
+    },
+    ['homepage-banners'],
+    { revalidate: 300, tags: ['homepage'] }
+  );
+  return _fetch();
 }
 
 export async function saveHomepageBanners(banners: HomepageBanner[]) {
@@ -57,11 +64,18 @@ export async function saveHomepageBanners(banners: HomepageBanner[]) {
 // ─────────────────────────────────────────────────────────────
 
 export async function getHomepageSections(): Promise<HomepageSectionConfig[]> {
-  const sections = await getSettingJson<HomepageSectionConfig[]>(
-    'homepage_sections',
-    DEFAULT_HOMEPAGE_SECTIONS
+  const _fetch = unstable_cache(
+    async () => {
+      const sections = await getSettingJson<HomepageSectionConfig[]>(
+        'homepage_sections',
+        DEFAULT_HOMEPAGE_SECTIONS
+      );
+      return sections.sort((a, b) => a.order - b.order);
+    },
+    ['homepage-sections'],
+    { revalidate: 300, tags: ['homepage'] }
   );
-  return sections.sort((a, b) => a.order - b.order);
+  return _fetch();
 }
 
 export async function saveHomepageSections(sections: HomepageSectionConfig[]) {
@@ -75,7 +89,14 @@ export async function saveHomepageSections(sections: HomepageSectionConfig[]) {
 // ─────────────────────────────────────────────────────────────
 
 export async function getPromoBanners(): Promise<PromoBanner[]> {
-  return getSettingJson<PromoBanner[]>('homepage_promo_banners', DEFAULT_PROMO_BANNERS);
+  const _fetch = unstable_cache(
+    async () => {
+      return getSettingJson<PromoBanner[]>('homepage_promo_banners', DEFAULT_PROMO_BANNERS);
+    },
+    ['homepage-promo-banners'],
+    { revalidate: 300, tags: ['homepage'] }
+  );
+  return _fetch();
 }
 
 export async function savePromoBanners(banners: PromoBanner[]) {
@@ -89,10 +110,17 @@ export async function savePromoBanners(banners: PromoBanner[]) {
 // ─────────────────────────────────────────────────────────────
 
 export async function getFlashSaleConfig(): Promise<FlashSaleConfig> {
-  return getSettingJson<FlashSaleConfig>('flash_sale_config', {
-    endTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    isActive: true,
-  });
+  const _fetch = unstable_cache(
+    async () => {
+      return getSettingJson<FlashSaleConfig>('flash_sale_config', {
+        endTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        isActive: true,
+      });
+    },
+    ['flash-sale-config'],
+    { revalidate: 120, tags: ['homepage'] }
+  );
+  return _fetch();
 }
 
 export async function saveFlashSaleConfig(config: FlashSaleConfig) {
@@ -166,6 +194,8 @@ function mapProduct(p: any): HomepageProduct {
 }
 
 export async function getFlashSaleProducts(limit = 12): Promise<HomepageProduct[]> {
+  const _fetch = unstable_cache(
+    async () => {
   try {
     // Flash sale: isFlashSale=true AND flashSaleEndTime is in the future (or null = always on)
     const products = await prisma.product.findMany({
@@ -205,9 +235,16 @@ export async function getFlashSaleProducts(limit = 12): Promise<HomepageProduct[
     console.error('Error fetching flash sale products:', error);
     return [];
   }
+    },
+    [`flash-sale-products-${limit}`],
+    { revalidate: 120, tags: ['homepage', 'products'] }
+  );
+  return _fetch();
 }
 
 export async function getBestSellerProducts(limit = 12): Promise<HomepageProduct[]> {
+  const _fetch = unstable_cache(
+    async () => {
   try {
     // Primary: use soldCount field (denormalized counter)
     const products = await prisma.product.findMany({
@@ -270,9 +307,16 @@ export async function getBestSellerProducts(limit = 12): Promise<HomepageProduct
     console.error('Error fetching best sellers:', error);
     return [];
   }
+    },
+    [`best-seller-products-${limit}`],
+    { revalidate: 120, tags: ['homepage', 'products'] }
+  );
+  return _fetch();
 }
 
 export async function getNewArrivalProducts(limit = 12): Promise<HomepageProduct[]> {
+  const _fetch = unstable_cache(
+    async () => {
   try {
     const products = await prisma.product.findMany({
       where: { isActive: true },
@@ -303,9 +347,16 @@ export async function getNewArrivalProducts(limit = 12): Promise<HomepageProduct
     console.error('Error fetching new arrivals:', error);
     return [];
   }
+    },
+    [`new-arrival-products-${limit}`],
+    { revalidate: 120, tags: ['homepage', 'products'] }
+  );
+  return _fetch();
 }
 
 export async function getTrendingProducts(limit = 12): Promise<HomepageProduct[]> {
+  const _fetch = unstable_cache(
+    async () => {
   try {
     // Trending = highest viewCount (most viewed recently)
     const products = await prisma.product.findMany({
@@ -343,9 +394,16 @@ export async function getTrendingProducts(limit = 12): Promise<HomepageProduct[]
     console.error('Error fetching trending products:', error);
     return [];
   }
+    },
+    [`trending-products-${limit}`],
+    { revalidate: 120, tags: ['homepage', 'products'] }
+  );
+  return _fetch();
 }
 
 export async function getFeaturedProducts(limit = 12): Promise<HomepageProduct[]> {
+  const _fetch = unstable_cache(
+    async () => {
   try {
     const products = await prisma.product.findMany({
       where: { isFeatured: true, isActive: true },
@@ -376,9 +434,16 @@ export async function getFeaturedProducts(limit = 12): Promise<HomepageProduct[]
     console.error('Error fetching featured products:', error);
     return [];
   }
+    },
+    [`featured-products-${limit}`],
+    { revalidate: 120, tags: ['homepage', 'products'] }
+  );
+  return _fetch();
 }
 
 export async function getDealsUnderAmount(amount: number, limit = 12): Promise<HomepageProduct[]> {
+  const _fetch = unstable_cache(
+    async () => {
   try {
     const products = await prisma.product.findMany({
       where: {
@@ -415,6 +480,11 @@ export async function getDealsUnderAmount(amount: number, limit = 12): Promise<H
     console.error('Error fetching deals:', error);
     return [];
   }
+    },
+    [`deals-under-${amount}-${limit}`],
+    { revalidate: 120, tags: ['homepage', 'products'] }
+  );
+  return _fetch();
 }
 
 export async function getProductsByIds(ids: string[]): Promise<HomepageProduct[]> {
@@ -454,6 +524,8 @@ export async function getProductsByIds(ids: string[]): Promise<HomepageProduct[]
 // ─────────────────────────────────────────────────────────────
 
 export async function getTopCategories(): Promise<HomepageCategory[]> {
+  const _fetch = unstable_cache(
+    async () => {
   try {
     const categories = await prisma.category.findMany({
       where: { isActive: true, parentId: null },
@@ -512,6 +584,11 @@ export async function getTopCategories(): Promise<HomepageCategory[]> {
     console.error('Error fetching top categories:', error);
     return [];
   }
+    },
+    ['top-categories'],
+    { revalidate: 300, tags: ['homepage', 'categories'] }
+  );
+  return _fetch();
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -519,6 +596,8 @@ export async function getTopCategories(): Promise<HomepageCategory[]> {
 // ─────────────────────────────────────────────────────────────
 
 export async function getFeaturedBrands(): Promise<HomepageBrand[]> {
+  const _fetch = unstable_cache(
+    async () => {
   try {
     // Prefer brands marked as featured, fallback to all brands with products
     const brands = await prisma.brand.findMany({
@@ -544,6 +623,11 @@ export async function getFeaturedBrands(): Promise<HomepageBrand[]> {
     console.error('Error fetching brands:', error);
     return [];
   }
+    },
+    ['featured-brands'],
+    { revalidate: 300, tags: ['homepage', 'brands'] }
+  );
+  return _fetch();
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -551,6 +635,8 @@ export async function getFeaturedBrands(): Promise<HomepageBrand[]> {
 // ─────────────────────────────────────────────────────────────
 
 export async function getHomepageReviews(limit = 10): Promise<HomepageReview[]> {
+  const _fetch = unstable_cache(
+    async () => {
   try {
     const reviews = await prisma.review.findMany({
       where: { status: 'APPROVED', rating: { gte: 4 } },
@@ -580,6 +666,11 @@ export async function getHomepageReviews(limit = 10): Promise<HomepageReview[]> 
     console.error('Error fetching reviews:', error);
     return [];
   }
+    },
+    [`homepage-reviews-${limit}`],
+    { revalidate: 300, tags: ['homepage', 'reviews'] }
+  );
+  return _fetch();
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -673,6 +764,8 @@ export async function getHomepageData() {
 // ─────────────────────────────────────────────────────────────
 
 export async function getActiveCampaigns() {
+  const _fetch = unstable_cache(
+    async () => {
   try {
     const now = new Date();
     const campaigns = await prisma.campaign.findMany({
@@ -699,6 +792,11 @@ export async function getActiveCampaigns() {
     console.error('Error fetching campaigns:', error);
     return [];
   }
+    },
+    ['active-campaigns'],
+    { revalidate: 300, tags: ['homepage', 'campaigns'] }
+  );
+  return _fetch();
 }
 
 // ─────────────────────────────────────────────────────────────

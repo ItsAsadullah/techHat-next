@@ -15,6 +15,9 @@ import MegaCategoryNav from '@/components/homepage/MegaCategoryNav';
 import HomepageSections from '@/components/homepage/HomepageSections';
 import EnterpriseFooter from '@/components/homepage/EnterpriseFooter';
 
+// ─── ISR: Revalidate every 60 seconds ──────────────────────
+export const revalidate = 60;
+
 // ─── SEO Metadata ──────────────────────────────────────────
 export const metadata: Metadata = {
   title: 'TechHat - Premium Electronics Store | Best Deals on Gadgets & Tech',

@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_cache } from 'next/cache';
 
 // ═══════════════ Types ═══════════════
 
@@ -151,6 +151,8 @@ export async function getProductReviews(productId: string, page = 1, limit = 10)
 // ═══════════════ Get Review Stats for Product ═══════════════
 
 export async function getProductReviewStats(productId: string) {
+  const _fetch = unstable_cache(
+    async () => {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const reviews = await (prisma as any).review.findMany({
@@ -194,6 +196,11 @@ export async function getProductReviewStats(productId: string) {
       stats: { averageRating: 0, totalReviews: 0, ratingBreakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } },
     };
   }
+    },
+    [`review-stats-${productId}`],
+    { revalidate: 300, tags: ['reviews', `product-${productId}`] }
+  );
+  return _fetch();
 }
 
 // ═══════════════ Helpful Vote ═══════════════
