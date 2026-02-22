@@ -254,8 +254,6 @@ export async function updatePaymentMethodSettings(data: PaymentMethodSettings) {
 // ─── BRANDING SETTINGS ────────────────────────────────────────────────────────
 
 export async function getBrandingSettings() {
-  const { unstable_noStore: noStore } = await import('next/cache');
-  noStore();
   const rows = await prisma.setting.findMany({ where: { category: 'branding' } });
   const m = Object.fromEntries(rows.map(r => [r.key, r.value]));
   return {
