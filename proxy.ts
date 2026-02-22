@@ -7,6 +7,10 @@
  *  3. Protect /account/** — require any authenticated user
  *  4. Protect /api/admin/** — return 401/403 before the handler even runs
  *
+ * Performance:
+ *  - Only calls getUser() (network round-trip) for PROTECTED routes
+ *  - Public routes just refresh cookies via getSession() (local JWT decode)
+ *
  * Security model:
  *  - JWT signature is verified by @supabase/ssr — cannot be spoofed client-side
  *  - Role comes from `app_role` JWT claim (embedded by custom_access_token_hook)
@@ -26,6 +30,16 @@ const ADMIN_API      = /^\/api\/admin(\/.*)?$/;
 const ADMIN_LOGIN = '/admin/login';
 
 const ELEVATED_ROLES = new Set(['admin', 'super_admin']);
+
+// Check if the route requires authentication
+function isProtectedRoute(pathname: string): boolean {
+  return (
+    ADMIN_ROUTES.test(pathname) ||
+    ACCOUNT_ROUTES.test(pathname) ||
+    ADMIN_API.test(pathname) ||
+    pathname === ADMIN_LOGIN
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Middleware
@@ -58,21 +72,25 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // IMPORTANT: getUser() validates the JWT — never trust getSession() alone
+  // ─── PUBLIC ROUTES: just refresh cookies, no auth check ───────────────
+  // getSession() only decodes the local JWT — NO network call to Supabase.
+  // This keeps public page navigations fast.
+  if (!isProtectedRoute(pathname)) {
+    await supabase.auth.getSession();
+    return supabaseResponse;
+  }
+
+  // ─── PROTECTED ROUTES: validate JWT with Supabase Auth ────────────────
+  // getUser() makes a network call to verify the token is still valid.
   const { data: { user } } = await supabase.auth.getUser();
 
   // Extract role from JWT claim (no DB query — fast edge-compatible)
-  // app_role is embedded by custom_access_token_hook once the SQL migration is run.
-  // If the claim is absent (migration not yet run / first login), jwtRole is null.
   const jwtRole: string | null = user?.app_metadata?.app_role ?? null;
   const roleKnownAndLow = jwtRole !== null && !ELEVATED_ROLES.has(jwtRole);
   const isLoggedIn = !!user;
 
   // ---------------------------------------------------------------------------
   // Guard: /admin/** (except /admin/login)
-  // Middleware only checks AUTHENTICATION here — not role.
-  // Role verification is handled by the admin layout which can query the
-  // Staff table and profiles table (middleware runs on Edge — no Prisma).
   // ---------------------------------------------------------------------------
   if (ADMIN_ROUTES.test(pathname)) {
     if (!isLoggedIn) {
@@ -85,7 +103,6 @@ export async function middleware(request: NextRequest) {
 
   // ---------------------------------------------------------------------------
   // Guard: /api/admin/** — return 401/403, not a redirect
-  // Role check here is defense-in-depth; route handlers also call requireAdmin().
   // ---------------------------------------------------------------------------
   if (ADMIN_API.test(pathname)) {
     if (!isLoggedIn) {
@@ -127,13 +144,6 @@ export async function middleware(request: NextRequest) {
 // ---------------------------------------------------------------------------
 export const config = {
   matcher: [
-    /*
-     * Match all paths except:
-     * - _next/static (static files)
-     * - _next/image  (image optimisation)
-     * - favicon.ico
-     * - public folder files (images, fonts, etc.)
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|woff2?)$).*)',
   ],
 };

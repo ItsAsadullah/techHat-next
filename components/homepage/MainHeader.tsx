@@ -48,27 +48,14 @@ export default function MainHeader({
     setMounted(true);
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (session?.access_token) {
-        fetch('/api/account/role', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        })
-          .then(r => r.json())
-          .then(d => setIsAdmin(d.isAdmin === true))
-          .catch(() => setIsAdmin(false));
-      }
+      // Check admin role from JWT app_metadata — no network call needed
+      const role = session?.user?.app_metadata?.app_role;
+      setIsAdmin(role === 'admin' || role === 'super_admin');
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (session?.access_token) {
-        fetch('/api/account/role', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        })
-          .then(r => r.json())
-          .then(d => setIsAdmin(d.isAdmin === true))
-          .catch(() => setIsAdmin(false));
-      } else {
-        setIsAdmin(false);
-      }
+      const role = session?.user?.app_metadata?.app_role;
+      setIsAdmin(role === 'admin' || role === 'super_admin');
     });
     return () => subscription.unsubscribe();
   }, []);
