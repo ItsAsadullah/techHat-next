@@ -151,6 +151,7 @@ const PRODUCT_SELECT = {
   createdAt: true,
   category: { select: { name: true, slug: true } },
   brand: { select: { name: true } },
+  productImages: { select: { url: true }, orderBy: { displayOrder: 'asc' } },
   _count: { select: { reviews: { where: { status: 'APPROVED' } }, orderItems: true } },
 } as const;
 
@@ -216,21 +217,7 @@ export async function getFlashSaleProducts(limit = 12): Promise<HomepageProduct[
       take: limit,
     });
     // Fetch images
-    const productIds = products.map((p) => p.id);
-    const images = await prisma.productImage.findMany({
-      where: { productId: { in: productIds } },
-      orderBy: { displayOrder: 'asc' },
-      select: { productId: true, url: true, isThumbnail: true },
-    });
-    const imageMap = new Map<string, string[]>();
-    for (const img of images) {
-      if (!imageMap.has(img.productId)) imageMap.set(img.productId, []);
-      imageMap.get(img.productId)!.push(img.url);
-    }
-    return products.map((p) => {
-      const pImages = imageMap.get(p.id) || p.images || [];
-      return mapProduct({ ...p, productImages: pImages.map((url) => ({ url })) });
-    });
+    return products.map(mapProduct);
   } catch (error) {
     console.error('Error fetching flash sale products:', error);
     return [];
@@ -270,39 +257,10 @@ export async function getBestSellerProducts(limit = 12): Promise<HomepageProduct
         orderBy: { createdAt: 'desc' },
         take: limit,
       });
-      const ids2 = flagged.map((p) => p.id);
-      const imgs2 = await prisma.productImage.findMany({
-        where: { productId: { in: ids2 } },
-        orderBy: { displayOrder: 'asc' },
-        select: { productId: true, url: true },
-      });
-      const iMap2 = new Map<string, string[]>();
-      for (const img of imgs2) {
-        if (!iMap2.has(img.productId)) iMap2.set(img.productId, []);
-        iMap2.get(img.productId)!.push(img.url);
-      }
-      return flagged.map((p) => {
-        const pImages = iMap2.get(p.id) || p.images || [];
-        return mapProduct({ ...p, productImages: pImages.map((url) => ({ url })) });
-      });
+      return flagged.map(mapProduct);
     }
 
-    const productIds = products.map((p) => p.id);
-    const images = await prisma.productImage.findMany({
-      where: { productId: { in: productIds } },
-      orderBy: { displayOrder: 'asc' },
-      select: { productId: true, url: true },
-    });
-    const imageMap = new Map<string, string[]>();
-    for (const img of images) {
-      if (!imageMap.has(img.productId)) imageMap.set(img.productId, []);
-      imageMap.get(img.productId)!.push(img.url);
-    }
-
-    return products.map((p) => {
-      const pImages = imageMap.get(p.id) || p.images || [];
-      return mapProduct({ ...p, productImages: pImages.map((url) => ({ url })) });
-    });
+    return products.map(mapProduct);
   } catch (error) {
     console.error('Error fetching best sellers:', error);
     return [];
@@ -328,21 +286,7 @@ export async function getNewArrivalProducts(limit = 12): Promise<HomepageProduct
       orderBy: { createdAt: 'desc' },
       take: limit,
     });
-    const productIds = products.map((p) => p.id);
-    const images = await prisma.productImage.findMany({
-      where: { productId: { in: productIds } },
-      orderBy: { displayOrder: 'asc' },
-      select: { productId: true, url: true },
-    });
-    const imageMap = new Map<string, string[]>();
-    for (const img of images) {
-      if (!imageMap.has(img.productId)) imageMap.set(img.productId, []);
-      imageMap.get(img.productId)!.push(img.url);
-    }
-    return products.map((p) => {
-      const pImages = imageMap.get(p.id) || p.images || [];
-      return mapProduct({ ...p, productImages: pImages.map((url) => ({ url })) });
-    });
+    return products.map(mapProduct);
   } catch (error) {
     console.error('Error fetching new arrivals:', error);
     return [];
@@ -375,21 +319,7 @@ export async function getTrendingProducts(limit = 12): Promise<HomepageProduct[]
       return getNewArrivalProducts(limit);
     }
 
-    const productIds = products.map((p) => p.id);
-    const images = await prisma.productImage.findMany({
-      where: { productId: { in: productIds } },
-      orderBy: { displayOrder: 'asc' },
-      select: { productId: true, url: true },
-    });
-    const imageMap = new Map<string, string[]>();
-    for (const img of images) {
-      if (!imageMap.has(img.productId)) imageMap.set(img.productId, []);
-      imageMap.get(img.productId)!.push(img.url);
-    }
-    return products.map((p) => {
-      const pImages = imageMap.get(p.id) || p.images || [];
-      return mapProduct({ ...p, productImages: pImages.map((url) => ({ url })) });
-    });
+    return products.map(mapProduct);
   } catch (error) {
     console.error('Error fetching trending products:', error);
     return [];
@@ -415,21 +345,7 @@ export async function getFeaturedProducts(limit = 12): Promise<HomepageProduct[]
       orderBy: { createdAt: 'desc' },
       take: limit,
     });
-    const productIds = products.map((p) => p.id);
-    const images = await prisma.productImage.findMany({
-      where: { productId: { in: productIds } },
-      orderBy: { displayOrder: 'asc' },
-      select: { productId: true, url: true },
-    });
-    const imageMap = new Map<string, string[]>();
-    for (const img of images) {
-      if (!imageMap.has(img.productId)) imageMap.set(img.productId, []);
-      imageMap.get(img.productId)!.push(img.url);
-    }
-    return products.map((p) => {
-      const pImages = imageMap.get(p.id) || p.images || [];
-      return mapProduct({ ...p, productImages: pImages.map((url) => ({ url })) });
-    });
+    return products.map(mapProduct);
   } catch (error) {
     console.error('Error fetching featured products:', error);
     return [];
@@ -461,21 +377,7 @@ export async function getDealsUnderAmount(amount: number, limit = 12): Promise<H
       orderBy: { price: 'asc' },
       take: limit,
     });
-    const productIds = products.map((p) => p.id);
-    const images = await prisma.productImage.findMany({
-      where: { productId: { in: productIds } },
-      orderBy: { displayOrder: 'asc' },
-      select: { productId: true, url: true },
-    });
-    const imageMap = new Map<string, string[]>();
-    for (const img of images) {
-      if (!imageMap.has(img.productId)) imageMap.set(img.productId, []);
-      imageMap.get(img.productId)!.push(img.url);
-    }
-    return products.map((p) => {
-      const pImages = imageMap.get(p.id) || p.images || [];
-      return mapProduct({ ...p, productImages: pImages.map((url) => ({ url })) });
-    });
+    return products.map(mapProduct);
   } catch (error) {
     console.error('Error fetching deals:', error);
     return [];
@@ -498,21 +400,7 @@ export async function getProductsByIds(ids: string[]): Promise<HomepageProduct[]
         reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
       },
     });
-    const productIds = products.map((p) => p.id);
-    const images = await prisma.productImage.findMany({
-      where: { productId: { in: productIds } },
-      orderBy: { displayOrder: 'asc' },
-      select: { productId: true, url: true },
-    });
-    const imageMap = new Map<string, string[]>();
-    for (const img of images) {
-      if (!imageMap.has(img.productId)) imageMap.set(img.productId, []);
-      imageMap.get(img.productId)!.push(img.url);
-    }
-    return products.map((p) => {
-      const pImages = imageMap.get(p.id) || p.images || [];
-      return mapProduct({ ...p, productImages: pImages.map((url) => ({ url })) });
-    });
+    return products.map(mapProduct);
   } catch (error) {
     console.error('Error fetching products by IDs:', error);
     return [];

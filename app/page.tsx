@@ -1,19 +1,27 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import {
-  getHomepageData,
-  getFlashSaleProducts,
-  getBestSellerProducts,
-  getNewArrivalProducts,
-  getTrendingProducts,
-  getFeaturedBrands,
-  getDealsUnderAmount,
-  getHomepageReviews,
-} from '@/lib/actions/homepage-actions';
+import { getHomepageData } from '@/lib/actions/homepage-actions';
 import HeroBanner from '@/components/homepage/HeroBanner';
 import MegaCategoryNav from '@/components/homepage/MegaCategoryNav';
-import HomepageSections from '@/components/homepage/HomepageSections';
 import EnterpriseFooter from '@/components/homepage/EnterpriseFooter';
+import TopCategories from '@/components/homepage/TopCategories';
+import WhyChooseUs from '@/components/homepage/WhyChooseUs';
+import NewsletterSection from '@/components/homepage/NewsletterSection';
+import PromoBanner from '@/components/homepage/PromoBanner';
+import CampaignBanner from '@/components/homepage/CampaignBanner';
+import RecentlyViewed from '@/components/homepage/RecentlyViewed';
+import RecommendedSection from '@/components/homepage/RecommendedSection';
+import {
+  FlashSaleWrapper,
+  BestSellersWrapper,
+  NewArrivalsWrapper,
+  TrendingWrapper,
+  FeaturedBrandsWrapper,
+  DealsUnderWrapper,
+  ReviewsWrapper,
+  ProductGridSkeleton,
+  BrandGridSkeleton,
+} from '@/components/homepage/SectionWrappers';
 
 // ─── ISR: Revalidate every 60 seconds ──────────────────────
 export const revalidate = 60;
@@ -135,29 +143,14 @@ function OrganizationSchema() {
 
 // ─── Main Homepage ─────────────────────────────────────────
 export default async function HomePage() {
-  // Parallel data fetching for optimal performance
-  const [
-    homepageData,
-    flashSaleProducts,
-    bestSellers,
-    newArrivals,
-    trending,
-    brands,
-    reviews,
-  ] = await Promise.all([
-    getHomepageData(),
-    getFlashSaleProducts(12),
-    getBestSellerProducts(10),
-    getNewArrivalProducts(10),
-    getTrendingProducts(10),
-    getFeaturedBrands(),
-    getHomepageReviews(10),
-  ]);
+  // Fetch only the lightweight configuration data to unblock the initial render
+  const homepageData = await getHomepageData();
 
   // Get deals amount from section config
   const dealsSection = homepageData.sections.find((s) => s.type === 'deals-under');
   const dealsAmount = dealsSection?.config?.amount || 5000;
-  const dealsUnder = await getDealsUnderAmount(dealsAmount, 10);
+
+  const visibleSections = homepageData.sections.filter((s) => s.isVisible);
 
   return (
     <>
@@ -181,23 +174,90 @@ export default async function HomePage() {
         </section>
 
         {/* Dynamic Sections */}
-        <HomepageSections
-          sections={homepageData.sections}
-          promoBanners={homepageData.promoBanners}
-          data={{
-            flashSaleProducts,
-            flashSaleConfig: homepageData.flashSaleConfig,
-            bestSellers,
-            newArrivals,
-            trending,
-            categories: homepageData.categories,
-            brands,
-            dealsUnder,
-            reviews,
-            dealsAmount,
-            campaigns: homepageData.campaigns,
-          }}
-        />
+        {visibleSections.map((section) => {
+          let sectionContent = null;
+          switch (section.type) {
+            case 'top-categories':
+              sectionContent = <TopCategories key={section.id} categories={homepageData.categories} />;
+              break;
+            case 'flash-sale':
+              sectionContent = (
+                <Suspense key={section.id} fallback={<ProductGridSkeleton />}>
+                  <FlashSaleWrapper config={homepageData.flashSaleConfig} />
+                </Suspense>
+              );
+              break;
+            case 'best-sellers':
+              sectionContent = (
+                <Suspense key={section.id} fallback={<ProductGridSkeleton />}>
+                  <BestSellersWrapper />
+                </Suspense>
+              );
+              break;
+            case 'new-arrivals':
+              sectionContent = (
+                <Suspense key={section.id} fallback={<ProductGridSkeleton />}>
+                  <NewArrivalsWrapper />
+                </Suspense>
+              );
+              break;
+            case 'trending':
+              sectionContent = (
+                <Suspense key={section.id} fallback={<ProductGridSkeleton />}>
+                  <TrendingWrapper />
+                </Suspense>
+              );
+              break;
+            case 'featured-brands':
+              sectionContent = (
+                <Suspense key={section.id} fallback={<BrandGridSkeleton />}>
+                  <FeaturedBrandsWrapper />
+                </Suspense>
+              );
+              break;
+            case 'deals-under':
+              sectionContent = (
+                <Suspense key={section.id} fallback={<ProductGridSkeleton />}>
+                  <DealsUnderWrapper amount={section.config?.amount || dealsAmount} />
+                </Suspense>
+              );
+              break;
+            case 'campaign-banner':
+              sectionContent = <CampaignBanner key={section.id} campaigns={homepageData.campaigns} />;
+              break;
+            case 'recently-viewed':
+              sectionContent = <RecentlyViewed key={section.id} />;
+              break;
+            case 'recommended':
+              sectionContent = <RecommendedSection key={section.id} />;
+              break;
+            case 'why-choose-us':
+              sectionContent = <WhyChooseUs key={section.id} />;
+              break;
+            case 'reviews':
+              sectionContent = (
+                <Suspense key={section.id} fallback={<div className="h-64 bg-gray-100 animate-pulse rounded-xl my-8" />}>
+                  <ReviewsWrapper />
+                </Suspense>
+              );
+              break;
+            case 'newsletter':
+              sectionContent = <NewsletterSection key={section.id} />;
+              break;
+          }
+
+          return (
+            <div key={section.id}>
+              {sectionContent}
+              {/* Render promotional banners after certain sections */}
+              {homepageData.promoBanners
+                .filter((pb) => pb.isActive && pb.afterSection === section.order)
+                .map((pb) => (
+                  <PromoBanner key={pb.id} banner={pb} />
+                ))}
+            </div>
+          );
+        })}
       </main>
 
       {/* Enterprise Footer */}

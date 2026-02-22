@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext } from 'react';
+import { createContext, useContext, use } from 'react';
 import type { BrandingSettings } from '@/lib/actions/invoice-settings-actions';
 
 const defaults: BrandingSettings = {
@@ -14,12 +14,13 @@ const defaults: BrandingSettings = {
 const BrandingContext = createContext<BrandingSettings>(defaults);
 
 export function BrandingProvider({
-  value,
+  valuePromise,
   children,
 }: {
-  value: BrandingSettings;
+  valuePromise: Promise<BrandingSettings>;
   children: React.ReactNode;
 }) {
+  const value = use(valuePromise);
   return (
     <BrandingContext.Provider value={value}>{children}</BrandingContext.Provider>
   );
