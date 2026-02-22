@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { unstable_cache } from 'next/cache';
 import type {
   CategoryPageData,
   CategoryPageInfo,
@@ -227,7 +228,7 @@ function aggregateSpecFilters(products: any[]): SpecFilterOption[] {
 
 // ─── MAIN: getCategoryPageData ────────────────────────────────────────────────
 
-export async function getCategoryPageData(
+async function _getCategoryPageData(
   slug: string,
   filters: FilterParams
 ): Promise<CategoryPageData | null> {
@@ -391,14 +392,26 @@ export async function getCategoryPageData(
   };
 }
 
+export const getCategoryPageData = unstable_cache(
+  _getCategoryPageData,
+  ['category-page-data'],
+  { revalidate: 120, tags: ['categories', 'products'] }
+);
+
 // ─── Get minimal category info for metadata ───────────────────────────────────
 
-export async function getCategoryMeta(slug: string) {
+async function _getCategoryMeta(slug: string) {
   return prisma.category.findUnique({
     where: { slug, isActive: true },
     select: { id: true, name: true, description: true, image: true, slug: true },
   });
 }
+
+export const getCategoryMeta = unstable_cache(
+  _getCategoryMeta,
+  ['category-meta'],
+  { revalidate: 300, tags: ['categories'] }
+);
 
 // ─── Get nav category tree (for mega menu) ────────────────────────────────────
 

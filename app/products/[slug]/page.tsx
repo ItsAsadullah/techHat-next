@@ -5,12 +5,15 @@ import ProductView from './product-view';
 import Footer from '@/components/Footer';
 import type { Metadata } from 'next';
 import { getProductReviewStats } from '@/lib/actions/review-actions';
+import { unstable_cache } from 'next/cache';
+
+export const revalidate = 300;
 
 interface Props {
   params: Promise<{ slug: string }>;
 }
 
-async function getProductBySlug(slug: string) {
+async function _getProductBySlug(slug: string) {
   const product = await (prisma as any).product.findUnique({
     where: { slug, isActive: true },
     include: {
@@ -49,7 +52,13 @@ async function getProductBySlug(slug: string) {
   return product as any;
 }
 
-async function getRelatedProducts(categoryId: string, currentProductId: string) {
+const getProductBySlug = unstable_cache(
+  _getProductBySlug,
+  ['product-by-slug'],
+  { revalidate: 300, tags: ['products'] }
+);
+
+async function _getRelatedProducts(categoryId: string, currentProductId: string) {
   const products = await (prisma as any).product.findMany({
     where: {
       categoryId,
@@ -69,6 +78,12 @@ async function getRelatedProducts(categoryId: string, currentProductId: string) 
 
   return products as any[];
 }
+
+const getRelatedProducts = unstable_cache(
+  _getRelatedProducts,
+  ['related-products'],
+  { revalidate: 300, tags: ['products'] }
+);
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
