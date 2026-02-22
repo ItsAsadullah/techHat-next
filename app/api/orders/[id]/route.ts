@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrderById } from '@/lib/actions/order-actions';
-import { supabaseServer } from '@/lib/supabase-server';
 
 /**
  * GET /api/orders/[id]  — Admin: fetch full order detail

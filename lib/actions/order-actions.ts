@@ -171,8 +171,8 @@ export async function placeOrder(input: PlaceOrderInput) {
         : Promise.resolve([]),
     ]);
 
-    const productMap = new Map(products.map((p: any) => [p.id, p]));
-    const variantMap = new Map(variants.map((v: any) => [v.id, v]));
+    const productMap = new Map<string, any>(products.map((p: any) => [p.id, p]));
+    const variantMap = new Map<string, any>(variants.map((v: any) => [v.id, v]));
 
     // 3. Build server-priced items with stock validation
     const validatedItems: {
@@ -655,8 +655,8 @@ export async function validateOrderStock(
       db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true, stock: true, isActive: true } }),
       variantIds.length ? db.variant.findMany({ where: { id: { in: variantIds } }, select: { id: true, stock: true } }) : Promise.resolve([]),
     ]);
-    const productMap = new Map(products.map((p: any) => [p.id, p]));
-    const variantMap = new Map(variants.map((v: any) => [v.id, v]));
+    const productMap = new Map<string, any>(products.map((p: any) => [p.id, p]));
+    const variantMap = new Map<string, any>(variants.map((v: any) => [v.id, v]));
     const outOfStock: string[] = [];
     const insufficientStock: { name: string; available: number; requested: number }[] = [];
     for (const item of items) {

@@ -1405,16 +1405,26 @@ export default function ProductView({ product, relatedProducts }: Props) {
                               {product.name}
                             </h3>
                             <button
-                              onClick={() => setIsWishlisted(!isWishlisted)}
+                              onClick={() => wishlist?.toggleWishlist({
+                                id: product.id,
+                                name: product.name,
+                                price: displayPrice,
+                                offerPrice: displayPrice,
+                                image: displayImage || '',
+                                slug: product.slug,
+                                brand: product.brand?.name ?? null,
+                                discountPercentage: discount,
+                                stock: currentStock,
+                              })}
                               className={cn(
                                 "inline-flex items-center gap-1.5 text-xs font-medium transition-all px-2.5 py-1 rounded-full",
-                                isWishlisted 
+                                wishlist?.isWishlisted(product.id)
                                   ? "text-red-600 bg-red-50 border border-red-200" 
                                   : "text-gray-500 bg-white border border-gray-300 hover:text-red-500 hover:border-red-300"
                               )}
                             >
-                              <Heart className={cn("w-3.5 h-3.5", isWishlisted && "fill-current")} />
-                              {isWishlisted ? 'Wishlisted' : 'Wishlist'}
+                              <Heart className={cn("w-3.5 h-3.5", wishlist?.isWishlisted(product.id) && "fill-current")} />
+                              {wishlist?.isWishlisted(product.id) ? 'Wishlisted' : 'Wishlist'}
                             </button>
                           </div>
                         </div>

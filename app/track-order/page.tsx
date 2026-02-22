@@ -16,6 +16,7 @@ interface TrackedOrder {
   status: string;
   paymentStatus: string;
   totalAmount: number;
+  grandTotal?: number;
   shippingCost: number;
   customerName: string;
   division?: string;
@@ -37,6 +38,13 @@ interface TrackedOrder {
     productName: string;
     quantity: number;
     unitPrice: number;
+  }>;
+  items?: Array<{
+    id: string;
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    image?: string;
   }>;
 }
 
