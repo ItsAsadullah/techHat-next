@@ -7,6 +7,7 @@
     "dev:turbo": "next dev --turbo",
     "build": "prisma generate && next build",
     "start": "next start",
+    "postinstall": "prisma generate",
     "db:setup": "tsx scripts/db-setup.ts",
     "generate-certs": "node scripts/generate-certs.js",
     "lint": "eslint"
