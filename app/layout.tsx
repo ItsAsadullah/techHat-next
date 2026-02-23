@@ -9,6 +9,7 @@ import { Providers } from '@/components/Providers';
 import { BrandingProvider } from '@/lib/context/branding-context';
 import { getBrandingSettings } from '@/lib/actions/invoice-settings-actions';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import Loading from './loading';
 
 export const revalidate = 600;
 
@@ -35,7 +36,7 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+          <Suspense fallback={<Loading />}>
             <BrandingProvider valuePromise={brandingPromise}>
               <Providers>
                 <NavbarWrapper />
