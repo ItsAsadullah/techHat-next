@@ -123,6 +123,14 @@ export const getCategoriesTree = unstable_cache(
   async () => {
     try {
       const categories = await prisma.category.findMany({
+        where: { isActive: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          image: true,
+          parentId: true,
+        },
         orderBy: { name: 'asc' }
       });
       const buildTree = (parentId: string | null = null): any[] => {
