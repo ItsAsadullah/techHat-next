@@ -39,7 +39,9 @@ export default function RootLayout({
           <Suspense fallback={<Loading />}>
             <BrandingProvider valuePromise={brandingPromise}>
               <Providers>
-                <NavbarWrapper />
+                <Suspense fallback={<div className="h-16 bg-white border-b border-gray-100 animate-pulse" />}>
+                  <NavbarWrapper />
+                </Suspense>
                 <main className="min-h-screen bg-background text-foreground">
                   {children}
                 </main>

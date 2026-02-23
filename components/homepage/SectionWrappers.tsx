@@ -7,6 +7,7 @@ import {
   getFeaturedBrands,
   getDealsUnderAmount,
   getHomepageReviews,
+  getTopCategories,
 } from '@/lib/actions/homepage-actions';
 import FlashSaleSection from './FlashSaleSection';
 import BestSellers from './BestSellers';
@@ -16,6 +17,7 @@ import TopCategories from './TopCategories';
 import FeaturedBrands from './FeaturedBrands';
 import DealsUnderSection from './DealsUnderSection';
 import ReviewSlider from './ReviewSlider';
+import MegaCategoryNav from './MegaCategoryNav';
 
 // Skeletons
 export function ProductGridSkeleton() {
@@ -51,7 +53,28 @@ export function BrandGridSkeleton() {
   );
 }
 
+export function CategoryNavSkeleton() {
+  return (
+    <div className="hidden lg:block w-64 bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-4">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="h-6 w-full bg-gray-100 animate-pulse rounded" />
+      ))}
+    </div>
+  );
+}
+
 // Wrappers
+export async function MegaCategoryNavWrapper() {
+  const categories = await getTopCategories();
+  return <MegaCategoryNav categories={categories} />;
+}
+
+export async function TopCategoriesWrapper() {
+  const categories = await getTopCategories();
+  if (!categories.length) return null;
+  return <TopCategories categories={categories} />;
+}
+
 export async function FlashSaleWrapper({ config }: { config: any }) {
   const products = await getFlashSaleProducts(12);
   if (!products.length) return null;

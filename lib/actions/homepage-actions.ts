@@ -635,16 +635,15 @@ export async function searchProducts(query: string, limit = 8) {
 // ─────────────────────────────────────────────────────────────
 
 export async function getHomepageData() {
-  const [banners, sections, promoBanners, flashSaleConfig, categories, campaigns] = await Promise.all([
+  const [banners, sections, promoBanners, flashSaleConfig, campaigns] = await Promise.all([
     getHomepageBanners(),
     getHomepageSections(),
     getPromoBanners(),
     getFlashSaleConfig(),
-    getTopCategories(),
     getActiveCampaigns(),
   ]);
 
-  return { banners, sections, promoBanners, flashSaleConfig, categories, campaigns };
+  return { banners, sections, promoBanners, flashSaleConfig, campaigns };
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -2,9 +2,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { getHomepageData } from '@/lib/actions/homepage-actions';
 import HeroBanner from '@/components/homepage/HeroBanner';
-import MegaCategoryNav from '@/components/homepage/MegaCategoryNav';
 import EnterpriseFooter from '@/components/homepage/EnterpriseFooter';
-import TopCategories from '@/components/homepage/TopCategories';
 import WhyChooseUs from '@/components/homepage/WhyChooseUs';
 import NewsletterSection from '@/components/homepage/NewsletterSection';
 import PromoBanner from '@/components/homepage/PromoBanner';
@@ -21,6 +19,9 @@ import {
   ReviewsWrapper,
   ProductGridSkeleton,
   BrandGridSkeleton,
+  MegaCategoryNavWrapper,
+  TopCategoriesWrapper,
+  CategoryNavSkeleton
 } from '@/components/homepage/SectionWrappers';
 
 // ─── ISR: Revalidate every 60 seconds ──────────────────────
@@ -163,7 +164,9 @@ export default async function HomePage() {
           <div className="container mx-auto px-4">
             <div className="flex gap-5">
               {/* Left: Mega Category Navigation (Desktop only) */}
-              <MegaCategoryNav categories={homepageData.categories} />
+              <Suspense fallback={<CategoryNavSkeleton />}>
+                <MegaCategoryNavWrapper />
+              </Suspense>
 
               {/* Right: Hero Banner */}
               <div className="flex-1 min-w-0">
@@ -178,7 +181,11 @@ export default async function HomePage() {
           let sectionContent = null;
           switch (section.type) {
             case 'top-categories':
-              sectionContent = <TopCategories key={section.id} categories={homepageData.categories} />;
+              sectionContent = (
+                <Suspense key={section.id} fallback={<BrandGridSkeleton />}>
+                  <TopCategoriesWrapper />
+                </Suspense>
+              );
               break;
             case 'flash-sale':
               sectionContent = (
