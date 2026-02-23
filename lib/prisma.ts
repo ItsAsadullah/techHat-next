@@ -8,35 +8,18 @@ function makePrismaClient() {
   try {
     const url = new URL(databaseUrl)
     
-    // For Vercel Serverless + Supabase Transaction Pooler (port 6543)
-    // We must use pgbouncer=true and a connection_limit of 1 per lambda instance
-    if (url.port === '6543') {
-      url.searchParams.set('pgbouncer', 'true')
-      
-      // In production (serverless), limit to 1 connection per instance
-      // In development, we can allow a few more since it's a long-running process
-      if (process.env.NODE_ENV === 'production') {
-        url.searchParams.set('connection_limit', '1')
-      } else {
-        url.searchParams.set('connection_limit', '5')
-      }
-    } else {
-      // If not using the pooler, still keep limits reasonable
-      if (process.env.NODE_ENV === 'production') {
-        url.searchParams.set('connection_limit', '5')
-      }
-    }
-
-    // Set pool timeout to 30s to prevent hanging
+    // Vercel Serverless + Supabase Pooler এর জন্য connection_limit অবশ্যই 1 হতে হবে
+    url.searchParams.set('connection_limit', '1')
+    
+    // Timeout একটু কমিয়ে দেওয়া হলো যাতে রিকোয়েস্ট হ্যাং না হয়
     if (!url.searchParams.has('pool_timeout')) {
-        url.searchParams.set('pool_timeout', '30')
+        url.searchParams.set('pool_timeout', '15')
     }
 
     return new PrismaClient({
       datasourceUrl: url.toString(),
     })
   } catch (e) {
-    // Fallback if URL parsing fails
     return new PrismaClient({
         datasourceUrl: databaseUrl,
     })
