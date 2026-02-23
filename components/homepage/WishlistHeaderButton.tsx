@@ -1,7 +1,7 @@
 'use client';
 
 import { Heart } from 'lucide-react';
-import { useContext } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { WishlistContext } from '@/lib/context/wishlist-context';
 import { cn } from '@/lib/utils';
 
@@ -13,13 +13,19 @@ interface WishlistHeaderButtonProps {
 
 export default function WishlistHeaderButton({ onBeforeOpen, className, showLabel }: WishlistHeaderButtonProps) {
   const wishlist = useContext(WishlistContext);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleClick = () => {
     onBeforeOpen?.();
     wishlist?.openWishlist();
   };
 
-  const count = wishlist?.count ?? 0;
+  // Use 0 for SSR to prevent hydration mismatch, then use actual count on client
+  const count = mounted ? (wishlist?.count ?? 0) : 0;
 
   return (
     <button
@@ -35,7 +41,7 @@ export default function WishlistHeaderButton({ onBeforeOpen, className, showLabe
           Wishlist{count > 0 ? ` (${count})` : ''}
         </span>
       )}
-      {!showLabel && count > 0 && (
+      {!showLabel && mounted && count > 0 && (
         <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white">
           {count > 99 ? '99+' : count}
         </span>

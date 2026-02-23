@@ -3,6 +3,7 @@
 import { ShoppingCart } from 'lucide-react';
 import { useCartSafe } from '@/lib/context/cart-context';
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
 
 interface CartHeaderButtonProps {
   onBeforeOpen?: () => void;
@@ -12,13 +13,19 @@ interface CartHeaderButtonProps {
 
 export default function CartHeaderButton({ onBeforeOpen, className, showLabel }: CartHeaderButtonProps) {
   const cart = useCartSafe();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleClick = () => {
     onBeforeOpen?.();
     cart?.openCart();
   };
 
-  const count = cart?.count ?? 0;
+  // Use 0 for SSR to prevent hydration mismatch, then use actual count on client
+  const count = mounted ? (cart?.count ?? 0) : 0;
 
   return (
     <button
@@ -34,7 +41,7 @@ export default function CartHeaderButton({ onBeforeOpen, className, showLabel }:
           Cart{count > 0 ? ` (${count})` : ''}
         </span>
       )}
-      {!showLabel && count > 0 && (
+      {!showLabel && mounted && count > 0 && (
         <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white">
           {count > 99 ? '99+' : count}
         </span>
