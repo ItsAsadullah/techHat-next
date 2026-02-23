@@ -44,7 +44,7 @@ function isProtectedRoute(pathname: string): boolean {
 // ---------------------------------------------------------------------------
 // Proxy (formerly Middleware)
 // ---------------------------------------------------------------------------
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // ─── PUBLIC ROUTES: Skip Supabase entirely ────────────────────────────
