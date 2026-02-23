@@ -8,8 +8,15 @@ function makePrismaClient() {
   try {
     const url = new URL(databaseUrl)
     
-    // Vercel Serverless + Supabase Pooler এর জন্য connection_limit অবশ্যই 1 হতে হবে
-    url.searchParams.set('connection_limit', '1')
+    // Vercel Serverless + Supabase Pooler এর জন্য connection_limit 1 রাখা ভালো
+    // তবে বিল্ড টাইমে (production) অনেকগুলো পেজ একসাথে জেনারেট হয়, তাই তখন বেশি কানেকশন দরকার
+    if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PHASE) {
+      // NEXT_PHASE না থাকলে মানে এটা রানটাইম (Vercel Serverless)
+      url.searchParams.set('connection_limit', '1')
+    } else {
+      // লোকাল ডেভ সার্ভার বা বিল্ড টাইমে বেশি কানেকশন দরকার হতে পারে
+      url.searchParams.set('connection_limit', '5')
+    }
     
     // Timeout একটু কমিয়ে দেওয়া হলো যাতে রিকোয়েস্ট হ্যাং না হয়
     if (!url.searchParams.has('pool_timeout')) {
