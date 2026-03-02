@@ -19,7 +19,7 @@ export default function CartPill() {
       aria-label={`Open cart (${count} items)`}
       className="
         fixed right-0 top-1/2 -translate-y-1/2 z-50
-        hidden lg:flex flex-col items-center
+        flex flex-col items-center
         rounded-l-2xl
         border border-white/30
         shadow-[0_8px_32px_rgba(0,0,0,0.18)]

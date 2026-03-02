@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Menu, ShoppingCart, Heart, Search, User, X, ChevronRight, LayoutDashboard, LogOut, Package, UserCircle2 } from 'lucide-react';
+import { Home, Menu, ShoppingCart, Search, User, X, ChevronRight, LayoutDashboard, LogOut, Package, UserCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCartSafe } from '@/lib/context/cart-context';
 import { useContext } from 'react';
@@ -57,7 +57,20 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
       const role = session?.user?.app_metadata?.app_role;
       setIsAdmin(role === 'admin' || role === 'super_admin');
     });
-    return () => subscription.unsubscribe();
+
+    // Listen for hamburger click from top header
+    const handleOpenMenu = () => {
+      setMenuOpen(true);
+      setSearchOpen(false);
+      setAccountMenuOpen(false);
+      setActiveTab('menu');
+    };
+    window.addEventListener('techhat:open-menu', handleOpenMenu);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('techhat:open-menu', handleOpenMenu);
+    };
   }, []);
 
   // Sync active tab with pathname
@@ -71,7 +84,6 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
   if (pathname?.startsWith('/admin') || pathname?.startsWith('/scanner')) return null;
 
   const cartCount = mounted ? (cart?.count ?? 0) : 0;
-  const wishlistCount = mounted ? (wishlist?.count ?? 0) : 0;
 
   const handleTabPress = (tab: ActiveTab) => {
     if (tab === 'home') {
@@ -147,7 +159,6 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
     { id: 'home' as ActiveTab, icon: Home, label: 'Home' },
     { id: 'menu' as ActiveTab, icon: Menu, label: 'Menu' },
     { id: 'cart' as ActiveTab, icon: ShoppingCart, label: 'Cart', count: cartCount, center: true },
-    { id: 'wishlist' as ActiveTab, icon: Heart, label: 'Wishlist', count: wishlistCount },
     { id: 'search' as ActiveTab, icon: Search, label: 'Search' },
     { id: 'account' as ActiveTab, icon: User, label: 'Account' },
   ];
@@ -408,7 +419,6 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
               return (
                 <button
                   key={item.id}
-                  ref={item.id === 'wishlist' ? wishlist?.wishlistIconRef : undefined}
                   onClick={() => handleTabPress(item.id)}
                   className="relative flex flex-col items-center pt-1 pb-2 min-w-[48px] group"
                   aria-label={item.label}
