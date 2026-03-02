@@ -6,7 +6,6 @@ import { CartProvider } from '@/lib/context/cart-context';
 import { WishlistProvider } from '@/lib/context/wishlist-context';
 import CartDrawer from '@/components/cart/CartDrawer';
 import WishlistDrawer from '@/components/wishlist/WishlistDrawer';
-import FloatingCartButton from '@/components/cart/FloatingCartButton';
 import CartPill from '@/components/cart/CartPill';
 import { supabase } from '@/lib/supabase';
 
@@ -62,9 +61,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         {children}
         {!isAdmin && <CartDrawer />}
         {!isAdmin && <WishlistDrawer />}
-        {/* Mobile floating button */}
-        {!isAdmin && <FloatingCartButton />}
-        {/* Desktop mid-screen pill */}
+        {/* Cart pill — right-side floating, visible on all screen sizes */}
         {!isAdmin && <CartPill />}
       </WishlistProvider>
     </CartProvider>

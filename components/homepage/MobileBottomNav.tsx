@@ -6,8 +6,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Home, Menu, ShoppingCart, Search, User, X, ChevronRight, LayoutDashboard, LogOut, Package, UserCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCartSafe } from '@/lib/context/cart-context';
-import { useContext } from 'react';
-import { WishlistContext } from '@/lib/context/wishlist-context';
 import { supabase } from '@/lib/supabase';
 import AuthModal from '@/components/AuthModal';
 import Image from 'next/image';
@@ -26,19 +24,16 @@ interface MobileBottomNavProps {
   };
 }
 
-type ActiveTab = 'home' | 'menu' | 'cart' | 'wishlist' | 'search' | 'account' | null;
+type ActiveTab = 'home' | 'menu' | 'cart' | 'search' | 'account' | null;
 
 export default function MobileBottomNav({ categories = [], branding }: MobileBottomNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const cart = useCartSafe();
-  const wishlist = useContext(WishlistContext);
 
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -61,7 +56,6 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
     // Listen for hamburger click from top header
     const handleOpenMenu = () => {
       setMenuOpen(true);
-      setSearchOpen(false);
       setAccountMenuOpen(false);
       setActiveTab('menu');
     };
@@ -89,36 +83,33 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
     if (tab === 'home') {
       setActiveTab('home');
       setMenuOpen(false);
-      setSearchOpen(false);
       setAccountMenuOpen(false);
       router.push('/');
     } else if (tab === 'menu') {
       setMenuOpen((prev) => !prev);
-      setSearchOpen(false);
       setAccountMenuOpen(false);
       setActiveTab(menuOpen ? null : 'menu');
     } else if (tab === 'cart') {
-      setActiveTab('cart');
       setMenuOpen(false);
-      setSearchOpen(false);
       setAccountMenuOpen(false);
+      setActiveTab('cart');
       cart?.openCart();
       setTimeout(() => setActiveTab(null), 400);
-    } else if (tab === 'wishlist') {
-      setActiveTab('wishlist');
-      setMenuOpen(false);
-      setSearchOpen(false);
-      setAccountMenuOpen(false);
-      wishlist?.openWishlist();
-      setTimeout(() => setActiveTab(null), 400);
     } else if (tab === 'search') {
-      setSearchOpen((prev) => !prev);
+      // Focus the header search input
       setMenuOpen(false);
       setAccountMenuOpen(false);
-      setActiveTab(searchOpen ? null : 'search');
+      setActiveTab('search');
+      setTimeout(() => {
+        const input = document.querySelector<HTMLInputElement>('input[placeholder*="Search"], input[type="search"], input[placeholder*="search"]');
+        if (input) {
+          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          input.focus();
+        }
+        setActiveTab(null);
+      }, 100);
     } else if (tab === 'account') {
       setMenuOpen(false);
-      setSearchOpen(false);
       if (!user) {
         setShowAuthModal(true);
         setActiveTab(null);
@@ -126,16 +117,6 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
         setAccountMenuOpen((prev) => !prev);
         setActiveTab(accountMenuOpen ? null : 'account');
       }
-    }
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchOpen(false);
-      setSearchQuery('');
-      setActiveTab(null);
     }
   };
 
@@ -167,7 +148,7 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
     <>
       {/* Overlays */}
       <AnimatePresence>
-        {(menuOpen || searchOpen || accountMenuOpen) && (
+        {(menuOpen || accountMenuOpen) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -176,7 +157,6 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
             style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }}
             onClick={() => {
               setMenuOpen(false);
-              setSearchOpen(false);
               setAccountMenuOpen(false);
               setActiveTab(null);
             }}
@@ -308,39 +288,6 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
         )}
       </AnimatePresence>
 
-      {/* ── Search Overlay ── */}
-      <AnimatePresence>
-        {searchOpen && (
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 20, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed bottom-[72px] left-3 right-3 z-50 lg:hidden"
-          >
-            <form onSubmit={handleSearch} className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex items-center">
-              <Search className="w-5 h-5 text-gray-400 ml-4 flex-shrink-0" />
-              <input
-                autoFocus
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products..."
-                className="flex-1 px-3 py-4 text-sm outline-none bg-transparent"
-              />
-              {searchQuery && (
-                <button type="button" onClick={() => setSearchQuery('')} className="p-2 mr-1 text-gray-400">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-              <button type="submit" className="m-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors">
-                Go
-              </button>
-            </form>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ── Account Quick Menu ── */}
       <AnimatePresence>
         {accountMenuOpen && user && (
@@ -387,7 +334,7 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
         <div className="bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_24px_rgba(0,0,0,0.08)]">
           <div className="flex items-end justify-around px-2 pb-safe">
             {navItems.map((item) => {
-              const isActive = activeTab === item.id || (item.id === 'menu' && menuOpen) || (item.id === 'search' && searchOpen) || (item.id === 'account' && accountMenuOpen);
+              const isActive = activeTab === item.id || (item.id === 'menu' && menuOpen) || (item.id === 'account' && accountMenuOpen);
               const Icon = item.icon;
 
               if (item.center) {
@@ -420,33 +367,21 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
                 <button
                   key={item.id}
                   onClick={() => handleTabPress(item.id)}
-                  className="relative flex flex-col items-center pt-1 pb-2 min-w-[48px] group"
+                  className="relative flex flex-col items-center py-2 px-3 min-w-[48px] transition-colors"
                   aria-label={item.label}
                 >
-                  <AnimatePresence>
-                    {isActive && (
-                      <motion.div
-                        layoutId="activeTab"
-                        initial={{ y: 8, opacity: 0, scale: 0.8 }}
-                        animate={{ y: -2, opacity: 1, scale: 1 }}
-                        exit={{ y: 8, opacity: 0, scale: 0.8 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                        className="absolute -top-3 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center shadow-md shadow-blue-500/30"
-                      >
-                        <Icon className="w-5 h-5 text-white" />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  {/* Active indicator dot at top */}
+                  <span className={`absolute top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full transition-all duration-200 ${isActive ? 'bg-blue-600 opacity-100' : 'opacity-0'}`} />
 
-                  <div className={`relative transition-all duration-200 ${isActive ? 'opacity-0' : 'opacity-100'}`}>
-                    <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
+                  <div className="relative">
+                    <Icon className={`w-5 h-5 transition-colors duration-200 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
                     {mounted && (item.count ?? 0) > 0 && (
                       <span className="absolute -top-1 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full">
                         {(item.count ?? 0) > 99 ? '9+' : item.count}
                       </span>
                     )}
                   </div>
-                  <span className={`text-[10px] font-medium mt-1 transition-colors ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
+                  <span className={`text-[10px] font-medium mt-1 transition-colors duration-200 ${isActive ? 'text-blue-600 font-semibold' : 'text-gray-500'}`}>
                     {item.label}
                   </span>
                 </button>
