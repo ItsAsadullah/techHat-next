@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 import { usePathname } from 'next/navigation';
 import CartHeaderButton from './CartHeaderButton';
 import WishlistHeaderButton from './WishlistHeaderButton';
+import MobileBottomNav from './MobileBottomNav';
 
 interface Category {
   id: string;
@@ -84,8 +85,8 @@ export default function MainHeader({
         <div className="border-b border-gray-100">
           <div className="container mx-auto px-4">
             <div className="flex items-center gap-4 lg:gap-6 h-16">
-              {/* Mobile Menu Toggle */}
-              <button className="lg:hidden p-2 -ml-2 text-gray-600" onClick={() => setIsOpen(!isOpen)}>
+              {/* Mobile Menu Toggle - hidden on mobile (handled by MobileBottomNav) */}
+              <button className="hidden lg:hidden p-2 -ml-2 text-gray-600" onClick={() => setIsOpen(!isOpen)}>
                 {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
 
@@ -120,11 +121,13 @@ export default function MainHeader({
 
               {/* Action Icons */}
               <div className="flex items-center gap-1 sm:gap-2 ml-auto lg:ml-0">
-                {/* Wishlist */}
-                <WishlistHeaderButton className="hidden sm:flex" />
+                {/* Wishlist - desktop only */}
+                <WishlistHeaderButton className="hidden lg:flex" />
 
-                {/* Cart */}
-                <CartHeaderButton />
+                {/* Cart - desktop only */}
+                <div className="hidden lg:block">
+                  <CartHeaderButton />
+                </div>
 
                 {/* User / Auth */}
                 {mounted && (
@@ -217,132 +220,16 @@ export default function MainHeader({
               </div>
             </div>
 
-            {/* Mobile Search */}
-            <div className="lg:hidden pb-3">
+            {/* Mobile Search - desktop fallback only, hidden on mobile (MobileBottomNav handles it) */}
+            <div className="hidden pb-3">
               <SearchBar />
             </div>
           </div>
         </div>
       </header>
 
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 lg:hidden"
-              style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}
-              onClick={() => setIsOpen(false)}
-            />
-            <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'tween', duration: 0.25 }}
-              className="fixed top-0 left-0 bottom-0 w-[300px] bg-white z-50 shadow-2xl lg:hidden overflow-y-auto"
-            >
-              <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
-                  {branding?.siteLogo ? (
-                    <Image
-                      src={branding.siteLogo}
-                      alt="Logo"
-                      width={160}
-                      height={32}
-                      className="object-contain"
-                      style={{ maxHeight: '2rem', width: 'auto' }}
-                    />
-                  ) : (
-                    <>
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                        <span className="text-white font-bold text-lg">T</span>
-                      </div>
-                      <span className="text-lg font-bold text-gray-800">TechHat</span>
-                    </>
-                  )}
-                </Link>
-                <button onClick={() => setIsOpen(false)} className="p-2 text-gray-500">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <nav className="p-4 space-y-1">
-                <Link
-                  href="/"
-                  className="block px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Home
-                </Link>
-                {categories.map((cat) => (
-                  <div key={cat.id}>
-                    <Link
-                      href={`/category/${cat.slug}`}
-                      className="block px-4 py-3 text-sm font-semibold text-gray-800 rounded-lg hover:bg-gray-50"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      {cat.name}
-                    </Link>
-                    {cat.children && cat.children.length > 0 && (
-                      <div className="ml-4 pl-4 border-l-2 border-gray-100 space-y-0.5">
-                        {cat.children.map((child) => (
-                          <Link
-                            key={child.id}
-                            href={`/category/${child.slug}`}
-                            className="block px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-blue-50 hover:text-blue-600"
-                            onClick={() => setIsOpen(false)}
-                          >
-                            {child.name}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </nav>
-
-              <div className="p-4 border-t border-gray-100 space-y-2">
-                <WishlistHeaderButton
-                  showLabel
-                  onBeforeOpen={() => setIsOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 w-full text-gray-700"
-                />
-                <CartHeaderButton
-                  showLabel
-                  onBeforeOpen={() => setIsOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 w-full text-gray-700"
-                />
-                {user ? (
-                  <button
-                    onClick={() => {
-                      setIsOpen(false);
-                      handleLogout();
-                    }}
-                    className="flex items-center gap-3 px-4 py-3 text-sm text-red-600 rounded-lg hover:bg-red-50 w-full"
-                  >
-                    <LogOut className="w-5 h-5" />
-                    Logout
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setIsOpen(false);
-                      setShowAuthModal(true);
-                    }}
-                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 rounded-lg hover:bg-gray-50 w-full"
-                  >
-                    <User className="w-5 h-5 text-gray-500" />
-                    Login / Register
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {/* Mobile Bottom Navigation - replaces old mobile menu drawer */}
+      <MobileBottomNav categories={categories} branding={branding} />
 
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </>

@@ -42,7 +42,7 @@ export default function RootLayout({
                 <Suspense fallback={<div className="h-16 bg-white border-b border-gray-100 animate-pulse" />}>
                   <NavbarWrapper />
                 </Suspense>
-                <main className="min-h-screen bg-background text-foreground">
+                <main className="min-h-screen bg-background text-foreground pb-16 lg:pb-0">
                   {children}
                 </main>
                 <Toaster position="top-right" richColors offset={100} />
