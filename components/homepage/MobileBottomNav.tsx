@@ -34,6 +34,7 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -96,17 +97,23 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
       cart?.openCart();
       setTimeout(() => setActiveTab(null), 400);
     } else if (tab === 'search') {
-      // Focus the header search input
+      // Focus the header search input with overlay
       setMenuOpen(false);
       setAccountMenuOpen(false);
       setActiveTab('search');
+      setSearchFocused(true);
       setTimeout(() => {
         const input = document.querySelector<HTMLInputElement>('input[placeholder*="Search"], input[type="search"], input[placeholder*="search"]');
         if (input) {
-          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          input.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           input.focus();
+          const handleBlur = () => {
+            setSearchFocused(false);
+            setActiveTab(null);
+            input.removeEventListener('blur', handleBlur);
+          };
+          input.addEventListener('blur', handleBlur);
         }
-        setActiveTab(null);
       }, 100);
     } else if (tab === 'account') {
       setMenuOpen(false);
@@ -148,17 +155,20 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
     <>
       {/* Overlays */}
       <AnimatePresence>
-        {(menuOpen || accountMenuOpen) && (
+        {(menuOpen || accountMenuOpen || searchFocused) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-40 lg:hidden"
-            style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }}
+            style={{ backgroundColor: searchFocused ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)' }}
             onClick={() => {
               setMenuOpen(false);
               setAccountMenuOpen(false);
+              setSearchFocused(false);
               setActiveTab(null);
+              const input = document.querySelector<HTMLInputElement>('input[placeholder*="Search"], input[type="search"]');
+              if (input) input.blur();
             }}
           />
         )}
