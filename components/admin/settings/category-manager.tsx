@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, type ElementType } from 'react';
+import React, { useState, useRef, type ElementType } from 'react';
+import { useRouter } from 'next/navigation';
 import * as Icons from 'lucide-react';
 import {
     createCategory,
@@ -84,10 +85,13 @@ const flattenCategories = (categories: Category[], level = 0): { id: string, nam
 };
 
 export function CategoryManager({ initialCategories }: { initialCategories: Category[] }) {
+    const router = useRouter();
     const [categories, setCategories] = useState<Category[]>(initialCategories);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const submittingRef = useRef(false); // prevents double-click duplicate submissions
     
     const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
     const [formData, setFormData] = useState({
@@ -209,58 +213,76 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
     };
 
     const handleCreate = async () => {
-        const formDataObj = new FormData();
-        formDataObj.append('name', formData.name);
-        if (formData.parentId !== 'root') {
-            formDataObj.append('parentId', formData.parentId);
-        }
-        formDataObj.append('description', formData.description);
-        formDataObj.append('image', formData.image);
+        if (submittingRef.current) return; // block double-click
+        submittingRef.current = true;
+        setIsLoading(true);
+        try {
+            const formDataObj = new FormData();
+            formDataObj.append('name', formData.name);
+            if (formData.parentId !== 'root') {
+                formDataObj.append('parentId', formData.parentId);
+            }
+            formDataObj.append('description', formData.description);
+            formDataObj.append('image', formData.image);
 
-        const res = await createCategory(formDataObj);
-        if (res.success) {
-            toast.success('Category created successfully');
-            setIsCreateOpen(false);
-            setFormData({ name: '', parentId: 'root', description: '', image: '' });
-            // In a real app with server components, we rely on revalidatePath, 
-            // but here for instant feedback we might want to manually update or refresh.
-            // Since we passed `initialCategories` from server, we should refresh the page 
-            // or use router.refresh()
-            window.location.reload(); 
-        } else {
-            toast.error(res.error || 'Failed to create category');
+            const res = await createCategory(formDataObj);
+            if (res.success) {
+                toast.success('Category created successfully');
+                setIsCreateOpen(false);
+                setFormData({ name: '', parentId: 'root', description: '', image: '' });
+                router.refresh();
+            } else {
+                toast.error(res.error || 'Failed to create category');
+            }
+        } finally {
+            submittingRef.current = false;
+            setIsLoading(false);
         }
     };
 
     const handleUpdate = async () => {
-        if (!currentCategory) return;
-        const formDataObj = new FormData();
-        formDataObj.append('name', formData.name);
-        if (formData.parentId !== 'root') {
-            formDataObj.append('parentId', formData.parentId);
-        }
-        formDataObj.append('description', formData.description);
-        formDataObj.append('image', formData.image);
+        if (!currentCategory || submittingRef.current) return;
+        submittingRef.current = true;
+        setIsLoading(true);
+        try {
+            const formDataObj = new FormData();
+            formDataObj.append('name', formData.name);
+            if (formData.parentId !== 'root') {
+                formDataObj.append('parentId', formData.parentId);
+            }
+            formDataObj.append('description', formData.description);
+            formDataObj.append('image', formData.image);
 
-        const res = await updateCategory(currentCategory.id, formDataObj);
-        if (res.success) {
-            toast.success('Category updated successfully');
-            setIsEditOpen(false);
-            window.location.reload();
-        } else {
-            toast.error(res.error || 'Failed to update category');
+            const res = await updateCategory(currentCategory.id, formDataObj);
+            if (res.success) {
+                toast.success('Category updated successfully');
+                setIsEditOpen(false);
+                router.refresh();
+            } else {
+                toast.error(res.error || 'Failed to update category');
+            }
+        } finally {
+            submittingRef.current = false;
+            setIsLoading(false);
         }
     };
 
     const handleDelete = async () => {
-        if (!currentCategory) return;
-        const res = await deleteCategory(currentCategory.id);
-        if (res.success) {
-            toast.success('Category deleted successfully');
-            setIsDeleteOpen(false);
-            window.location.reload();
-        } else {
-            toast.error(res.error || 'Failed to delete category');
+        if (!currentCategory || submittingRef.current) return;
+        submittingRef.current = true;
+        setIsLoading(true);
+        try {
+            const res = await deleteCategory(currentCategory.id);
+            if (res.success) {
+                toast.success('Category deleted successfully');
+                setIsDeleteOpen(false);
+                router.refresh();
+            } else {
+                toast.error(res.error || 'Failed to delete category');
+            }
+        } finally {
+            submittingRef.current = false;
+            setIsLoading(false);
         }
     };
 
@@ -392,8 +414,10 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
                         </div>
                     </div>
                     <DialogFooter className="gap-2 pt-2">
-                        <Button variant="outline" onClick={() => setIsCreateOpen(false)} className="rounded-lg font-medium border-2 border-gray-200 hover:bg-gray-50">Cancel</Button>
-                        <Button onClick={handleCreate} className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium shadow-lg">Create Category</Button>
+                        <Button variant="outline" onClick={() => setIsCreateOpen(false)} disabled={isLoading} className="rounded-lg font-medium border-2 border-gray-200 hover:bg-gray-50">Cancel</Button>
+                        <Button onClick={handleCreate} disabled={isLoading} className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium shadow-lg">
+                            {isLoading ? 'Creating...' : 'Create Category'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -482,8 +506,10 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
                         </div>
                     </div>
                     <DialogFooter className="gap-2 pt-2">
-                        <Button variant="outline" onClick={() => setIsEditOpen(false)} className="rounded-lg font-medium border-2 border-gray-200 hover:bg-gray-50">Cancel</Button>
-                        <Button onClick={handleUpdate} className="rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-medium shadow-lg">Save Changes</Button>
+                        <Button variant="outline" onClick={() => setIsEditOpen(false)} disabled={isLoading} className="rounded-lg font-medium border-2 border-gray-200 hover:bg-gray-50">Cancel</Button>
+                        <Button onClick={handleUpdate} disabled={isLoading} className="rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-medium shadow-lg">
+                            {isLoading ? 'Saving...' : 'Save Changes'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -513,8 +539,10 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
                         </div>
                     </div>
                     <DialogFooter className="gap-2 pt-2">
-                        <Button variant="outline" onClick={() => setIsDeleteOpen(false)} className="rounded-lg font-medium border-2 border-gray-200 hover:bg-gray-50">Cancel</Button>
-                        <Button variant="destructive" onClick={handleDelete} className="rounded-lg bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-medium shadow-lg">Delete Category</Button>
+                        <Button variant="outline" onClick={() => setIsDeleteOpen(false)} disabled={isLoading} className="rounded-lg font-medium border-2 border-gray-200 hover:bg-gray-50">Cancel</Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={isLoading} className="rounded-lg bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-medium shadow-lg">
+                            {isLoading ? 'Deleting...' : 'Delete Category'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
