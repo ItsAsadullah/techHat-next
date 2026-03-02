@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import slugify from 'slugify';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 
 export async function createBrand(name: string, logoBase64?: string) {
@@ -43,7 +43,7 @@ export async function createBrand(name: string, logoBase64?: string) {
       },
     });
 
-    revalidatePath('/admin/products/new');
+    revalidateTag('brands', {});
     revalidatePath('/admin/brands');
     return { success: true, data: brand };
   } catch (error: any) {

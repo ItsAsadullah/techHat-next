@@ -1022,7 +1022,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
           <div className="grid grid-cols-1 gap-8">
             
             {/* Tab 1: General */}
-            <TabsContent value="general" className="m-0 space-y-8 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+            <TabsContent forceMount value="general" className="m-0 space-y-8 animate-in fade-in-50 slide-in-from-bottom-2 duration-300 data-[state=inactive]:hidden">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Top Left: Basic Information */}
                 <div className="space-y-8">
@@ -1049,9 +1049,10 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-gray-700">Category <span className="text-red-500">*</span></label>
                           <input type="hidden" {...register('categoryId')} />
-                          <CategoryHierarchy 
+                          <CategoryHierarchy
                             initialCategories={categories}
                             onCategorySelect={(id) => setValue('categoryId', id, { shouldValidate: true })}
+                            selectedCategoryId={initialData?.categoryId || undefined}
                           />
                           {errors.categoryId && <span className="text-red-500 text-xs">{errors.categoryId.message}</span>}
                         </div>
@@ -1165,7 +1166,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
             </TabsContent>
 
             {/* Tab 2: Pricing */}
-            <TabsContent value="pricing" className="m-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+            <TabsContent forceMount value="pricing" className="m-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300 data-[state=inactive]:hidden">
               <Card className="border-0 shadow-md ring-1 ring-gray-100 bg-white overflow-hidden rounded-2xl">
                 <CardHeader className="border-b border-gray-50 bg-gray-50/50 pb-4">
                    <div className="flex items-center justify-between">
@@ -1252,7 +1253,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
             </TabsContent>
 
             {/* Tab 3: Inventory */}
-            <TabsContent value="inventory" className="m-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+            <TabsContent forceMount value="inventory" className="m-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300 data-[state=inactive]:hidden">
               {watchedValues.productType === 'variable' ? (
                 <Card className="border-0 shadow-md ring-1 ring-gray-100 bg-white overflow-hidden rounded-2xl">
                   <CardHeader className="border-b border-gray-50 bg-gray-50/50 pb-4">
@@ -1426,7 +1427,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
             </TabsContent>
 
             {/* Tab 4: Attributes */}
-            <TabsContent value="attributes" className="m-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+            <TabsContent forceMount value="attributes" className="m-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300 data-[state=inactive]:hidden">
               <Card className="border-0 shadow-md ring-1 ring-gray-100 bg-white overflow-hidden rounded-2xl min-h-[500px]">
                 <CardHeader className="border-b border-gray-50 bg-gray-50/50 pb-4">
                   <div className="flex justify-between items-center">
@@ -1781,7 +1782,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
             </TabsContent>
 
             {/* Tab 5: Specifications */}
-            <TabsContent value="specifications" className="m-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+            <TabsContent forceMount value="specifications" className="m-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300 data-[state=inactive]:hidden">
               <Card className="border-0 shadow-md ring-1 ring-gray-100 bg-white overflow-hidden rounded-2xl min-h-[500px]">
                 <CardHeader className="border-b border-gray-50 bg-gray-50/50 pb-4">
                   <div className="flex justify-between items-center">
@@ -2060,7 +2061,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
             </TabsContent>
 
             {/* Tab 6: Media */}
-            <TabsContent value="media" className="m-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+            <TabsContent forceMount value="media" className="m-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300 data-[state=inactive]:hidden">
               <Card className="border-0 shadow-md ring-1 ring-gray-100 bg-white overflow-hidden rounded-2xl min-h-[500px]">
                 <CardHeader className="border-b border-gray-50 bg-gray-50/50 pb-4">
                   <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">

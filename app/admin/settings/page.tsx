@@ -15,11 +15,20 @@ import {
   CheckCircle2,
   Zap,
   Globe2,
+  Home,
 } from 'lucide-react';
 import { getStoreSettings } from '@/lib/actions/invoice-settings-actions';
 import { prisma } from '@/lib/prisma';
 
 const sections = [
+  {
+    href: '/admin/settings/homepage',
+    icon: Home,
+    title: 'Homepage Management',
+    desc: 'Hero banners, section order, promo banners, and flash sale config',
+    color: 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400',
+    dot: 'bg-orange-500',
+  },
   {
     href: '/admin/settings/store',
     icon: Store,

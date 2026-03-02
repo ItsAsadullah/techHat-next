@@ -41,16 +41,18 @@ async function saveSettingJson(key: string, value: any, category = 'homepage') {
 // HOMEPAGE BANNERS
 // ─────────────────────────────────────────────────────────────
 
+// Module-level cache wrapper (created once, reused across all requests)
+const _getHomepageBannersCache = unstable_cache(
+  async () => {
+    const banners = await getSettingJson<HomepageBanner[]>('homepage_banners', DEFAULT_BANNERS);
+    return banners.filter((b) => b.isActive).sort((a, b) => a.order - b.order);
+  },
+  ['homepage-banners'],
+  { revalidate: 300, tags: ['homepage'] }
+);
+
 export async function getHomepageBanners(): Promise<HomepageBanner[]> {
-  const _fetch = unstable_cache(
-    async () => {
-      const banners = await getSettingJson<HomepageBanner[]>('homepage_banners', DEFAULT_BANNERS);
-      return banners.filter((b) => b.isActive).sort((a, b) => a.order - b.order);
-    },
-    ['homepage-banners'],
-    { revalidate: 300, tags: ['homepage'] }
-  );
-  return _fetch();
+  return _getHomepageBannersCache();
 }
 
 export async function saveHomepageBanners(banners: HomepageBanner[]) {
@@ -59,23 +61,34 @@ export async function saveHomepageBanners(banners: HomepageBanner[]) {
   return { success: true };
 }
 
+/** Admin-only: returns ALL banners including inactive — no cache */
+export async function getAllHomepageBannersAdmin(): Promise<HomepageBanner[]> {
+  try {
+    const banners = await getSettingJson<HomepageBanner[]>('homepage_banners', DEFAULT_BANNERS);
+    return banners.sort((a, b) => a.order - b.order);
+  } catch {
+    return DEFAULT_BANNERS;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────
 // SECTION CONFIG
 // ─────────────────────────────────────────────────────────────
 
+const _getHomepageSectionsCache = unstable_cache(
+  async () => {
+    const sections = await getSettingJson<HomepageSectionConfig[]>(
+      'homepage_sections',
+      DEFAULT_HOMEPAGE_SECTIONS
+    );
+    return sections.sort((a, b) => a.order - b.order);
+  },
+  ['homepage-sections'],
+  { revalidate: 300, tags: ['homepage'] }
+);
+
 export async function getHomepageSections(): Promise<HomepageSectionConfig[]> {
-  const _fetch = unstable_cache(
-    async () => {
-      const sections = await getSettingJson<HomepageSectionConfig[]>(
-        'homepage_sections',
-        DEFAULT_HOMEPAGE_SECTIONS
-      );
-      return sections.sort((a, b) => a.order - b.order);
-    },
-    ['homepage-sections'],
-    { revalidate: 300, tags: ['homepage'] }
-  );
-  return _fetch();
+  return _getHomepageSectionsCache();
 }
 
 export async function saveHomepageSections(sections: HomepageSectionConfig[]) {
@@ -88,15 +101,14 @@ export async function saveHomepageSections(sections: HomepageSectionConfig[]) {
 // PROMOTIONAL BANNERS
 // ─────────────────────────────────────────────────────────────
 
+const _getPromoBannersCache = unstable_cache(
+  async () => getSettingJson<PromoBanner[]>('homepage_promo_banners', DEFAULT_PROMO_BANNERS),
+  ['homepage-promo-banners'],
+  { revalidate: 300, tags: ['homepage'] }
+);
+
 export async function getPromoBanners(): Promise<PromoBanner[]> {
-  const _fetch = unstable_cache(
-    async () => {
-      return getSettingJson<PromoBanner[]>('homepage_promo_banners', DEFAULT_PROMO_BANNERS);
-    },
-    ['homepage-promo-banners'],
-    { revalidate: 300, tags: ['homepage'] }
-  );
-  return _fetch();
+  return _getPromoBannersCache();
 }
 
 export async function savePromoBanners(banners: PromoBanner[]) {
@@ -109,18 +121,18 @@ export async function savePromoBanners(banners: PromoBanner[]) {
 // FLASH SALE CONFIG
 // ─────────────────────────────────────────────────────────────
 
+const _getFlashSaleConfigCache = unstable_cache(
+  async () =>
+    getSettingJson<FlashSaleConfig>('flash_sale_config', {
+      endTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      isActive: true,
+    }),
+  ['flash-sale-config'],
+  { revalidate: 120, tags: ['homepage'] }
+);
+
 export async function getFlashSaleConfig(): Promise<FlashSaleConfig> {
-  const _fetch = unstable_cache(
-    async () => {
-      return getSettingJson<FlashSaleConfig>('flash_sale_config', {
-        endTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        isActive: true,
-      });
-    },
-    ['flash-sale-config'],
-    { revalidate: 120, tags: ['homepage'] }
-  );
-  return _fetch();
+  return _getFlashSaleConfigCache();
 }
 
 export async function saveFlashSaleConfig(config: FlashSaleConfig) {
@@ -194,199 +206,214 @@ function mapProduct(p: any): HomepageProduct {
   };
 }
 
+// Module-level Maps for parametric caches — one wrapper per unique argument set
+const _flashSaleCaches = new Map<number, () => Promise<HomepageProduct[]>>();
+const _bestSellerCaches = new Map<number, () => Promise<HomepageProduct[]>>();
+const _newArrivalCaches = new Map<number, () => Promise<HomepageProduct[]>>();
+const _trendingCaches   = new Map<number, () => Promise<HomepageProduct[]>>();
+const _featuredCaches   = new Map<number, () => Promise<HomepageProduct[]>>();
+const _dealsCaches      = new Map<string, () => Promise<HomepageProduct[]>>();
+
 export async function getFlashSaleProducts(limit = 12): Promise<HomepageProduct[]> {
-  const _fetch = unstable_cache(
-    async () => {
-  try {
-    // Flash sale: isFlashSale=true AND flashSaleEndTime is in the future (or null = always on)
-    const products = await prisma.product.findMany({
-      where: {
-        isFlashSale: true,
-        isActive: true,
-        OR: [
-          { flashSaleEndTime: { gte: new Date() } },
-          { flashSaleEndTime: null },
-        ],
+  if (!_flashSaleCaches.has(limit)) {
+    _flashSaleCaches.set(limit, unstable_cache(
+      async () => {
+        try {
+          const products = await prisma.product.findMany({
+            where: {
+              isFlashSale: true,
+              isActive: true,
+              OR: [
+                { flashSaleEndTime: { gte: new Date() } },
+                { flashSaleEndTime: null },
+              ],
+            },
+            select: {
+              ...PRODUCT_SELECT,
+              images: true,
+              reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
+            },
+            orderBy: { soldCount: 'desc' },
+            take: limit,
+          });
+          return products.map(mapProduct);
+        } catch (error) {
+          console.error('Error fetching flash sale products:', error);
+          return [];
+        }
       },
-      select: {
-        ...PRODUCT_SELECT,
-        images: true,
-        reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
-      },
-      orderBy: { soldCount: 'desc' },
-      take: limit,
-    });
-    // Fetch images
-    return products.map(mapProduct);
-  } catch (error) {
-    console.error('Error fetching flash sale products:', error);
-    return [];
+      [`flash-sale-products-${limit}`],
+      { revalidate: 120, tags: ['homepage', 'products'] }
+    ));
   }
-    },
-    [`flash-sale-products-${limit}`],
-    { revalidate: 120, tags: ['homepage', 'products'] }
-  );
-  return _fetch();
+  return _flashSaleCaches.get(limit)!();
 }
 
 export async function getBestSellerProducts(limit = 12): Promise<HomepageProduct[]> {
-  const _fetch = unstable_cache(
-    async () => {
-  try {
-    // Primary: use soldCount field (denormalized counter)
-    const products = await prisma.product.findMany({
-      where: { isActive: true, soldCount: { gt: 0 } },
-      select: {
-        ...PRODUCT_SELECT,
-        images: true,
-        reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
+  if (!_bestSellerCaches.has(limit)) {
+    _bestSellerCaches.set(limit, unstable_cache(
+      async () => {
+        try {
+          const products = await prisma.product.findMany({
+            where: { isActive: true, soldCount: { gt: 0 } },
+            select: {
+              ...PRODUCT_SELECT,
+              images: true,
+              reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
+            },
+            orderBy: { soldCount: 'desc' },
+            take: limit,
+          });
+
+          if (products.length === 0) {
+            const flagged = await prisma.product.findMany({
+              where: { isActive: true, OR: [{ isBestSeller: true }, { isFeatured: true }] },
+              select: {
+                ...PRODUCT_SELECT,
+                images: true,
+                reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
+              },
+              orderBy: { createdAt: 'desc' },
+              take: limit,
+            });
+            return flagged.map(mapProduct);
+          }
+
+          return products.map(mapProduct);
+        } catch (error) {
+          console.error('Error fetching best sellers:', error);
+          return [];
+        }
       },
-      orderBy: { soldCount: 'desc' },
-      take: limit,
-    });
-
-    // Fallback: if no products have soldCount, try isBestSeller flag or featured
-    if (products.length === 0) {
-      const flagged = await prisma.product.findMany({
-        where: { isActive: true, OR: [{ isBestSeller: true }, { isFeatured: true }] },
-        select: {
-          ...PRODUCT_SELECT,
-          images: true,
-          reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-      });
-      return flagged.map(mapProduct);
-    }
-
-    return products.map(mapProduct);
-  } catch (error) {
-    console.error('Error fetching best sellers:', error);
-    return [];
+      [`best-seller-products-${limit}`],
+      { revalidate: 120, tags: ['homepage', 'products'] }
+    ));
   }
-    },
-    [`best-seller-products-${limit}`],
-    { revalidate: 120, tags: ['homepage', 'products'] }
-  );
-  return _fetch();
+  return _bestSellerCaches.get(limit)!();
 }
 
 export async function getNewArrivalProducts(limit = 12): Promise<HomepageProduct[]> {
-  const _fetch = unstable_cache(
-    async () => {
-  try {
-    const products = await prisma.product.findMany({
-      where: { isActive: true },
-      select: {
-        ...PRODUCT_SELECT,
-        images: true,
-        reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
+  if (!_newArrivalCaches.has(limit)) {
+    _newArrivalCaches.set(limit, unstable_cache(
+      async () => {
+        try {
+          const products = await prisma.product.findMany({
+            where: { isActive: true },
+            select: {
+              ...PRODUCT_SELECT,
+              images: true,
+              reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+          });
+          return products.map(mapProduct);
+        } catch (error) {
+          console.error('Error fetching new arrivals:', error);
+          return [];
+        }
       },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-    });
-    return products.map(mapProduct);
-  } catch (error) {
-    console.error('Error fetching new arrivals:', error);
-    return [];
+      [`new-arrival-products-${limit}`],
+      { revalidate: 120, tags: ['homepage', 'products'] }
+    ));
   }
-    },
-    [`new-arrival-products-${limit}`],
-    { revalidate: 120, tags: ['homepage', 'products'] }
-  );
-  return _fetch();
+  return _newArrivalCaches.get(limit)!();
 }
 
 export async function getTrendingProducts(limit = 12): Promise<HomepageProduct[]> {
-  const _fetch = unstable_cache(
-    async () => {
-  try {
-    // Trending = highest viewCount (most viewed recently)
-    const products = await prisma.product.findMany({
-      where: { isActive: true, viewCount: { gt: 0 } },
-      select: {
-        ...PRODUCT_SELECT,
-        images: true,
-        reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
+  if (!_trendingCaches.has(limit)) {
+    _trendingCaches.set(limit, unstable_cache(
+      async () => {
+        try {
+          const products = await prisma.product.findMany({
+            where: { isActive: true, viewCount: { gt: 0 } },
+            select: {
+              ...PRODUCT_SELECT,
+              images: true,
+              reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
+            },
+            orderBy: { viewCount: 'desc' },
+            take: limit,
+          });
+
+          if (products.length === 0) {
+            return getNewArrivalProducts(limit);
+          }
+
+          return products.map(mapProduct);
+        } catch (error) {
+          console.error('Error fetching trending products:', error);
+          return [];
+        }
       },
-      orderBy: { viewCount: 'desc' },
-      take: limit,
-    });
-
-    // Fallback: if no views recorded yet, use recently created
-    if (products.length === 0) {
-      return getNewArrivalProducts(limit);
-    }
-
-    return products.map(mapProduct);
-  } catch (error) {
-    console.error('Error fetching trending products:', error);
-    return [];
+      [`trending-products-${limit}`],
+      { revalidate: 120, tags: ['homepage', 'products'] }
+    ));
   }
-    },
-    [`trending-products-${limit}`],
-    { revalidate: 120, tags: ['homepage', 'products'] }
-  );
-  return _fetch();
+  return _trendingCaches.get(limit)!();
 }
 
 export async function getFeaturedProducts(limit = 12): Promise<HomepageProduct[]> {
-  const _fetch = unstable_cache(
-    async () => {
-  try {
-    const products = await prisma.product.findMany({
-      where: { isFeatured: true, isActive: true },
-      select: {
-        ...PRODUCT_SELECT,
-        images: true,
-        reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
+  if (!_featuredCaches.has(limit)) {
+    _featuredCaches.set(limit, unstable_cache(
+      async () => {
+        try {
+          const products = await prisma.product.findMany({
+            where: { isFeatured: true, isActive: true },
+            select: {
+              ...PRODUCT_SELECT,
+              images: true,
+              reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+          });
+          return products.map(mapProduct);
+        } catch (error) {
+          console.error('Error fetching featured products:', error);
+          return [];
+        }
       },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-    });
-    return products.map(mapProduct);
-  } catch (error) {
-    console.error('Error fetching featured products:', error);
-    return [];
+      [`featured-products-${limit}`],
+      { revalidate: 120, tags: ['homepage', 'products'] }
+    ));
   }
-    },
-    [`featured-products-${limit}`],
-    { revalidate: 120, tags: ['homepage', 'products'] }
-  );
-  return _fetch();
+  return _featuredCaches.get(limit)!();
 }
 
 export async function getDealsUnderAmount(amount: number, limit = 12): Promise<HomepageProduct[]> {
-  const _fetch = unstable_cache(
-    async () => {
-  try {
-    const products = await prisma.product.findMany({
-      where: {
-        isActive: true,
-        OR: [
-          { offerPrice: { not: null, lte: amount } },
-          { AND: [{ offerPrice: null }, { price: { lte: amount } }] },
-        ],
+  const key = `${amount}-${limit}`;
+  if (!_dealsCaches.has(key)) {
+    _dealsCaches.set(key, unstable_cache(
+      async () => {
+        try {
+          const products = await prisma.product.findMany({
+            where: {
+              isActive: true,
+              OR: [
+                { offerPrice: { not: null, lte: amount } },
+                { AND: [{ offerPrice: null }, { price: { lte: amount } }] },
+              ],
+            },
+            select: {
+              ...PRODUCT_SELECT,
+              images: true,
+              reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
+            },
+            orderBy: { price: 'asc' },
+            take: limit,
+          });
+          return products.map(mapProduct);
+        } catch (error) {
+          console.error('Error fetching deals:', error);
+          return [];
+        }
       },
-      select: {
-        ...PRODUCT_SELECT,
-        images: true,
-        reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
-      },
-      orderBy: { price: 'asc' },
-      take: limit,
-    });
-    return products.map(mapProduct);
-  } catch (error) {
-    console.error('Error fetching deals:', error);
-    return [];
+      [`deals-under-${amount}-${limit}`],
+      { revalidate: 120, tags: ['homepage', 'products'] }
+    ));
   }
-    },
-    [`deals-under-${amount}-${limit}`],
-    { revalidate: 120, tags: ['homepage', 'products'] }
-  );
-  return _fetch();
+  return _dealsCaches.get(key)!();
 }
 
 export async function getProductsByIds(ids: string[]): Promise<HomepageProduct[]> {
@@ -411,154 +438,159 @@ export async function getProductsByIds(ids: string[]): Promise<HomepageProduct[]
 // CATEGORIES
 // ─────────────────────────────────────────────────────────────
 
-export async function getTopCategories(): Promise<HomepageCategory[]> {
-  const _fetch = unstable_cache(
-    async () => {
-  try {
-    const categories = await prisma.category.findMany({
-      where: { isActive: true, parentId: null },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        image: true,
-        _count: { select: { products: true } },
-        children: {
-          where: { isActive: true },
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            image: true,
-            _count: { select: { products: true } },
-            children: {
-              where: { isActive: true },
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-                image: true,
-                _count: { select: { products: true } },
+const _getTopCategoriesCache = unstable_cache(
+  async () => {
+    try {
+      const categories = await prisma.category.findMany({
+        where: { isActive: true, parentId: null },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          image: true,
+          _count: { select: { products: true } },
+          children: {
+            where: { isActive: true },
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              image: true,
+              _count: { select: { products: true } },
+              children: {
+                where: { isActive: true },
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  image: true,
+                  _count: { select: { products: true } },
+                },
               },
             },
           },
         },
-      },
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-    });
-    return categories.map((c) => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      image: c.image,
-      _count: c._count,
-      children: (c.children || []).map((ch) => ({
-        id: ch.id,
-        name: ch.name,
-        slug: ch.slug,
-        image: ch.image,
-        _count: ch._count,
-        children: ((ch as any).children || []).map((gc: any) => ({
-          id: gc.id,
-          name: gc.name,
-          slug: gc.slug,
-          image: gc.image,
-          _count: gc._count,
-          children: [],
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      });
+      return categories.map((c) => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        image: c.image,
+        _count: c._count,
+        children: (c.children || []).map((ch) => ({
+          id: ch.id,
+          name: ch.name,
+          slug: ch.slug,
+          image: ch.image,
+          _count: ch._count,
+          children: ((ch as any).children || []).map((gc: any) => ({
+            id: gc.id,
+            name: gc.name,
+            slug: gc.slug,
+            image: gc.image,
+            _count: gc._count,
+            children: [],
+          })),
         })),
-      })),
-    }));
-  } catch (error) {
-    console.error('Error fetching top categories:', error);
-    return [];
-  }
-    },
-    ['top-categories'],
-    { revalidate: 300, tags: ['homepage', 'categories'] }
-  );
-  return _fetch();
+      }));
+    } catch (error) {
+      console.error('Error fetching top categories:', error);
+      return [];
+    }
+  },
+  ['top-categories'],
+  { revalidate: 300, tags: ['homepage', 'categories'] }
+);
+
+export async function getTopCategories(): Promise<HomepageCategory[]> {
+  return _getTopCategoriesCache();
 }
 
 // ─────────────────────────────────────────────────────────────
 // BRANDS
 // ─────────────────────────────────────────────────────────────
 
+const _getFeaturedBrandsCache = unstable_cache(
+  async () => {
+    try {
+      const brands = await prisma.brand.findMany({
+        where: {
+          OR: [
+            { isFeatured: true },
+            { products: { some: { isActive: true } } },
+          ],
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          logo: true,
+          isFeatured: true,
+          _count: { select: { products: true } },
+        },
+        orderBy: [{ isFeatured: 'desc' }, { name: 'asc' }],
+        take: 24,
+      });
+      return brands;
+    } catch (error) {
+      console.error('Error fetching brands:', error);
+      return [];
+    }
+  },
+  ['featured-brands'],
+  { revalidate: 300, tags: ['homepage', 'brands'] }
+);
+
 export async function getFeaturedBrands(): Promise<HomepageBrand[]> {
-  const _fetch = unstable_cache(
-    async () => {
-  try {
-    // Prefer brands marked as featured, fallback to all brands with products
-    const brands = await prisma.brand.findMany({
-      where: {
-        OR: [
-          { isFeatured: true },
-          { products: { some: { isActive: true } } },
-        ],
-      },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        logo: true,
-        isFeatured: true,
-        _count: { select: { products: true } },
-      },
-      orderBy: [{ isFeatured: 'desc' }, { name: 'asc' }],
-      take: 24,
-    });
-    return brands;
-  } catch (error) {
-    console.error('Error fetching brands:', error);
-    return [];
-  }
-    },
-    ['featured-brands'],
-    { revalidate: 300, tags: ['homepage', 'brands'] }
-  );
-  return _fetch();
+  return _getFeaturedBrandsCache();
 }
 
 // ─────────────────────────────────────────────────────────────
 // REVIEWS
 // ─────────────────────────────────────────────────────────────
 
+const _reviewCaches = new Map<number, () => Promise<HomepageReview[]>>();
+
 export async function getHomepageReviews(limit = 10): Promise<HomepageReview[]> {
-  const _fetch = unstable_cache(
-    async () => {
-  try {
-    const reviews = await prisma.review.findMany({
-      where: { status: 'APPROVED', rating: { gte: 4 } },
-      select: {
-        id: true,
-        name: true,
-        rating: true,
-        reviewText: true,
-        isVerified: true,
-        createdAt: true,
-        product: { select: { name: true, slug: true } },
+  if (!_reviewCaches.has(limit)) {
+    _reviewCaches.set(limit, unstable_cache(
+      async () => {
+        try {
+          const reviews = await prisma.review.findMany({
+            where: { status: 'APPROVED', rating: { gte: 4 } },
+            select: {
+              id: true,
+              name: true,
+              rating: true,
+              reviewText: true,
+              isVerified: true,
+              createdAt: true,
+              product: { select: { name: true, slug: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+          });
+          return reviews.map((r) => ({
+            id: r.id,
+            name: r.name,
+            rating: r.rating,
+            reviewText: r.reviewText,
+            isVerified: r.isVerified,
+            createdAt: r.createdAt.toISOString(),
+            productName: r.product.name,
+            productSlug: r.product.slug,
+          }));
+        } catch (error) {
+          console.error('Error fetching reviews:', error);
+          return [];
+        }
       },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-    });
-    return reviews.map((r) => ({
-      id: r.id,
-      name: r.name,
-      rating: r.rating,
-      reviewText: r.reviewText,
-      isVerified: r.isVerified,
-      createdAt: r.createdAt.toISOString(),
-      productName: r.product.name,
-      productSlug: r.product.slug,
-    }));
-  } catch (error) {
-    console.error('Error fetching reviews:', error);
-    return [];
+      [`homepage-reviews-${limit}`],
+      { revalidate: 300, tags: ['homepage', 'reviews'] }
+    ));
   }
-    },
-    [`homepage-reviews-${limit}`],
-    { revalidate: 300, tags: ['homepage', 'reviews'] }
-  );
-  return _fetch();
+  return _reviewCaches.get(limit)!();
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -586,6 +618,7 @@ export async function searchProducts(query: string, limit = 8) {
           offerPrice: true,
           images: true,
           category: { select: { name: true } },
+          productImages: { where: { isThumbnail: true }, select: { url: true }, take: 1 },
         },
         take: limit,
       }),
@@ -599,14 +632,6 @@ export async function searchProducts(query: string, limit = 8) {
       }),
     ]);
 
-    // Get thumbnail images
-    const productIds = products.map((p) => p.id);
-    const thumbnails = await prisma.productImage.findMany({
-      where: { productId: { in: productIds }, isThumbnail: true },
-      select: { productId: true, url: true },
-    });
-    const thumbMap = new Map(thumbnails.map((t) => [t.productId, t.url]));
-
     return {
       products: products.map((p) => ({
         id: p.id,
@@ -614,7 +639,7 @@ export async function searchProducts(query: string, limit = 8) {
         slug: p.slug,
         price: p.price,
         offerPrice: p.offerPrice,
-        image: thumbMap.get(p.id) || p.images?.[0] || '',
+        image: p.productImages?.[0]?.url || p.images?.[0] || '',
         categoryName: p.category?.name || '',
       })),
       categories: categories.map((c) => ({
@@ -650,40 +675,41 @@ export async function getHomepageData() {
 // CAMPAIGNS
 // ─────────────────────────────────────────────────────────────
 
+const _getActiveCampaignsCache = unstable_cache(
+  async () => {
+    try {
+      const now = new Date();
+      const campaigns = await prisma.campaign.findMany({
+        where: {
+          isActive: true,
+          OR: [
+            { endDate: null },
+            { endDate: { gte: now } },
+          ],
+        },
+        orderBy: { priority: 'desc' },
+        take: 10,
+      });
+      return campaigns.map((c) => ({
+        id: c.id,
+        title: c.title,
+        subtitle: c.subtitle,
+        bannerImage: c.bannerImage,
+        ctaLink: c.ctaLink,
+        isActive: c.isActive,
+        priority: c.priority,
+      }));
+    } catch (error) {
+      console.error('Error fetching campaigns:', error);
+      return [];
+    }
+  },
+  ['active-campaigns'],
+  { revalidate: 300, tags: ['homepage', 'campaigns'] }
+);
+
 export async function getActiveCampaigns() {
-  const _fetch = unstable_cache(
-    async () => {
-  try {
-    const now = new Date();
-    const campaigns = await prisma.campaign.findMany({
-      where: {
-        isActive: true,
-        OR: [
-          { endDate: null },
-          { endDate: { gte: now } },
-        ],
-      },
-      orderBy: { priority: 'desc' },
-      take: 10,
-    });
-    return campaigns.map((c) => ({
-      id: c.id,
-      title: c.title,
-      subtitle: c.subtitle,
-      bannerImage: c.bannerImage,
-      ctaLink: c.ctaLink,
-      isActive: c.isActive,
-      priority: c.priority,
-    }));
-  } catch (error) {
-    console.error('Error fetching campaigns:', error);
-    return [];
-  }
-    },
-    ['active-campaigns'],
-    { revalidate: 300, tags: ['homepage', 'campaigns'] }
-  );
-  return _fetch();
+  return _getActiveCampaignsCache();
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -100,12 +100,8 @@ export async function getProducts(params: ProductFilterParams) {
           select: {
             id: true,
             name: true,
+            sku: true,
             stock: true,
-            productImage: {
-              select: {
-                url: true,
-              }
-            }
           },
           take: 5,
         }
@@ -257,61 +253,59 @@ export async function bulkUpdateStockIndividual(
   note?: string
 ) {
     try {
-        for (const { id, quantity } of products) {
-            if (quantity <= 0) continue; // Skip if no quantity
+        const validItems = products.filter(({ quantity }) => quantity > 0);
+        if (validItems.length === 0) return { success: true };
 
-            const product = await prisma.product.findUnique({
-                where: { id },
-                include: { variants: true }
-            });
+        // Batch-fetch all products in a single query instead of N sequential queries
+        const dbProducts = await prisma.product.findMany({
+            where: { id: { in: validItems.map(({ id }) => id) } },
+            select: {
+                id: true,
+                stock: true,
+                productVariantType: true,
+                variants: { select: { id: true, stock: true }, take: 1 },
+            },
+        });
+        const productMap = new Map(dbProducts.map(p => [p.id, p]));
 
+        // Build ALL operations, then run a single transaction
+        const operations: any[] = [];
+        for (const { id, quantity } of validItems) {
+            const product = productMap.get(id);
             if (!product) continue;
 
-            let newStock = product.stock;
-            const changeAmount = quantity;
+            const newStock = action === 'ADD'
+                ? product.stock + quantity
+                : Math.max(0, product.stock - quantity);
 
-            if (action === 'ADD') {
-                newStock += changeAmount;
-            } else if (action === 'REDUCE') {
-                newStock = Math.max(0, newStock - changeAmount);
-            }
-
-            const operations: any[] = [
-                prisma.product.update({
-                    where: { id: product.id },
-                    data: { stock: newStock }
-                }),
+            operations.push(
+                prisma.product.update({ where: { id }, data: { stock: newStock } }),
                 prisma.stockHistory.create({
                     data: {
-                        productId: product.id,
+                        productId: id,
                         action: action as StockAction,
-                        quantity: changeAmount,
+                        quantity,
                         previousStock: product.stock,
                         newStock,
                         reason,
                         source: 'Bulk Action (Individual)',
-                        note: note || `Bulk ${action} ${quantity} units`
-                    }
-                })
-            ];
+                        note: note || `Bulk ${action} ${quantity} units`,
+                    },
+                }),
+            );
 
             if (product.productVariantType === 'variable' && product.variants.length > 0) {
                 const firstVar = product.variants[0];
-                let newVarStock = firstVar.stock;
-                if (action === 'ADD') newVarStock += changeAmount;
-                else newVarStock = Math.max(0, newVarStock - changeAmount);
-
+                const newVarStock = action === 'ADD'
+                    ? firstVar.stock + quantity
+                    : Math.max(0, firstVar.stock - quantity);
                 operations.push(
-                    prisma.variant.update({
-                        where: { id: firstVar.id },
-                        data: { stock: newVarStock }
-                    })
+                    prisma.variant.update({ where: { id: firstVar.id }, data: { stock: newVarStock } }),
                 );
             }
-
-            await prisma.$transaction(operations);
         }
-        
+
+        if (operations.length > 0) await prisma.$transaction(operations);
         revalidatePath('/admin/products');
         return { success: true };
     } catch (error: any) {
@@ -330,54 +324,48 @@ export async function bulkUpdateStock(
     try {
         const products = await prisma.product.findMany({
             where: { id: { in: ids } },
-            include: { variants: true }
+            select: {
+                id: true,
+                stock: true,
+                productVariantType: true,
+                variants: { select: { id: true, stock: true }, take: 1 },
+            },
         });
 
+        // Build ALL operations first, then run a single transaction
+        const operations: any[] = [];
         for (const product of products) {
-            let newStock = product.stock;
-            const changeAmount = quantity;
+            const newStock = action === 'ADD'
+                ? product.stock + quantity
+                : Math.max(0, product.stock - quantity);
 
-            if (action === 'ADD') {
-                newStock += changeAmount;
-            } else if (action === 'REDUCE') {
-                newStock = Math.max(0, newStock - changeAmount);
-            }
-
-            const operations: any[] = [
-                prisma.product.update({
-                    where: { id: product.id },
-                    data: { stock: newStock }
-                }),
+            operations.push(
+                prisma.product.update({ where: { id: product.id }, data: { stock: newStock } }),
                 prisma.stockHistory.create({
                     data: {
                         productId: product.id,
                         action: action as StockAction,
-                        quantity: changeAmount,
+                        quantity,
                         previousStock: product.stock,
                         newStock,
                         reason,
                         source: 'Bulk Action',
-                        note: note || `Bulk ${action} ${quantity}`
-                    }
-                })
-            ];
+                        note: note || `Bulk ${action} ${quantity}`,
+                    },
+                }),
+            );
 
             if (product.productVariantType === 'variable' && product.variants.length > 0) {
                 const firstVar = product.variants[0];
-                let newVarStock = firstVar.stock;
-                if (action === 'ADD') newVarStock += changeAmount;
-                else newVarStock = Math.max(0, newVarStock - changeAmount);
-
+                const newVarStock = action === 'ADD'
+                    ? firstVar.stock + quantity
+                    : Math.max(0, firstVar.stock - quantity);
                 operations.push(
-                    prisma.variant.update({
-                        where: { id: firstVar.id },
-                        data: { stock: newVarStock }
-                    })
+                    prisma.variant.update({ where: { id: firstVar.id }, data: { stock: newVarStock } }),
                 );
             }
-
-            await prisma.$transaction(operations);
         }
+        if (operations.length > 0) await prisma.$transaction(operations);
         
         revalidatePath('/admin/products');
         return { success: true };
@@ -402,33 +390,22 @@ export async function bulkUpdateStatus(ids: string[], isActive: boolean) {
 }
 
 export async function getInventoryStats() {
-    const [totalProducts, outOfStock, allStockData] = await Promise.all([
+    // Single aggregation query — avoids loading all products into JS memory
+    const [[agg], totalProducts, outOfStock] = await Promise.all([
+        prisma.$queryRaw<[{ low_stock: bigint; total_value: number }]>`
+            SELECT
+                COUNT(*) FILTER (WHERE stock > 0 AND stock <= COALESCE("minStock", 5))::int AS low_stock,
+                COALESCE(SUM(COALESCE("costPrice", 0) * GREATEST(stock, 0)), 0)::float8 AS total_value
+            FROM "products"
+        `,
         prisma.product.count(),
         prisma.product.count({ where: { stock: { lte: 0 } } }),
-        // Fetch minimal data to compute low-stock (per-product minStock) and total value
-        prisma.product.findMany({
-            select: {
-                stock: true,
-                minStock: true,
-                costPrice: true,
-            }
-        })
     ]);
-
-    // Low stock: stock > 0 AND stock <= product's own minStock (default 5)
-    const lowStock = allStockData.filter(
-        p => p.stock > 0 && p.stock <= (p.minStock || 5)
-    ).length;
-
-    // Total inventory value = sum of (costPrice * stock) for all products
-    const totalValue = allStockData.reduce(
-        (acc, p) => acc + ((p.costPrice || 0) * (p.stock || 0)), 0
-    );
 
     return {
         totalProducts,
-        lowStock,
+        lowStock: Number(agg.low_stock),
         outOfStock,
-        totalValue,
+        totalValue: Number(agg.total_value),
     };
 }

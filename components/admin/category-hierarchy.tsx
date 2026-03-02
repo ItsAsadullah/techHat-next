@@ -7,9 +7,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Check, ChevronDown, ChevronRight, Loader2, Plus, Search, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Loader2, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getCategoryChildren, createCategory } from '@/lib/actions/category-actions';
+import { getCategoryChildren, getCategoryPathWithChildren } from '@/lib/actions/category-actions';
 
 interface Category {
   id: string;
@@ -32,17 +32,51 @@ export default function CategoryHierarchy({ initialCategories, onCategorySelect,
     open: boolean;
     searchTerm: string;
   }[]>([
-    { categories: initialCategories, selectedId: selectedCategoryId ?? null, isLoading: false, open: false, searchTerm: '' }
+    { categories: initialCategories, selectedId: null, isLoading: false, open: false, searchTerm: '' }
   ]);
 
-  const [isCreating, setIsCreating] = useState(false);
   const searchInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    setLevels([
-      { categories: initialCategories, selectedId: selectedCategoryId ?? null, isLoading: false, open: false, searchTerm: '' }
-    ]);
-  }, [initialCategories, selectedCategoryId]);
+    let cancelled = false;
+
+    async function init() {
+      if (!selectedCategoryId) {
+        setLevels([{ categories: initialCategories, selectedId: null, isLoading: false, open: false, searchTerm: '' }]);
+        return;
+      }
+
+      const result = await getCategoryPathWithChildren(selectedCategoryId);
+      if (cancelled) return;
+
+      if (!result.success || !result.path || result.path.length === 0) {
+        setLevels([{ categories: initialCategories, selectedId: null, isLoading: false, open: false, searchTerm: '' }]);
+        return;
+      }
+
+      const { path, childrenMap } = result;
+      const newLevels: { categories: Category[]; selectedId: string | null; isLoading: boolean; open: boolean; searchTerm: string }[] = [
+        { categories: initialCategories, selectedId: path[0].id, isLoading: false, open: false, searchTerm: '' },
+      ];
+
+      for (let i = 0; i < path.length - 1; i++) {
+        const children = (childrenMap[path[i].id] ?? []) as Category[];
+        if (children.length > 0) {
+          newLevels.push({ categories: children, selectedId: path[i + 1].id, isLoading: false, open: false, searchTerm: '' });
+        }
+      }
+
+      const lastChildren = (childrenMap[path[path.length - 1].id] ?? []) as Category[];
+      if (lastChildren.length > 0) {
+        newLevels.push({ categories: lastChildren, selectedId: null, isLoading: false, open: false, searchTerm: '' });
+      }
+
+      if (!cancelled) setLevels(newLevels);
+    }
+
+    init();
+    return () => { cancelled = true; };
+  }, [selectedCategoryId, initialCategories]);
 
   const handleSelect = async (levelIndex: number, categoryId: string) => {
     const newLevels = levels.slice(0, levelIndex + 1).map(l => ({ ...l }));
@@ -62,68 +96,23 @@ export default function CategoryHierarchy({ initialCategories, onCategorySelect,
       const levelsAfterFetch = newLevels.map(l => ({ ...l }));
       levelsAfterFetch[levelIndex].isLoading = false;
 
-      // Always add next level so user can select existing sub-categories
-      // or create new ones by typing in the search box
       const childCategories = (result.success && result.categories) ? result.categories : [];
-      levelsAfterFetch.push({
-        categories: childCategories,
-        selectedId: null,
-        isLoading: false,
-        open: false,
-        searchTerm: '',
-      });
+      if (childCategories.length > 0) {
+        levelsAfterFetch.push({
+          categories: childCategories,
+          selectedId: null,
+          isLoading: false,
+          open: false,
+          searchTerm: '',
+        });
+      }
 
       setLevels(levelsAfterFetch);
     } catch (error) {
       console.error('Failed to load subcategories', error);
       const levelsError = newLevels.map(l => ({ ...l }));
       levelsError[levelIndex].isLoading = false;
-      // Still add empty level so user can create sub-categories
-      levelsError.push({
-        categories: [],
-        selectedId: null,
-        isLoading: false,
-        open: false,
-        searchTerm: '',
-      });
       setLevels(levelsError);
-    }
-  };
-
-  const handleCreate = async (levelIndex: number, name: string) => {
-    if (!name.trim()) return;
-
-    setIsCreating(true);
-    const parentId = levelIndex === 0 ? null : levels[levelIndex - 1].selectedId;
-
-    try {
-      const formData = new FormData();
-      formData.append('name', name.trim());
-      if (parentId) formData.append('parentId', parentId);
-
-      const result = await createCategory(formData);
-
-      if (result.success && result.data) {
-        const createdCategory = result.data as Category;
-        const newLevels = levels.slice(0, levelIndex + 1).map(l => ({ ...l }));
-
-        const currentLevel = newLevels[levelIndex];
-        currentLevel.categories = [...currentLevel.categories, createdCategory].sort((a, b) =>
-          a.name.localeCompare(b.name)
-        );
-        currentLevel.selectedId = createdCategory.id;
-        currentLevel.open = false;
-        currentLevel.searchTerm = '';
-
-        onCategorySelect(createdCategory.id);
-        setLevels(newLevels);
-      } else {
-        console.error('Failed to create category');
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsCreating(false);
     }
   };
 
@@ -137,9 +126,6 @@ export default function CategoryHierarchy({ initialCategories, onCategorySelect,
     <div className="space-y-3">
       {levels.map((level, index) => {
         const filtered = getFilteredCategories(level);
-        const hasExactMatch = level.categories.some(
-          (c) => c.name.toLowerCase() === level.searchTerm.trim().toLowerCase()
-        );
 
         return (
           <div key={index} className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
@@ -263,26 +249,11 @@ export default function CategoryHierarchy({ initialCategories, onCategorySelect,
                           <p className="text-sm text-gray-500">
                             {level.searchTerm.trim()
                               ? `"${level.searchTerm}" not found`
-                              : 'No sub-categories yet. Type to create one.'}
+                              : 'No sub-categories available'}
                           </p>
                         </div>
                       )}
                     </div>
-
-                    {/* Create new category — show when typing a name that doesn't exist */}
-                    {level.searchTerm.trim() && !hasExactMatch && (
-                      <div className="border-t p-2">
-                        <button
-                          type="button"
-                          onClick={() => handleCreate(index, level.searchTerm)}
-                          disabled={isCreating}
-                          className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50 transition-colors disabled:opacity-50"
-                        >
-                          <Plus className="h-4 w-4" />
-                          {isCreating ? 'Creating...' : `Create "${level.searchTerm}"`}
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </PopoverContent>
               </Popover>

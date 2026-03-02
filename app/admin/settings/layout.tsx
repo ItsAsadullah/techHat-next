@@ -14,6 +14,8 @@ import {
   HardDrive,
   FileText,
   ChevronRight,
+  Home,
+  Globe2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -26,6 +28,8 @@ const settingsNav = [
       { name: 'General', href: '/admin/settings', icon: Settings, exact: true },
       { name: 'Store Info', href: '/admin/settings/store', icon: Store },
       { name: 'Invoice & Branding', href: '/admin/settings/invoice', icon: FileText },
+      { name: 'Homepage', href: '/admin/settings/homepage', icon: Home },
+      { name: 'Branding & Header', href: '/admin/settings/branding', icon: Globe2 },
     ],
   },
   {

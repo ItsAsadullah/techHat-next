@@ -45,44 +45,26 @@ export async function createProduct(formData: FormData) {
       return sum + (parseInt(v.stock) || 0);
     }, 0);
     const productBarcode = firstVariation.upc || null;
-    console.log('Gallery metadata:', galleryMetadata);
-    const uploadedImages: Array<{ id: string; url: string; isThumbnail: boolean }> = [];
-
-    for (let i = 0; i < galleryMetadata.length; i++) {
-        const meta = galleryMetadata[i];
-        let imageUrl = meta.url;
-
-        console.log(`Processing image ${i}:`, meta);
-
-        if (meta.fileKey) {
-            const imageFile = formData.get(meta.fileKey) as File | null;
-            console.log(`File from formData:`, imageFile?.name, imageFile?.size);
-            
-            if (imageFile && imageFile.size > 0) {
-                try {
-                    console.log('Uploading image to Cloudinary...');
-                    const arrayBuffer = await imageFile.arrayBuffer();
-                    const buffer = Buffer.from(arrayBuffer);
-                    const uploadResult = await uploadToCloudinary(buffer, 'products/gallery');
-                    imageUrl = uploadResult;
-                    console.log('Upload successful:', imageUrl);
-                } catch (e) {
-                    console.error("Failed to upload gallery image", e);
-                    throw new Error(`Image upload failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    // Upload all images in parallel instead of sequentially
+    const uploadedImages = (await Promise.all(
+        galleryMetadata.map(async (meta: any) => {
+            let imageUrl = meta.url;
+            if (meta.fileKey) {
+                const imageFile = formData.get(meta.fileKey) as File | null;
+                if (imageFile && imageFile.size > 0) {
+                    try {
+                        const arrayBuffer = await imageFile.arrayBuffer();
+                        const buffer = Buffer.from(arrayBuffer);
+                        imageUrl = await uploadToCloudinary(buffer, 'products/gallery');
+                    } catch (e) {
+                        console.error("Failed to upload gallery image", e);
+                        throw new Error(`Image upload failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+                    }
                 }
             }
-        }
-
-        if (imageUrl) {
-            uploadedImages.push({
-                id: meta.id,
-                url: imageUrl,
-                isThumbnail: meta.isThumbnail
-            });
-        }
-    }
-
-    console.log('All images uploaded:', uploadedImages.length);
+            return imageUrl ? { id: meta.id, url: imageUrl, isThumbnail: meta.isThumbnail } : null;
+        })
+    )).filter((img): img is { id: string; url: string; isThumbnail: boolean } => img !== null);
 
     // ===== STEP 1.5: Validate serial numbers for duplicates =====
     const allSerials: string[] = [];
@@ -281,7 +263,6 @@ export async function createProduct(formData: FormData) {
     return { success: true, product };
   } catch (error: any) {
     console.error('Create product error:', error);
-    console.error('Error details:', error.message, error.stack);
     return { success: false, error: error.message || 'Failed to create product' };
   }
 }
@@ -348,7 +329,9 @@ export async function getProduct(id: string) {
                 id: true,
                 serialNumber: true,
                 status: true,
-              }
+              },
+              take: 500,
+              orderBy: { status: 'asc' },
             },
             productImage: {
               select: {
@@ -365,27 +348,22 @@ export async function getProduct(id: string) {
             value: true,
           }
         },
+        productImages: {
+          select: {
+            id: true,
+            url: true,
+            isThumbnail: true,
+            displayOrder: true,
+          },
+          orderBy: { displayOrder: 'asc' },
+        },
       }
     });
-    
-    // Fetch product images separately using raw query
+
     if (product) {
-      const images = await prisma.$queryRaw<Array<{id: string, url: string, is_thumbnail: boolean, display_order: number}>>`
-        SELECT id, url, is_thumbnail, display_order 
-        FROM product_images 
-        WHERE product_id = ${product.id}
-        ORDER BY display_order ASC
-      `;
-      
-      // Attach images to product
-      (product as any).images = images.map(img => ({
-        id: img.id,
-        url: img.url,
-        isThumbnail: img.is_thumbnail,
-        displayOrder: img.display_order
-      }));
+      (product as any).images = (product as any).productImages;
     }
-    
+
     return product;
   } catch (error) {
     console.error('Error fetching product:', error);
@@ -428,36 +406,26 @@ export async function updateProduct(id: string, formData: FormData) {
     }, 0);
     const productBarcode = firstVariation.upc || null;
 
-    // Upload new images OUTSIDE transaction to avoid timeout
-    const uploadedImages: Array<{ id: string; url: string; isThumbnail: boolean }> = [];
-    
-    for (let i = 0; i < galleryMetadata.length; i++) {
-        const meta = galleryMetadata[i];
-        let imageUrl = meta.url;
-
-        if (meta.fileKey) {
-            const imageFile = formData.get(meta.fileKey) as File | null;
-            if (imageFile && imageFile.size > 0) {
-                try {
-                    const arrayBuffer = await imageFile.arrayBuffer();
-                    const buffer = Buffer.from(arrayBuffer);
-                    const uploadResult = await uploadToCloudinary(buffer, 'products/gallery');
-                    imageUrl = uploadResult;
-                } catch (e) {
-                    console.error("Failed to upload gallery image", e);
-                    continue;
+    // Upload new images OUTSIDE transaction to avoid timeout — all in parallel
+    const uploadedImages = (await Promise.all(
+        galleryMetadata.map(async (meta: any) => {
+            let imageUrl = meta.url;
+            if (meta.fileKey) {
+                const imageFile = formData.get(meta.fileKey) as File | null;
+                if (imageFile && imageFile.size > 0) {
+                    try {
+                        const arrayBuffer = await imageFile.arrayBuffer();
+                        const buffer = Buffer.from(arrayBuffer);
+                        imageUrl = await uploadToCloudinary(buffer, 'products/gallery');
+                    } catch (e) {
+                        console.error("Failed to upload gallery image", e);
+                        return null; // skip failed upload, continue with others
+                    }
                 }
             }
-        }
-
-        if (imageUrl) {
-            uploadedImages.push({
-                id: meta.id,
-                url: imageUrl,
-                isThumbnail: meta.isThumbnail
-            });
-        }
-    }
+            return imageUrl ? { id: meta.id, url: imageUrl, isThumbnail: meta.isThumbnail } : null;
+        })
+    )).filter((img): img is { id: string; url: string; isThumbnail: boolean } => img !== null);
 
     // Validate serial numbers for duplicates before transaction
     const allSerials: string[] = [];

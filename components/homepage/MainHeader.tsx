@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { User, Menu, X, LayoutDashboard, LogOut, ChevronDown, Package, UserCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -12,7 +13,6 @@ import { supabase } from '@/lib/supabase';
 import { usePathname } from 'next/navigation';
 import CartHeaderButton from './CartHeaderButton';
 import WishlistHeaderButton from './WishlistHeaderButton';
-import Image from 'next/image';
 
 interface Category {
   id: string;
@@ -95,11 +95,11 @@ export default function MainHeader({
                   <Image
                     src={branding.siteLogo}
                     alt="Logo"
-                    width={160}
+                    width={200}
                     height={40}
-                    className="h-10 w-auto object-contain"
+                    className="object-contain"
+                    style={{ maxHeight: '2.5rem', width: 'auto' }}
                     priority
-                    unoptimized={branding.siteLogo.endsWith('.svg')}
                   />
                 ) : (
                   <>
@@ -250,10 +250,10 @@ export default function MainHeader({
                     <Image
                       src={branding.siteLogo}
                       alt="Logo"
-                      width={120}
+                      width={160}
                       height={32}
-                      className="h-8 w-auto object-contain"
-                      unoptimized={branding.siteLogo.endsWith('.svg')}
+                      className="object-contain"
+                      style={{ maxHeight: '2rem', width: 'auto' }}
                     />
                   ) : (
                     <>

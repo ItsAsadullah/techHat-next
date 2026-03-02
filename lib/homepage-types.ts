@@ -7,6 +7,8 @@ export interface HomepageBanner {
   title: string;
   subtitle?: string;
   image: string;
+  video?: string;
+  youtubeUrl?: string;
   mobileImage?: string;
   link?: string;
   ctaText?: string;
@@ -16,6 +18,8 @@ export interface HomepageBanner {
   badge?: string;
   isActive: boolean;
   order: number;
+  /** Which panel this banner belongs to on the homepage grid */
+  slot?: 'main' | 'right-top' | 'right-bottom';
 }
 
 export interface HomepageSectionConfig {

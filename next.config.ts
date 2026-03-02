@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  compress: true,
   experimental: {
     // reactCompiler is disabled — it interferes with Next.js Server Action
     // boundary processing in Turbopack dev mode, causing fetchServerAction to
@@ -13,6 +14,8 @@ const nextConfig: NextConfig = {
   },
   images: {
     qualities: [75, 85],
+    deviceSizes: [640, 1080, 1920],
+    minimumCacheTTL: 31536000,
     remotePatterns: [
       {
         protocol: 'http',
@@ -29,6 +32,10 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'img.youtube.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.fbcdn.net',
       },
     ],
   },

@@ -318,15 +318,16 @@ async function _getCategoryPageData(
     .sort((a, b) => b.count - a.count)
     .map(({ brand, count }) => ({ id: brand!.id, name: brand!.name, slug: brand!.slug, count }));
 
-  // Rating distribution
-  const ratingBuckets = [5, 4, 3, 2, 1].map((stars) => {
-    const count = allProducts.filter((p) => {
-      if (!p.reviews.length) return false;
-      const avg = p.reviews.reduce((s, r) => s + r.rating, 0) / p.reviews.length;
-      return avg >= stars;
-    }).length;
-    return { stars, count };
-  });
+  // Rating distribution — single pass instead of 5 filter() passes
+  const _ratingCounts: number[] = [0, 0, 0, 0, 0, 0]; // index 1-5
+  for (const p of allProducts) {
+    if (!p.reviews.length) continue;
+    const avg = p.reviews.reduce((s: number, r: { rating: number }) => s + r.rating, 0) / p.reviews.length;
+    for (let stars = 1; stars <= 5; stars++) {
+      if (avg >= stars) _ratingCounts[stars]++;
+    }
+  }
+  const ratingBuckets = [5, 4, 3, 2, 1].map((stars) => ({ stars, count: _ratingCounts[stars] }));
 
   // Spec filters (from full product set)
   const specFilters: SpecFilterOption[] = aggregateSpecFilters(allProducts as any[]);

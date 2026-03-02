@@ -1,15 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
-import { 
-    createCategory, 
-    updateCategory, 
-    deleteCategory 
+import React, { useState, type ElementType } from 'react';
+import * as Icons from 'lucide-react';
+import {
+    createCategory,
+    updateCategory,
+    deleteCategory
 } from '@/lib/actions/category-actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { IconPicker } from '@/components/ui/icon-picker';
+import { isLucideIcon } from '@/lib/category-icon';
 import { 
     Dialog, 
     DialogContent, 
@@ -42,15 +45,15 @@ import {
     DropdownMenuSeparator, 
     DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { 
-    Plus, 
-    MoreHorizontal, 
-    Pencil, 
-    Trash2, 
+import {
+    Plus,
+    MoreHorizontal,
+    Pencil,
+    Trash2,
     FolderTree,
     ChevronRight,
     ChevronDown,
-    Image as ImageIcon
+    Image as ImageIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -119,8 +122,16 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
                             )}
                             
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shadow-sm">
-                                    {cat.image ? (
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shadow-sm border border-gray-200"
+                                    style={cat.image && isLucideIcon(cat.image)
+                                        ? { background: 'linear-gradient(135deg, #3b82f6, #6366f1)' }
+                                        : { background: '#f3f4f6' }
+                                    }
+                                >
+                                    {cat.image && isLucideIcon(cat.image) ? (() => {
+                                        const Icon = (Icons as any)[cat.image!] as ElementType | undefined;
+                                        return Icon ? <Icon className="w-5 h-5 text-white" /> : <ImageIcon className="w-5 h-5 text-gray-400" />;
+                                    })() : cat.image ? (
                                         <img src={cat.image} className="w-full h-full object-cover" alt={cat.name} />
                                     ) : (
                                         <ImageIcon className="w-5 h-5 text-gray-400" />
@@ -362,11 +373,21 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
                                 <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
                                 Description <span className="text-gray-400 font-normal">(optional)</span>
                             </Label>
-                            <Textarea 
-                                value={formData.description} 
+                            <Textarea
+                                value={formData.description}
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                                 placeholder="Brief description of this category..."
                                 className="rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 font-medium min-h-[100px]"
+                            />
+                        </div>
+                        <div className="grid gap-2.5">
+                            <Label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
+                                Category Icon <span className="text-gray-400 font-normal">(optional)</span>
+                            </Label>
+                            <IconPicker
+                                value={formData.image}
+                                onChange={(val) => setFormData({...formData, image: val})}
                             />
                         </div>
                     </div>
@@ -443,10 +464,20 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
                                 <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
                                 Description <span className="text-gray-400 font-normal">(optional)</span>
                             </Label>
-                            <Textarea 
-                                value={formData.description} 
+                            <Textarea
+                                value={formData.description}
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                                 className="rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 font-medium min-h-[100px]"
+                            />
+                        </div>
+                        <div className="grid gap-2.5">
+                            <Label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
+                                Category Icon <span className="text-gray-400 font-normal">(optional)</span>
+                            </Label>
+                            <IconPicker
+                                value={formData.image}
+                                onChange={(val) => setFormData({...formData, image: val})}
                             />
                         </div>
                     </div>

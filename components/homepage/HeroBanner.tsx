@@ -1,141 +1,280 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { HomepageBanner } from '@/lib/homepage-types';
 
-export default function HeroBanner({ banners }: { banners: HomepageBanner[] }) {
+// ─── YouTube helpers ───────────────────────────────────────────────────────────
+
+function extractYouTubeId(url: string): string {
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^&?/\s]+)/);
+  return m?.[1] ?? '';
+}
+
+// ─── YouTube panel (muted autoplay, click to pause/resume, no UI chrome) ──────
+
+function YouTubePanel({ banner }: { banner: HomepageBanner }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [playing, setPlaying] = useState(true);
+  const videoId = extractYouTubeId(banner.youtubeUrl!);
+
+  const embedUrl =
+    `https://www.youtube.com/embed/${videoId}` +
+    `?autoplay=1&mute=1&controls=0&showinfo=0&rel=0` +
+    `&modestbranding=1&loop=1&playlist=${videoId}` +
+    `&iv_load_policy=3&disablekb=1&enablejsapi=1`;
+
+  const sendCommand = (func: string) => {
+    iframeRef.current?.contentWindow?.postMessage(
+      JSON.stringify({ event: 'command', func, args: [] }),
+      '*',
+    );
+  };
+
+  const handleClick = () => {
+    sendCommand(playing ? 'pauseVideo' : 'playVideo');
+    setPlaying((p) => !p);
+  };
+
+  return (
+    <div className="relative w-full h-full rounded-xl overflow-hidden cursor-pointer" onClick={handleClick}>
+      {/* Iframe scaled up ~1.4× from center so letterbox bars are hidden */}
+      <iframe
+        ref={iframeRef}
+        src={embedUrl}
+        title={banner.title}
+        allow="autoplay; encrypted-media"
+        className="absolute inset-0 w-full h-full"
+        style={{
+          border: 'none',
+          pointerEvents: 'none',
+          transform: 'scale(1.4)',
+          transformOrigin: 'center',
+        }}
+      />
+
+      {/* Pause indicator */}
+      {!playing && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+          <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
+            <Play className="w-5 h-5 text-white ml-0.5" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Standard image/video banner panel ────────────────────────────────────────
+
+function BannerPanel({
+  banner,
+  priority = false,
+  sizes,
+  compact = false,
+}: {
+  banner: HomepageBanner;
+  priority?: boolean;
+  sizes?: string;
+  compact?: boolean;
+}) {
+  // Delegate YouTube banners
+  if (banner.youtubeUrl) return <YouTubePanel banner={banner} />;
+
+  const inner = (
+    <>
+      {banner.video ? (
+        <video
+          src={banner.video}
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+          autoPlay muted loop playsInline
+        />
+      ) : banner.image ? (
+        <Image
+          src={banner.image}
+          alt={banner.title}
+          fill
+          sizes={sizes ?? (compact ? '33vw' : '66vw')}
+          className="object-cover transition-transform duration-700 group-hover:scale-105"
+          priority={priority}
+          quality={85}
+        />
+      ) : null}
+
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+
+      <div className={cn('absolute inset-0 flex flex-col justify-end', compact ? 'p-3' : 'p-4 md:p-5 lg:p-6')}>
+        <div className="space-y-1">
+          {banner.badge && (
+            <span className="inline-block px-2.5 py-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-full uppercase tracking-wide">
+              {banner.badge}
+            </span>
+          )}
+          <h2 className={cn(
+            'font-extrabold text-white leading-tight',
+            compact ? 'text-sm sm:text-base' : 'text-base sm:text-xl md:text-2xl lg:text-3xl',
+          )}>
+            {banner.title}
+          </h2>
+          {!compact && banner.subtitle && (
+            <p className="text-xs sm:text-sm text-white/80 line-clamp-2 hidden sm:block">{banner.subtitle}</p>
+          )}
+          {banner.ctaText && (
+            <div className="pt-1">
+              <span className={cn(
+                'inline-flex items-center bg-blue-600 text-white font-semibold rounded-full shadow-md',
+                compact ? 'px-3 py-1 text-xs' : 'px-5 py-2 text-sm',
+              )}>
+                {banner.ctaText}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+
+  const cls = 'relative w-full h-full overflow-hidden rounded-xl group block';
+  if (banner.ctaLink) return <Link href={banner.ctaLink} className={cls}>{inner}</Link>;
+  return <div className={cls}>{inner}</div>;
+}
+
+// ─── Shared carousel (used for all three slots) ────────────────────────────────
+
+function BannerCarousel({
+  banners,
+  compact = false,
+}: {
+  banners: HomepageBanner[];
+  compact?: boolean;
+}) {
   const [current, setCurrent] = useState(0);
-  const [isHovered, setIsHovered] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
-  const next = useCallback(() => {
-    setCurrent((c) => (c + 1) % banners.length);
-  }, [banners.length]);
+  const next = useCallback(() => setCurrent((c) => (c + 1) % banners.length), [banners.length]);
+  const prev = useCallback(() => setCurrent((c) => (c - 1 + banners.length) % banners.length), [banners.length]);
 
-  const prev = useCallback(() => {
-    setCurrent((c) => (c - 1 + banners.length) % banners.length);
-  }, [banners.length]);
+  // Reset index if banners list changes
+  useEffect(() => { setCurrent(0); }, [banners.length]);
 
-  // Auto-slide
   useEffect(() => {
-    if (isHovered || banners.length <= 1) return;
-    const interval = setInterval(next, 5000);
-    return () => clearInterval(interval);
-  }, [next, isHovered, banners.length]);
-
-  if (!banners.length) return null;
+    if (hovered || banners.length <= 1) return;
+    const t = setInterval(next, 5000);
+    return () => clearInterval(t);
+  }, [next, hovered, banners.length]);
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-xl lg:rounded-2xl"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className="relative w-full h-full rounded-xl overflow-hidden"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
-      {/* Slides */}
-      <div className="relative aspect-[16/7] sm:aspect-[16/6] lg:aspect-[16/5]">
-        {banners.map((banner, i) => (
-          <div
-            key={banner.id}
-            className={cn(
-              'absolute inset-0 transition-all duration-700 ease-in-out',
-              i === current ? 'opacity-100 scale-100' : 'opacity-0 scale-105 pointer-events-none'
-            )}
-          >
-            {/* Background Image */}
-            <Image
-              src={banner.image}
-              alt={banner.title}
-              fill
-              sizes="100vw"
-              className="object-cover"
-              priority={i === 0}
-              quality={85}
-            />
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
+      {banners.map((banner, i) => (
+        <div
+          key={banner.id}
+          className={cn(
+            'absolute inset-0 transition-opacity duration-700',
+            i === current ? 'opacity-100 z-10' : 'opacity-0 z-0',
+          )}
+        >
+          <BannerPanel banner={banner} priority={i === 0} compact={compact} />
+        </div>
+      ))}
 
-            {/* Content */}
-            <div className="absolute inset-0 flex items-center">
-              <div className="container mx-auto px-4 lg:px-6">
-                <div className="max-w-lg space-y-4">
-                  {banner.badge && (
-                    <span className="inline-block px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full uppercase tracking-wide animate-pulse">
-                      {banner.badge}
-                    </span>
-                  )}
-                  <h2 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-extrabold text-white leading-tight">
-                    {banner.title}
-                  </h2>
-                  {banner.subtitle && (
-                    <p className="text-sm sm:text-base lg:text-lg text-white/80 max-w-md">
-                      {banner.subtitle}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-3 pt-2">
-                    {banner.ctaText && banner.ctaLink && (
-                      <Link
-                        href={banner.ctaLink}
-                        className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-full transition-all shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-0.5"
-                      >
-                        {banner.ctaText}
-                      </Link>
-                    )}
-                    {banner.secondaryCtaText && banner.secondaryCtaLink && (
-                      <Link
-                        href={banner.secondaryCtaLink}
-                        className="inline-flex items-center px-6 py-3 bg-white/15 hover:bg-white/25 backdrop-blur text-white text-sm font-semibold rounded-full transition-all border border-white/30"
-                      >
-                        {banner.secondaryCtaText}
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Navigation Arrows */}
       {banners.length > 1 && (
         <>
           <button
             onClick={prev}
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/40 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100"
-            style={{ opacity: isHovered ? 1 : 0 }}
+            style={{ opacity: hovered ? 1 : 0 }}
+            className={cn(
+              'absolute top-1/2 -translate-y-1/2 z-20 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm flex items-center justify-center transition-all',
+              compact ? 'left-1.5 w-7 h-7' : 'left-3 w-9 h-9',
+            )}
+            aria-label="Previous"
           >
-            <ChevronLeft className="w-5 h-5 text-white" />
+            <ChevronLeft className={compact ? 'w-4 h-4 text-white' : 'w-5 h-5 text-white'} />
           </button>
           <button
             onClick={next}
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/40 flex items-center justify-center transition-all"
-            style={{ opacity: isHovered ? 1 : 0 }}
+            style={{ opacity: hovered ? 1 : 0 }}
+            className={cn(
+              'absolute top-1/2 -translate-y-1/2 z-20 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm flex items-center justify-center transition-all',
+              compact ? 'right-1.5 w-7 h-7' : 'right-3 w-9 h-9',
+            )}
+            aria-label="Next"
           >
-            <ChevronRight className="w-5 h-5 text-white" />
+            <ChevronRight className={compact ? 'w-4 h-4 text-white' : 'w-5 h-5 text-white'} />
           </button>
+
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 flex gap-1">
+            {banners.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrent(i)}
+                className={cn(
+                  'rounded-full transition-all',
+                  compact
+                    ? (i === current ? 'w-3 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/50 hover:bg-white/75')
+                    : (i === current ? 'w-6 h-2 bg-white' : 'w-2 h-2 bg-white/50 hover:bg-white/75'),
+                )}
+                aria-label={`Slide ${i + 1}`}
+              />
+            ))}
+          </div>
         </>
       )}
+    </div>
+  );
+}
 
-      {/* Dots */}
-      {banners.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
-          {banners.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrent(i)}
-              className={cn(
-                'rounded-full transition-all',
-                i === current
-                  ? 'w-8 h-2.5 bg-white'
-                  : 'w-2.5 h-2.5 bg-white/40 hover:bg-white/60'
-              )}
-            />
-          ))}
+// ─── Root component ───────────────────────────────────────────────────────────
+
+export default function HeroBanner({ banners }: { banners: HomepageBanner[] }) {
+  const active = banners.filter((b) => b.isActive && (b.image || b.video || b.youtubeUrl));
+
+  const mainBanners        = active.filter((b) => !b.slot || b.slot === 'main');
+  const topRightBanners    = active.filter((b) => b.slot === 'right-top');
+  const bottomRightBanners = active.filter((b) => b.slot === 'right-bottom');
+
+  if (!mainBanners.length && !topRightBanners.length && !bottomRightBanners.length) return null;
+
+  const hasRight = topRightBanners.length > 0 || bottomRightBanners.length > 0;
+
+  // ── No side panels: full-width carousel ──
+  if (!hasRight) {
+    return (
+      <div className="h-[200px] sm:h-[260px] md:h-[340px] lg:h-[400px] xl:h-[440px] w-full">
+        {mainBanners.length > 0 ? <BannerCarousel banners={mainBanners} /> : null}
+      </div>
+    );
+  }
+
+  // ── Grid: carousel left + stacked carousels right ──
+  return (
+    <div className="flex gap-2 sm:gap-2.5 h-[200px] sm:h-[260px] md:h-[340px] lg:h-[400px] xl:h-[440px]">
+      {/* Left: main carousel (2/3 width) */}
+      <div className="flex-[2] min-w-0">
+        {mainBanners.length > 0
+          ? <BannerCarousel banners={mainBanners} />
+          : <div className="w-full h-full rounded-xl bg-gray-100 dark:bg-gray-800" />}
+      </div>
+
+      {/* Right column (1/3 width): two stacked carousels */}
+      <div className="flex-1 flex flex-col gap-2 sm:gap-2.5 min-w-0">
+        <div className="flex-1 min-h-0">
+          {topRightBanners.length > 0
+            ? <BannerCarousel banners={topRightBanners} compact />
+            : <div className="w-full h-full rounded-xl bg-gray-100 dark:bg-gray-800" />}
         </div>
-      )}
+        <div className="flex-1 min-h-0">
+          {bottomRightBanners.length > 0
+            ? <BannerCarousel banners={bottomRightBanners} compact />
+            : <div className="w-full h-full rounded-xl bg-gray-100 dark:bg-gray-800" />}
+        </div>
+      </div>
     </div>
   );
 }

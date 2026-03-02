@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import slugify from 'slugify';
-import { revalidatePath, unstable_cache } from 'next/cache';
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 
 export async function getCategoryChildren(parentId: string | null) {
   try {
@@ -18,6 +18,92 @@ export async function getCategoryChildren(parentId: string | null) {
   } catch (error) {
     console.error('Error fetching categories:', error);
     return { success: false, error: 'Failed to fetch categories' };
+  }
+}
+
+export async function getCategoryAncestors(categoryId: string) {
+  try {
+    // Single recursive CTE query instead of N sequential queries
+    const rows = await prisma.$queryRaw<Array<{
+      id: string;
+      name: string;
+      slug: string;
+      parentId: string | null;
+      depth: number;
+    }>>`
+      WITH RECURSIVE ancestors AS (
+        SELECT id, name, slug, "parentId", 0::int AS depth
+        FROM "Category"
+        WHERE id = ${categoryId}
+        UNION ALL
+        SELECT c.id, c.name, c.slug, c."parentId", a.depth + 1
+        FROM "Category" c
+        INNER JOIN ancestors a ON c.id = a."parentId"
+      )
+      SELECT id, name, slug, "parentId", depth
+      FROM ancestors
+      ORDER BY depth DESC
+    `;
+
+    // rows are ordered: highest depth (root) first → current last
+    const path = rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      slug: r.slug,
+      parentId: (r as any).parentId ?? null,
+    }));
+
+    return { success: true, path };
+  } catch (error) {
+    console.error('Error fetching category ancestors:', error);
+    return { success: false, error: 'Failed to fetch category ancestors', path: [] };
+  }
+}
+
+/**
+ * Single-call version that fetches the full ancestor path AND all children
+ * needed to render the hierarchy — replaces multiple sequential getCategoryChildren calls.
+ */
+export async function getCategoryPathWithChildren(categoryId: string) {
+  try {
+    // Walk up the tree to build the ancestor path
+    const path: { id: string; name: string; slug: string; parentId: string | null }[] = [];
+    let currentId: string | null = categoryId;
+
+    while (currentId) {
+      const category: { id: string; name: string; slug: string; parentId: string | null } | null =
+        await prisma.category.findUnique({
+          where: { id: currentId },
+          select: { id: true, name: true, slug: true, parentId: true },
+        });
+      if (!category) break;
+      path.unshift(category);
+      currentId = category.parentId;
+    }
+
+    if (path.length === 0) return { success: true, path: [], childrenMap: {} as Record<string, typeof path> };
+
+    // Batch-fetch children for every node in the path in a single query
+    const parentIds = path.map((p) => p.id);
+    const allChildren = await prisma.category.findMany({
+      where: { parentId: { in: parentIds } },
+      select: { id: true, name: true, slug: true, parentId: true },
+      orderBy: { name: 'asc' },
+    });
+
+    // Group children by parentId
+    const childrenMap: Record<string, typeof path> = {};
+    for (const child of allChildren) {
+      if (child.parentId) {
+        if (!childrenMap[child.parentId]) childrenMap[child.parentId] = [];
+        childrenMap[child.parentId].push(child);
+      }
+    }
+
+    return { success: true, path, childrenMap };
+  } catch (error) {
+    console.error('Error fetching category path:', error);
+    return { success: false, error: 'Failed to fetch category path', path: [], childrenMap: {} as Record<string, { id: string; name: string; slug: string; parentId: string | null }[]> };
   }
 }
 
@@ -52,7 +138,7 @@ export async function createCategory(formData: FormData) {
       },
     });
 
-    revalidatePath('/admin/products/new');
+    revalidateTag('categories', {});
     revalidatePath('/admin/settings/categories');
     return { success: true, data: category };
   } catch (error) {
@@ -85,7 +171,7 @@ export async function updateCategory(id: string, formData: FormData) {
       data,
     });
 
-    revalidatePath('/admin/products/new');
+    revalidateTag('categories', {});
     revalidatePath('/admin/settings/categories');
     return { success: true, data: category };
   } catch (error) {
@@ -109,8 +195,8 @@ export async function deleteCategory(id: string) {
     }
 
     await prisma.category.delete({ where: { id } });
-    
-    revalidatePath('/admin/products/new');
+
+    revalidateTag('categories', {});
     revalidatePath('/admin/settings/categories');
     return { success: true };
   } catch (error) {

@@ -3,6 +3,21 @@ import type { Metadata } from 'next';
 import { getCategoryPageData, getCategoryMeta } from '@/lib/actions/category-page-actions';
 import { parseSearchParams } from '@/lib/types/category-page';
 import CategoryPageClient from './category-page-client';
+import { isLucideIcon } from '@/lib/category-icon';
+
+
+export async function generateStaticParams() {
+  try {
+    const { prisma: p } = await import('@/lib/prisma');
+    const categories = await (p as any).category.findMany({
+      where: { isActive: true },
+      select: { slug: true },
+    });
+    return categories.map(({ slug }: { slug: string }) => ({ slug }));
+  } catch {
+    return [];
+  }
+}
 
 export const revalidate = 60;
 
@@ -36,7 +51,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
       description:
         category.description ??
         `Shop the best ${category.name} deals at TechHat.`,
-      images: category.image ? [{ url: category.image }] : [],
+      images: (category.image && !isLucideIcon(category.image)) ? [{ url: category.image }] : [],
       type: 'website',
     },
     alternates: {
@@ -64,7 +79,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
     description: data.category.description ?? `Shop ${data.category.name} at TechHat`,
     url: `https://techhat.com/category/${slug}`,
     numberOfItems: data.totalCount,
-    ...(data.category.image ? { image: data.category.image } : {}),
+    ...(data.category.image && !isLucideIcon(data.category.image) ? { image: data.category.image } : {}),
     breadcrumb: {
       '@type': 'BreadcrumbList',
       itemListElement: data.category.breadcrumbs.map((crumb, index) => ({

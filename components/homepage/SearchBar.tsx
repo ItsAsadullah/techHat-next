@@ -5,6 +5,7 @@ import { Search, Clock, TrendingUp, X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { isLucideIcon, ICON_MAP } from '@/lib/category-icon';
 
 interface SearchResult {
   id: string;
@@ -24,6 +25,10 @@ interface CategoryResult {
 }
 
 const TRENDING_SEARCHES = ['Laptop', 'Smartphone', 'Headphones', 'Smart Watch', 'Router'];
+
+// Client-side result cache — avoids re-fetching identical queries
+const _resultCache = new Map<string, { products: SearchResult[]; categories: CategoryResult[]; t: number }>();
+const RESULT_CACHE_TTL = 60_000;
 
 export default function SearchBar() {
   const [query, setQuery] = useState('');
@@ -57,12 +62,22 @@ export default function SearchBar() {
       setCategories([]);
       return;
     }
+    const cached = _resultCache.get(q);
+    if (cached && Date.now() - cached.t < RESULT_CACHE_TTL) {
+      setProducts(cached.products);
+      setCategories(cached.categories);
+      return;
+    }
     setIsLoading(true);
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
       const data = await res.json();
-      setProducts(data.products || []);
-      setCategories(data.categories || []);
+      const products = data.products || [];
+      const categories = data.categories || [];
+      _resultCache.set(q, { products, categories, t: Date.now() });
+      if (_resultCache.size > 100) _resultCache.delete(_resultCache.keys().next().value!);
+      setProducts(products);
+      setCategories(categories);
     } catch {
       setProducts([]);
       setCategories([]);
@@ -194,11 +209,20 @@ export default function SearchBar() {
                     onClick={() => setIsOpen(false)}
                     className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
-                      {c.image ? (
-                        <Image src={c.image} alt={c.name} width={32} height={32} className="object-cover" />
-                      ) : (
-                        <Search className="w-4 h-4 text-gray-400" />
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {c.image && !isLucideIcon(c.image) ? (
+                        <Image src={c.image} alt={c.name} width={32} height={32} className="object-cover w-full h-full" />
+                      ) : c.image && isLucideIcon(c.image) ? (() => {
+                        const Icon = ICON_MAP[c.image];
+                        return (
+                          <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                            {Icon ? <Icon className="w-4 h-4 text-white" /> : <Search className="w-4 h-4 text-white" />}
+                          </div>
+                        );
+                      })() : (
+                        <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                          <Search className="w-4 h-4 text-gray-400" />
+                        </div>
                       )}
                     </div>
                     <span className="text-sm font-medium text-gray-700">{c.name}</span>

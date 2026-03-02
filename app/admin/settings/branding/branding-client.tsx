@@ -15,7 +15,6 @@ import {
   updateBrandingSettings,
   type BrandingSettings,
 } from '@/lib/actions/invoice-settings-actions';
-import Image from 'next/image';
 
 export function BrandingClient({ initial }: { initial: BrandingSettings }) {
   const [saving, setSaving] = useState(false);
@@ -93,7 +92,7 @@ export function BrandingClient({ initial }: { initial: BrandingSettings }) {
           {/* Preview */}
           <div className="w-36 h-16 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
             {form.siteLogo ? (
-              <Image src={form.siteLogo} alt="Logo preview" width={140} height={60} className="object-contain max-h-14" unoptimized />
+              <img src={form.siteLogo} alt="Logo preview" style={{ maxHeight: '3.5rem', width: 'auto' }} className="object-contain" />
             ) : (
               <ImageIcon className="w-8 h-8 text-gray-300" />
             )}
@@ -167,7 +166,7 @@ export function BrandingClient({ initial }: { initial: BrandingSettings }) {
           {/* Preview */}
           <div className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
             {form.siteFavicon ? (
-              <Image src={form.siteFavicon} alt="Favicon preview" width={32} height={32} className="object-contain" unoptimized />
+              <img src={form.siteFavicon} alt="Favicon preview" style={{ maxHeight: '2rem', width: 'auto' }} className="object-contain" />
             ) : (
               <Globe2 className="w-6 h-6 text-gray-300" />
             )}

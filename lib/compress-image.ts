@@ -44,8 +44,9 @@ export function compressImage(
 
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Try JPEG first; fall back to PNG for transparent images
-      const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+      // Convert everything to WebP by default at the client side first for maximum optimization.
+      // If WebP is not supported in the browser it'll gracefully fallback in canvas to PNG
+      const mimeType = 'image/webp';
 
       let q = quality;
       let dataUrl = canvas.toDataURL(mimeType, q);

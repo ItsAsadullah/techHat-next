@@ -16,6 +16,8 @@ export async function uploadToCloudinary(
       {
         folder: `techhat/${folder}`,
         resource_type: 'auto',
+        format: 'webp',     // Always convert to WebP
+        quality: 'auto',    // Let cloudinary automatically optimize quality without losing visible details
       },
       (error, result) => {
         if (error) {

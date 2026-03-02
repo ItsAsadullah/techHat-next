@@ -5,7 +5,23 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isLucideIcon, ICON_MAP } from '@/lib/category-icon';
 import type { HomepageCategory } from '@/lib/homepage-types';
+
+const NAV_GRADIENTS = [
+  'from-blue-500 to-indigo-600',
+  'from-violet-500 to-purple-600',
+  'from-emerald-500 to-teal-600',
+  'from-orange-500 to-amber-600',
+  'from-pink-500 to-rose-600',
+  'from-cyan-500 to-sky-600',
+  'from-indigo-500 to-blue-700',
+  'from-rose-500 to-pink-700',
+  'from-teal-500 to-emerald-700',
+  'from-amber-500 to-orange-700',
+  'from-sky-500 to-cyan-700',
+  'from-fuchsia-500 to-pink-700',
+];
 
 export default function MegaCategoryNav({ categories }: { categories: HomepageCategory[] }) {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -21,6 +37,39 @@ export default function MegaCategoryNav({ categories }: { categories: HomepageCa
   };
 
   const activeCategory = categories.find((c) => c.id === activeId);
+  const activeCatIndex = categories.findIndex((c) => c.id === activeId);
+
+  const renderCatThumb = (cat: HomepageCategory, idx: number, size: 'sm' | 'md' = 'sm') => {
+    const gradient = NAV_GRADIENTS[idx % NAV_GRADIENTS.length];
+    const isIcon = isLucideIcon(cat.image);
+    const LucideIcon = isIcon && cat.image
+      ? ICON_MAP[cat.image]
+      : null;
+
+    const dim = size === 'sm' ? 'w-6 h-6' : 'w-10 h-10';
+    const iconSize = size === 'sm' ? 'w-3.5 h-3.5' : 'w-5 h-5';
+    const rounded = size === 'sm' ? 'rounded' : 'rounded-lg';
+
+    if (cat.image && !isIcon) {
+      return (
+        <Image
+          src={cat.image}
+          alt={cat.name}
+          width={size === 'sm' ? 24 : 40}
+          height={size === 'sm' ? 24 : 40}
+          className={`${dim} object-cover ${rounded} border border-gray-100`}
+        />
+      );
+    }
+    return (
+      <span className={`${dim} bg-gradient-to-br ${gradient} ${rounded} flex items-center justify-center flex-shrink-0`}>
+        {LucideIcon
+          ? <LucideIcon className={`${iconSize} text-white`} />
+          : <span className="text-white font-bold" style={{ fontSize: size === 'sm' ? 10 : 13 }}>{cat.name[0]}</span>
+        }
+      </span>
+    );
+  };
 
   return (
     <div
@@ -33,7 +82,7 @@ export default function MegaCategoryNav({ categories }: { categories: HomepageCa
           All Categories
         </div>
         <ul className="py-1">
-          {categories.slice(0, 12).map((cat) => (
+          {categories.slice(0, 12).map((cat, idx) => (
             <li
               key={cat.id}
               onMouseEnter={() => handleEnter(cat.id)}
@@ -47,19 +96,7 @@ export default function MegaCategoryNav({ categories }: { categories: HomepageCa
                 className="flex items-center justify-between px-4 py-2.5 text-sm text-gray-700 hover:text-blue-600 hover:bg-blue-50/60 transition-colors"
               >
                 <span className="flex items-center gap-3">
-                  {cat.image ? (
-                    <Image
-                      src={cat.image}
-                      alt={cat.name}
-                      width={24}
-                      height={24}
-                      className="w-6 h-6 object-cover rounded"
-                    />
-                  ) : (
-                    <span className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center text-xs font-bold text-gray-400">
-                      {cat.name[0]}
-                    </span>
-                  )}
+                  {renderCatThumb(cat, idx, 'sm')}
                   <span className="font-medium">{cat.name}</span>
                 </span>
                 {cat.children.length > 0 && (
@@ -92,25 +129,13 @@ export default function MegaCategoryNav({ categories }: { categories: HomepageCa
         >
           <h3 className="text-lg font-bold text-gray-900 mb-4">{activeCategory.name}</h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-            {activeCategory.children.map((sub) => (
+            {activeCategory.children.map((sub, subIdx) => (
               <div key={sub.id}>
                 <Link
                   href={`/category/${sub.slug}`}
                   className="flex items-center gap-3 group mb-2"
                 >
-                  {sub.image ? (
-                    <Image
-                      src={sub.image}
-                      alt={sub.name}
-                      width={40}
-                      height={40}
-                      className="w-10 h-10 rounded-lg object-cover border border-gray-100 group-hover:border-blue-200 transition-colors"
-                    />
-                  ) : (
-                    <span className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center text-sm font-bold text-blue-600">
-                      {sub.name[0]}
-                    </span>
-                  )}
+                  {renderCatThumb(sub, activeCatIndex + subIdx + 1, 'md')}
                   <div>
                     <span className="text-sm font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
                       {sub.name}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, memo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Heart, ShoppingCart, Star, Eye } from 'lucide-react';
@@ -17,7 +17,7 @@ interface ProductCardProps {
   className?: string;
 }
 
-export default function ProductCard({ product, showStock, className }: ProductCardProps) {
+function ProductCard({ product, showStock, className }: ProductCardProps) {
   const { addToCart } = useCart();
   const { toggleWishlist, isWishlisted } = useWishlist();
 
@@ -296,3 +296,5 @@ export default function ProductCard({ product, showStock, className }: ProductCa
     </div>
   );
 }
+
+export default memo(ProductCard);

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBranding } from '@/lib/context/branding-context';
-import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from 'next-themes';
 import { 
@@ -22,7 +21,6 @@ import {
   Star,
   Sun,
   Moon,
-  Home
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -217,8 +215,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         router.replace('/admin/dashboard');
         return; // pathname will change → this effect re-runs → role check happens
       }
-      // Check role via /api/account/role (checks JWT → Prisma User.role → Staff table)
-      // Pass Bearer token so it works immediately after login before cookies propagate
+      // Check role via /api/account/role
+      // Cache result in sessionStorage keyed by access token to avoid
+      // making this API call on every admin page navigation.
       const accessToken = session.access_token;
       let isAdmin = false;
       let roleName = 'customer';
@@ -228,12 +227,23 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         'Admin';
 
       try {
-        const res = await fetch('/api/account/role', {
-          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-          cache: 'no-store',
-        });
-        if (res.ok) {
-          const data = await res.json();
+        const cacheKey = `role-check-${accessToken.slice(-16)}`;
+        const cached = sessionStorage.getItem(cacheKey);
+        let data: { isAdmin?: boolean; role?: string; name?: string } | null = null;
+
+        if (cached) {
+          data = JSON.parse(cached);
+        } else {
+          const res = await fetch('/api/account/role', {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (res.ok) {
+            data = await res.json();
+            sessionStorage.setItem(cacheKey, JSON.stringify(data));
+          }
+        }
+
+        if (data) {
           isAdmin = data.isAdmin === true;
           roleName = data.role ?? 'customer';
           if (data.name) displayName = data.name;
@@ -249,7 +259,11 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setStaffRole(roleName === 'super_admin' ? 'ADMIN' : 'ADMIN');
+      setStaffRole(
+        (['ADMIN', 'MANAGER', 'CASHIER', 'STAFF'].includes(roleName.toUpperCase())
+          ? roleName.toUpperCase()
+          : 'ADMIN') as string
+      );
       setStaffName(displayName);
       setIsAuthed(true);
       setLoading(false);
@@ -293,7 +307,6 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     { name: 'Expenses', href: '/admin/expenses', icon: Wallet, roles: ['ADMIN','MANAGER'] },
     { name: 'Vendors', href: '/admin/vendors', icon: Store, roles: ['ADMIN','MANAGER'] },
     { name: 'Reports', href: '/admin/reports', icon: BarChart3, roles: ['ADMIN','MANAGER'] },
-    { name: 'Homepage', href: '/admin/homepage', icon: Home, roles: ['ADMIN'] },
     { name: 'Settings', href: '/admin/settings', icon: Settings, roles: ['ADMIN'] },
   ];
   const menuItems = ALL_MENU_ITEMS.filter(item => item.roles.includes(staffRole));
@@ -332,7 +345,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   // But if the layout unmounts, it runs again.
   
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex">
+    <div className="h-screen bg-gray-50 dark:bg-gray-950 flex overflow-hidden">
       {/* Sidebar Overlay for Mobile */}
       {isSidebarOpen && (
         <div 
@@ -353,13 +366,11 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-800">
             <div className="flex items-center gap-2">
               {siteLogo ? (
-                <Image
+                <img
                   src={siteLogo}
                   alt="Logo"
-                  width={120}
-                  height={32}
-                  className="h-8 w-auto object-contain"
-                  unoptimized={siteLogo.endsWith('.svg')}
+                  style={{ maxHeight: '2rem', width: 'auto' }}
+                  className="object-contain"
                 />
               ) : (
                 <>
@@ -422,7 +433,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
           >
-            {isSidebarOpen ? <Menu className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
 
           <div className="flex items-center gap-4">

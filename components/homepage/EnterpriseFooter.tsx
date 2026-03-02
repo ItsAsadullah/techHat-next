@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { useBranding } from '@/lib/context/branding-context';
 import {
   Facebook,
@@ -92,13 +91,11 @@ export default function EnterpriseFooter() {
           <div className="col-span-2 md:col-span-3 lg:col-span-2 space-y-4">
             <Link href="/" className="flex items-center gap-2">
               {siteLogo ? (
-                <Image
+                <img
                   src={siteLogo}
                   alt="Logo"
-                  width={160}
-                  height={40}
-                  className="h-10 w-auto object-contain"
-                  unoptimized={siteLogo.endsWith('.svg')}
+                  style={{ maxHeight: '2.5rem', width: 'auto' }}
+                  className="object-contain"
                 />
               ) : (
                 <>

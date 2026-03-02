@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ElementType } from 'react';
+import * as Icons from 'lucide-react';
 import type { CategoryPageData, FilterParams } from '@/lib/types/category-page';
 import CategoryBreadcrumb from '@/components/category-page/CategoryBreadcrumb';
 import SortBar from '@/components/category-page/SortBar';
@@ -11,6 +12,7 @@ import ProductGrid from '@/components/category-page/ProductGrid';
 import Pagination from '@/components/category-page/Pagination';
 import Image from 'next/image';
 import Link from 'next/link';
+import { isLucideIcon } from '@/lib/category-icon';
 
 interface Props {
   data: CategoryPageData;
@@ -35,17 +37,21 @@ export default function CategoryPageClient({ data, filters }: Props) {
       {/* Category Hero Banner */}
       <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b">
         <div className="container mx-auto px-4 md:px-6 py-6 flex items-center gap-6">
-          {category.image && (
-            <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
-              <Image
-                src={category.image}
-                alt={category.name}
-                fill
-                className="object-cover"
-                sizes="80px"
-              />
-            </div>
-          )}
+          {category.image && (() => {
+            if (!isLucideIcon(category.image)) {
+              return (
+                <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
+                  <Image src={category.image!} alt={category.name} fill className="object-cover" sizes="80px" />
+                </div>
+              );
+            }
+            const Icon = (Icons as any)[category.image] as ElementType | undefined;
+            return (
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl flex-shrink-0 shadow-md bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                {Icon && <Icon className="w-8 h-8 sm:w-9 sm:h-9 text-white" />}
+              </div>
+            );
+          })()}
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{category.name}</h1>
             {category.description && (
@@ -71,11 +77,15 @@ export default function CategoryPageClient({ data, filters }: Props) {
                   href={`/category/${child.slug}`}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-full border bg-muted/30 hover:bg-primary hover:text-primary-foreground hover:border-primary text-sm whitespace-nowrap transition-colors flex-shrink-0"
                 >
-                  {child.image && (
-                    <div className="relative w-5 h-5 rounded-full overflow-hidden">
+                  {child.image && !isLucideIcon(child.image) && (
+                    <div className="relative w-5 h-5 rounded-full overflow-hidden flex-shrink-0">
                       <Image src={child.image} alt="" fill className="object-cover" sizes="20px" />
                     </div>
                   )}
+                  {child.image && isLucideIcon(child.image) && (() => {
+                    const Icon = (Icons as any)[child.image] as ElementType | undefined;
+                    return Icon ? <Icon className="w-3.5 h-3.5 flex-shrink-0" /> : null;
+                  })()}
                   {child.name}
                 </Link>
               ))}
