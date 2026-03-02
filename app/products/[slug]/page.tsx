@@ -108,16 +108,44 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const product = await getProductBySlug(slug);
   if (!product) return { title: 'Product Not Found' };
 
-  const thumbnail = product.productImages?.find((img: any) => img.isThumbnail)?.url || product.productImages?.[0]?.url;
+  const rawThumbnail = product.productImages?.find((img: any) => img.isThumbnail)?.url || product.productImages?.[0]?.url;
+
+  // Convert to absolute public URL for Facebook/social crawlers
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://techhat.shop';
+  let ogImage: string | undefined;
+  if (rawThumbnail) {
+    if (rawThumbnail.startsWith('http') && !rawThumbnail.includes('localhost') && !rawThumbnail.includes('127.0.0.1')) {
+      // Already a public absolute URL (Cloudinary, S3, etc.)
+      ogImage = rawThumbnail;
+    } else if (rawThumbnail.includes('localhost/techhat/') || rawThumbnail.includes('127.0.0.1/techhat/')) {
+      // Local backend image → serve via our proxy with absolute URL
+      const relativePath = rawThumbnail.split('/techhat/')[1];
+      ogImage = `${siteUrl}/api/proxy?path=${encodeURIComponent(relativePath)}`;
+    } else if (rawThumbnail.startsWith('/')) {
+      ogImage = `${siteUrl}${rawThumbnail}`;
+    }
+  }
+
+  const productUrl = `${siteUrl}/products/${slug}`;
+  const description = product.description?.slice(0, 160) || `Buy ${product.name} at the best price on TechHat`;
 
   return {
     title: `${product.name} - TechHat`,
-    description: product.description?.slice(0, 160) || `Buy ${product.name} at the best price`,
+    description,
     openGraph: {
-      title: product.name,
-      description: product.description?.slice(0, 160) || '',
-      images: thumbnail ? [{ url: thumbnail }] : [],
-    }
+      title: `${product.name} - TechHat`,
+      description,
+      url: productUrl,
+      siteName: 'TechHat',
+      type: 'website',
+      images: ogImage ? [{ url: ogImage, width: 1200, height: 630, alt: product.name }] : [],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${product.name} - TechHat`,
+      description,
+      images: ogImage ? [ogImage] : [],
+    },
   };
 }
 
