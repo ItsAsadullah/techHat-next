@@ -9,22 +9,7 @@ import { getStoreSettings } from '@/lib/actions/invoice-settings-actions';
 import { unstable_cache } from 'next/cache';
 
 
-export async function generateStaticParams() {
-  try {
-    const { prisma: p } = await import('@/lib/prisma');
-    const products = await (p as any).product.findMany({
-      where: { isActive: true },
-      select: { slug: true },
-      orderBy: [{ soldCount: 'desc' }, { viewCount: 'desc' }],
-      take: 100,
-    });
-    return products.map(({ slug }: { slug: string }) => ({ slug }));
-  } catch {
-    return [];
-  }
-}
-
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ slug: string }>;
