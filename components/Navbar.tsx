@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import AuthModal from './AuthModal';
 import { supabase } from '@/lib/supabase';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useCart } from '@/lib/context/cart-context';
 import { useWishlist } from '@/lib/context/wishlist-context';
 import {
@@ -34,6 +34,16 @@ export default function Navbar({ initialCategories }: { initialCategories?: Cate
   const [user, setUser] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (q) {
+      router.push(`/products?q=${encodeURIComponent(q)}`);
+      setIsOpen(false);
+    }
+  };
 
   const { count: cartCount, openCart, cartIconRef } = useCart();
   const { count: wishlistCount, openWishlist, wishlistIconRef } = useWishlist();
@@ -162,7 +172,7 @@ export default function Navbar({ initialCategories }: { initialCategories?: Cate
           {/* Actions */}
           <div className="hidden md:flex items-center gap-3">
             {/* Search */}
-            <div className="relative group">
+            <form onSubmit={handleSearch} className="relative group">
               <input
                 id="navbar-search"
                 name="q"
@@ -174,7 +184,7 @@ export default function Navbar({ initialCategories }: { initialCategories?: Cate
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            </div>
+            </form>
 
             {/* Wishlist */}
             <button
@@ -280,6 +290,7 @@ export default function Navbar({ initialCategories }: { initialCategories?: Cate
           >
             <div className="container mx-auto px-4 py-4 flex flex-col gap-4">
               <div className="relative">
+                <form onSubmit={handleSearch}>
                 <input
                   id="navbar-mobile-search"
                   name="q"
@@ -287,8 +298,11 @@ export default function Navbar({ initialCategories }: { initialCategories?: Cate
                   autoComplete="on"
                   placeholder="Search products..."
                   className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
                 <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                </form>
               </div>
               
               <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto">

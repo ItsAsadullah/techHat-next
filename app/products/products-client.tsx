@@ -3,7 +3,7 @@
 import { useState, useCallback, useTransition } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
-  Search, SlidersHorizontal, X, ChevronLeft, ChevronRight, Package,
+  SlidersHorizontal, X, ChevronLeft, ChevronRight, Package,
   TrendingUp, Clock, ArrowUpDown, Tag, CheckSquare,
 } from 'lucide-react';
 import ProductGrid from '@/components/category-page/ProductGrid';
@@ -17,6 +17,7 @@ interface Props {
   totalPages: number;
   page: number;
   categories: { id: string; name: string; slug: string }[];
+  brands: { id: string; name: string; slug: string }[];
   filters: AllProductsFilters;
 }
 
@@ -28,12 +29,11 @@ const SORT_OPTIONS = [
   { value: 'discount',   label: 'Best Discount',   icon: Tag },
 ];
 
-export default function ProductsPageClient({ products, totalCount, totalPages, page, categories, filters }: Props) {
+export default function ProductsPageClient({ products, totalCount, totalPages, page, categories, brands, filters }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
   const [showFilters, setShowFilters] = useState(false);
-  const [search, setSearch] = useState(filters.q ?? '');
 
   const navigate = useCallback((newFilters: Partial<AllProductsFilters>) => {
     const merged = { ...filters, ...newFilters };
@@ -49,12 +49,8 @@ export default function ProductsPageClient({ products, totalCount, totalPages, p
     startTransition(() => { router.push(`${pathname}${qs ? '?' + qs : ''}`, { scroll: true }); });
   }, [filters, pathname, router]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    navigate({ q: search.trim() || undefined, page: 1 });
-  };
-
   const activeFilterCount = [
+    filters.q,
     filters.category,
     filters.brand,
     filters.inStock,
@@ -95,38 +91,25 @@ export default function ProductsPageClient({ products, totalCount, totalPages, p
             </button>
           </div>
 
-          {/* Search */}
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="search"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search products..."
-                className="w-full pl-9 pr-4 h-9 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-100"
-              />
-              {search && (
-                <button type="button" onClick={() => { setSearch(''); navigate({ q: undefined, page: 1 }); }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  <X className="w-4 h-4" />
-                </button>
+          {/* Active chips for active query / brand */}
+          {(filters.q || filters.brand) && (
+            <div className="flex flex-wrap gap-1.5">
+              {filters.q && (
+                <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700">
+                  Search: &ldquo;{filters.q}&rdquo;
+                  <button onClick={() => navigate({ q: undefined, page: 1 })} className="ml-0.5 hover:text-blue-900 dark:hover:text-blue-100">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
               )}
-            </div>
-            <button type="submit" className="px-4 h-9 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors">
-              Go
-            </button>
-          </form>
-
-          {/* Active brand chip */}
-          {filters.brand && (
-            <div className="flex items-center gap-1.5">
-              <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700">
-                Brand: {filters.brand.charAt(0).toUpperCase() + filters.brand.slice(1)}
-                <button onClick={() => navigate({ brand: undefined, page: 1 })} className="ml-0.5 hover:text-blue-900 dark:hover:text-blue-100">
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
+              {filters.brand && (
+                <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700">
+                  Brand: {filters.brand.charAt(0).toUpperCase() + filters.brand.slice(1)}
+                  <button onClick={() => navigate({ brand: undefined, page: 1 })} className="ml-0.5 hover:text-blue-900 dark:hover:text-blue-100">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
             </div>
           )}
 
@@ -152,6 +135,40 @@ export default function ProductsPageClient({ products, totalCount, totalPages, p
         {/* Expanded Filters */}
         {showFilters && (
           <div className="border-t border-gray-100 dark:border-gray-800 px-3 sm:px-6 py-3 space-y-3 bg-gray-50 dark:bg-gray-900/50">
+            {/* Brand */}
+            {brands.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">Brand</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    onClick={() => navigate({ brand: undefined, page: 1 })}
+                    className={cn(
+                      'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
+                      !filters.brand
+                        ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-gray-900 dark:border-gray-100'
+                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                    )}
+                  >
+                    All
+                  </button>
+                  {brands.map(b => (
+                    <button
+                      key={b.id}
+                      onClick={() => navigate({ brand: b.slug, page: 1 })}
+                      className={cn(
+                        'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
+                        filters.brand === b.slug
+                          ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-gray-900 dark:border-gray-100'
+                          : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                      )}
+                    >
+                      {b.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Category */}
             <div>
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">Category</p>
@@ -212,7 +229,7 @@ export default function ProductsPageClient({ products, totalCount, totalPages, p
               {/* Clear all */}
               {activeFilterCount > 0 && (
                 <button
-                  onClick={() => { setSearch(''); navigate({ q: undefined, category: undefined, inStock: false, onSale: false, sort: 'newest', page: 1 }); }}
+                  onClick={() => { navigate({ q: undefined, category: undefined, brand: undefined, inStock: false, onSale: false, sort: 'newest', page: 1 }); }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-red-600 border border-red-200 bg-red-50 hover:bg-red-100 transition-all"
                 >
                   <X className="w-3.5 h-3.5" /> Clear Filters

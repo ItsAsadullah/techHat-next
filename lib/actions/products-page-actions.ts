@@ -115,6 +115,7 @@ export interface AllProductsPageData {
   totalPages: number;
   page: number;
   categories: { id: string; name: string; slug: string }[];
+  brands: { id: string; name: string; slug: string }[];
 }
 
 export async function getAllProductsPageData(
@@ -156,7 +157,7 @@ export async function getAllProductsPageData(
   }
 
   try {
-    const [rawProducts, totalCount, categories] = await Promise.all([
+    const [rawProducts, totalCount, categories, brands] = await Promise.all([
       prisma.product.findMany({
         where,
         select: PRODUCT_SELECT,
@@ -170,6 +171,10 @@ export async function getAllProductsPageData(
         select: { id: true, name: true, slug: true },
         orderBy: { name: 'asc' },
       }),
+      prisma.brand.findMany({
+        select: { id: true, name: true, slug: true },
+        orderBy: { name: 'asc' },
+      }),
     ]);
 
     return {
@@ -178,9 +183,10 @@ export async function getAllProductsPageData(
       totalPages: Math.max(1, Math.ceil(totalCount / PER_PAGE)),
       page,
       categories,
+      brands,
     };
   } catch (err) {
     console.error('[getAllProductsPageData] DB error:', err);
-    return { products: [], totalCount: 0, totalPages: 1, page, categories: [] };
+    return { products: [], totalCount: 0, totalPages: 1, page, categories: [], brands: [] };
   }
 }

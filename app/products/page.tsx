@@ -47,6 +47,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
       totalPages={data.totalPages}
       page={data.page}
       categories={data.categories}
+      brands={data.brands}
       filters={filters}
     />
   );
