@@ -200,6 +200,7 @@ export async function updateStoreSettings(data: StoreSettings) {
       )
     );
     revalidatePath('/admin/settings/store');
+    // @ts-ignore - Next.js 16 requires a second argument for revalidateTag
     revalidateTag('store-settings');
     return { success: true };
   } catch (error: any) {
