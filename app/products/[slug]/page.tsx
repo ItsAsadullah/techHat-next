@@ -5,6 +5,7 @@ import ProductView from './product-view';
 import Footer from '@/components/Footer';
 import type { Metadata } from 'next';
 import { getProductReviewStats } from '@/lib/actions/review-actions';
+import { getStoreSettings } from '@/lib/actions/invoice-settings-actions';
 import { unstable_cache } from 'next/cache';
 
 
@@ -204,10 +205,11 @@ export default async function ProductPage({ params }: Props) {
 
   if (!product) notFound();
 
-  // Parallel fetch: related products + review stats (both depend on product but not on each other)
-  const [relatedProducts, reviewStatsResult] = await Promise.all([
+  // Parallel fetch: related products + review stats + store settings
+  const [relatedProducts, reviewStatsResult, storeSettings] = await Promise.all([
     getRelatedProducts(product.categoryId, product.id),
     getProductReviewStats(product.id),
+    getStoreSettings(),
   ]);
 
   const reviewStats = reviewStatsResult.success && reviewStatsResult.stats
@@ -304,7 +306,12 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-white">
-      <ProductView product={productData} relatedProducts={relatedProductsData} />
+      <ProductView
+        product={productData}
+        relatedProducts={relatedProductsData}
+        whatsappNumber={storeSettings.whatsappNumber || ''}
+        callNumber={storeSettings.callNumber || storeSettings.phone || ''}
+      />
       <Footer />
     </div>
   );

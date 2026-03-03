@@ -136,6 +136,8 @@ interface RelatedProduct {
 interface Props {
   product: Product;
   relatedProducts: RelatedProduct[];
+  whatsappNumber?: string;
+  callNumber?: string;
 }
 
 // Helper functions
@@ -168,8 +170,8 @@ function RatingStars({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'm
   return <div className="flex items-center gap-0.5">{stars}</div>;
 }
 
-function getWhatsAppUrl(product: Product, variant: ProductVariant | null, quantity: number) {
-  const phone = '8801XXXXXXXXX'; // Replace with your WhatsApp number
+function getWhatsAppUrl(product: Product, variant: ProductVariant | null, quantity: number, whatsappNumber?: string) {
+  const phone = whatsappNumber ? `880${whatsappNumber.replace(/^0/, '')}` : '8801XXXXXXXXX';
   const variantInfo = variant && variant.name !== 'Default' ? ` (${variant.name})` : '';
   const price = variant 
     ? formatPrice(variant.offerPrice || variant.price) 
@@ -285,7 +287,7 @@ function getYouTubeId(url: string) {
   return (match && match[2].length === 11) ? match[2] : null;
 }
 
-export default function ProductView({ product, relatedProducts }: Props) {
+export default function ProductView({ product, relatedProducts, whatsappNumber, callNumber }: Props) {
   const { addToCart } = useCart();
   const wishlist = useWishlistSafe();
   const addToCartBtnRef = useRef<HTMLButtonElement>(null);
@@ -510,8 +512,8 @@ export default function ProductView({ product, relatedProducts }: Props) {
       </div>
 
       {/* Main Product Section */}
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-10">
 
           {/* ═══════════════ LEFT: IMAGE GALLERY (4 Columns) ═══════════════ */}
           <div className="lg:col-span-4 space-y-4">
@@ -575,13 +577,13 @@ export default function ProductView({ product, relatedProducts }: Props) {
                 <>
                   <button
                     onClick={() => setSelectedImageIndex(i => (i > 0 ? i - 1 : allImages.length - 1))}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                    className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity hover:bg-white"
                   >
                     <ChevronLeft className="w-5 h-5 text-gray-700" />
                   </button>
                   <button
                     onClick={() => setSelectedImageIndex(i => (i < allImages.length - 1 ? i + 1 : 0))}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                    className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity hover:bg-white"
                   >
                     <ChevronRight className="w-5 h-5 text-gray-700" />
                   </button>
@@ -1044,7 +1046,7 @@ export default function ProductView({ product, relatedProducts }: Props) {
                   ref={addToCartBtnRef}
                   disabled={!inStock}
                   onClick={() => handleAddToCart(addToCartBtnRef.current)}
-                  className="flex-1 h-12 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-200 text-white disabled:text-gray-400 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl disabled:shadow-none uppercase tracking-wide"
+                  className="flex-1 h-12 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-200 text-white disabled:text-gray-400 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all shadow-lg hover:shadow-xl disabled:shadow-none uppercase tracking-wide"
                 >
                   <ShoppingCart className="w-5 h-5" />
                   Add to Cart
@@ -1052,7 +1054,7 @@ export default function ProductView({ product, relatedProducts }: Props) {
                 <button 
                   disabled={!inStock}
                   onClick={() => setShowCheckout(true)}
-                  className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl uppercase tracking-wide"
+                  className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all shadow-lg hover:shadow-xl uppercase tracking-wide"
                 >
                   <Zap className="w-5 h-5" />
                   Buy Now
@@ -1060,22 +1062,22 @@ export default function ProductView({ product, relatedProducts }: Props) {
               </div>
 
               {/* WhatsApp and Call */}
-              <div className="flex gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <a
-                  href={getWhatsAppUrl(product, selectedVariant, quantity)}
+                  href={getWhatsAppUrl(product, selectedVariant, quantity, whatsappNumber)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 h-12 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl uppercase tracking-wide"
+                  className="h-12 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all shadow-lg hover:shadow-xl"
                 >
-                  <MessageCircle className="w-5 h-5" />
-                  Order on WhatsApp
+                  <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span className="truncate">Order on WhatsApp</span>
                 </a>
                 <a
-                  href="tel:09678300400"
-                  className="flex-1 h-12 bg-white border-2 border-gray-900 text-gray-900 hover:bg-gray-50 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all uppercase tracking-wide"
+                  href={callNumber ? `tel:${callNumber}` : '#'}
+                  className="h-12 bg-white border-2 border-gray-900 text-gray-900 hover:bg-gray-50 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all"
                 >
-                  <Phone className="w-5 h-5" />
-                  Call for Order
+                  <Phone className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span className="truncate">Call for Order</span>
                 </a>
               </div>
             </div>
@@ -1687,7 +1689,7 @@ export default function ProductView({ product, relatedProducts }: Props) {
                             Buy Now
                           </button>
                           <a
-                            href={getWhatsAppUrl(product, selectedVariant, quantity)}
+                            href={getWhatsAppUrl(product, selectedVariant, quantity, whatsappNumber)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="w-full h-11 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl"

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Store, Phone, Mail, MapPin, Globe, Save, Loader2 } from 'lucide-react';
+import { Store, Phone, Mail, MapPin, Globe, Save, Loader2, MessageCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -90,6 +90,49 @@ export function StoreSettingsClient({ initial }: { initial: StoreSettings }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <F label="City" id="city" placeholder="Dhaka" />
           <F label="Country" id="country" placeholder="Bangladesh" />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Order Buttons */}
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Order Button Numbers</h3>
+          <p className="text-xs text-gray-400 mt-1">এই নম্বরগুলো প্রোডাক্ট পেজে &quot;Order on WhatsApp&quot; ও &quot;Call for Order&quot; বাটনে ব্যবহার হবে</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+              <MessageCircle className="w-3.5 h-3.5 text-green-500" />
+              WhatsApp Order Number
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-mono">880</span>
+              <input
+                type="tel"
+                className="w-full pl-10 pr-3 h-10 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="1XXXXXXXXX (without country code)"
+                value={form.whatsappNumber ?? ''}
+                onChange={(e) => set('whatsappNumber', e.target.value)}
+              />
+            </div>
+            <p className="text-xs text-gray-400">যেমন: 1712345678 → wa.me/8801712345678</p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+              <Phone className="w-3.5 h-3.5 text-gray-400" />
+              Call for Order Number
+            </label>
+            <input
+              type="tel"
+              className="w-full px-3 h-10 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="01XXXXXXXXX"
+              value={form.callNumber ?? ''}
+              onChange={(e) => set('callNumber', e.target.value)}
+            />
+            <p className="text-xs text-gray-400">যেমন: 09678300400</p>
+          </div>
         </div>
       </div>
 

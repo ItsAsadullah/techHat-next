@@ -149,13 +149,14 @@ export async function updateInvoiceSettings(input: {
 const STORE_KEYS = [
   'storeName', 'tagline', 'phone', 'altPhone', 'email',
   'website', 'address', 'city', 'country', 'currency',
-  'currencySymbol', 'timezone',
+  'currencySymbol', 'timezone', 'whatsappNumber', 'callNumber',
 ] as const;
 
 export type StoreSettings = {
   storeName: string; tagline: string; phone: string; altPhone: string;
   email: string; website: string; address: string; city: string;
   country: string; currency: string; currencySymbol: string; timezone: string;
+  whatsappNumber: string; callNumber: string;
 };
 
 export async function getStoreSettings(): Promise<StoreSettings> {
@@ -174,6 +175,8 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     currency: map.currency || 'BDT',
     currencySymbol: map.currencySymbol || '৳',
     timezone: map.timezone || 'Asia/Dhaka',
+    whatsappNumber: map.whatsappNumber || '',
+    callNumber: map.callNumber || '',
   };
 }
 
