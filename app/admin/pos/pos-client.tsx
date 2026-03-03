@@ -15,7 +15,7 @@ import { getPOSCustomerList } from '@/lib/actions/ledger-actions';
 import type { POSCustomerOption } from '@/components/admin/pos/customer-search-combobox';
 import type { InvoiceSettings } from '@/lib/actions/invoice-settings-actions';
 import { toast } from 'sonner';
-import { Maximize, Minimize, Keyboard, BarChart2, Users, CreditCard } from 'lucide-react';
+import { Maximize, Minimize, Keyboard, BarChart2, Users, CreditCard, Grid3X3, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface POSClientProps {
@@ -48,6 +48,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings }: 
   const [showVariantPicker, setShowVariantPicker] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<POSProduct | null>(null);
+  const [mobileView, setMobileView] = useState<'products' | 'cart'>('products');
 
   const {
     cart,
@@ -83,6 +84,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings }: 
       }
       
       addItem(product, variantId);
+      setMobileView('cart'); // auto-switch to cart on mobile
       // Play a subtle sound effect (optional)
       try {
         const audio = new Audio('/sounds/beep.mp3');
@@ -340,10 +342,10 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings }: 
   return (
     <div className={cn(
       'flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden',
-      isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : 'h-[calc(100vh-8rem)]'
+      isFullscreen ? 'fixed inset-0 z-100 rounded-none' : 'h-[calc(100dvh-5.5rem)] lg:h-[calc(100vh-8rem)]'
     )}>
       {/* Top Bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+      <div className="flex items-center justify-between px-4 py-2 bg-linear-to-r from-blue-600 to-blue-700 text-white">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
             <span className="text-sm font-black">POS</span>
@@ -421,10 +423,46 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings }: 
         </div>
       )}
 
+      {/* Mobile Tab Bar */}
+      <div className="lg:hidden flex border-b border-gray-200 bg-gray-50 shrink-0">
+        <button
+          onClick={() => setMobileView('products')}
+          className={cn(
+            'flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors',
+            mobileView === 'products'
+              ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
+              : 'text-gray-500'
+          )}
+        >
+          <Grid3X3 className="w-4 h-4" />
+          Products
+        </button>
+        <button
+          onClick={() => setMobileView('cart')}
+          className={cn(
+            'flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors relative',
+            mobileView === 'cart'
+              ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
+              : 'text-gray-500'
+          )}
+        >
+          <ShoppingCart className="w-4 h-4" />
+          Cart
+          {totalItems > 0 && (
+            <span className="absolute top-1.5 right-6 w-4 h-4 bg-blue-600 text-white text-[10px] font-black rounded-full flex items-center justify-center">
+              {totalItems}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Main Content - Two Column */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left: Product Selection */}
-        <div className="flex-1 flex flex-col border-r border-gray-200 min-w-0">
+        <div className={cn(
+          'flex-1 flex flex-col border-r border-gray-200 min-w-0',
+          mobileView === 'products' ? 'flex' : 'hidden lg:flex'
+        )}>
           <POSProductGrid
             categories={categories}
             onProductSelect={handleProductSelect}
@@ -433,7 +471,10 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings }: 
         </div>
 
         {/* Right: Cart & Checkout */}
-        <div className="w-[420px] shrink-0 flex flex-col">
+        <div className={cn(
+          'shrink-0 flex flex-col',
+          mobileView === 'cart' ? 'flex w-full' : 'hidden lg:flex lg:w-105'
+        )}>
           <POSCartPanel
             cart={cart}
             subtotal={subtotal}

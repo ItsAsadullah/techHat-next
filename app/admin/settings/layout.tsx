@@ -63,8 +63,9 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
 
   return (
     <div className="flex min-h-screen bg-[#f8f9fb] dark:bg-gray-950">
-      {/* Sidebar */}
-      <aside className="w-64 shrink-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col">
+
+      {/* ── Desktop Sidebar ── */}
+      <aside className="hidden lg:flex w-64 shrink-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex-col">
         {/* Sidebar Header */}
         <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2.5">
@@ -102,12 +103,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                           : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
                       )}
                     >
-                      <Icon
-                        className={cn(
-                          'w-4 h-4 shrink-0',
-                          isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'
-                        )}
-                      />
+                      <Icon className={cn('w-4 h-4 shrink-0', isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-600')} />
                       <span className="flex-1 truncate">{item.name}</span>
                       {isActive && <ChevronRight className="w-3.5 h-3.5 text-white/60 shrink-0" />}
                     </Link>
@@ -127,8 +123,33 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 min-w-0 p-8 bg-[#f8f9fb] dark:bg-gray-950">
+      {/* ── Mobile Top Nav ── */}
+      <div className="lg:hidden fixed top-14 left-0 right-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="flex overflow-x-auto scrollbar-hide px-2 py-1.5 gap-1">
+          {settingsNav.flatMap(g => g.items).map((item) => {
+            const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all',
+                  isActive
+                    ? 'bg-gray-900 dark:bg-gray-700 text-white'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                )}
+              >
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                {item.name}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Main Content ── */}
+      <main className="flex-1 min-w-0 p-4 pt-18 lg:p-8 lg:pt-8 bg-[#f8f9fb] dark:bg-gray-950">
         <div className="max-w-4xl mx-auto">
           {children}
         </div>
