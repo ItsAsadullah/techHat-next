@@ -41,6 +41,7 @@ export default function ProductsPageClient({ products, totalCount, totalPages, p
     if (merged.q)        params.set('q', merged.q);
     if (merged.sort && merged.sort !== 'newest') params.set('sort', merged.sort);
     if (merged.category) params.set('category', merged.category);
+    if (merged.brand)    params.set('brand', merged.brand);
     if (merged.inStock)  params.set('inStock', '1');
     if (merged.onSale)   params.set('onSale', '1');
     if (merged.page && merged.page > 1) params.set('page', String(merged.page));
@@ -55,6 +56,7 @@ export default function ProductsPageClient({ products, totalCount, totalPages, p
 
   const activeFilterCount = [
     filters.category,
+    filters.brand,
     filters.inStock,
     filters.onSale,
     filters.sort && filters.sort !== 'newest',
@@ -69,7 +71,9 @@ export default function ProductsPageClient({ products, totalCount, totalPages, p
           <div className="flex items-center justify-between">
             <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <Package className="w-5 h-5 text-blue-600" />
-              All Products
+              {filters.brand
+                ? `Brand: ${filters.brand.charAt(0).toUpperCase() + filters.brand.slice(1)}`
+                : 'All Products'}
               <span className="text-sm font-normal text-gray-400">({totalCount.toLocaleString()})</span>
             </h1>
             <button
@@ -113,6 +117,18 @@ export default function ProductsPageClient({ products, totalCount, totalPages, p
               Go
             </button>
           </form>
+
+          {/* Active brand chip */}
+          {filters.brand && (
+            <div className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700">
+                Brand: {filters.brand.charAt(0).toUpperCase() + filters.brand.slice(1)}
+                <button onClick={() => navigate({ brand: undefined, page: 1 })} className="ml-0.5 hover:text-blue-900 dark:hover:text-blue-100">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            </div>
+          )}
 
           {/* Sort chips */}
           <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">

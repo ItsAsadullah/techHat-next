@@ -32,6 +32,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
     q:        str(sp.q),
     sort:     (str(sp.sort) as SortOption | undefined) ?? 'newest',
     category: str(sp.category),
+    brand:    str(sp.brand),
     inStock:  sp.inStock === '1',
     onSale:   sp.onSale === '1',
     page:     sp.page ? parseInt(String(sp.page), 10) : 1,

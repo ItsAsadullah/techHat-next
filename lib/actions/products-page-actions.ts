@@ -103,6 +103,7 @@ export interface AllProductsFilters {
   q?: string;
   sort?: SortOption;
   category?: string; // category slug
+  brand?: string;   // brand slug
   inStock?: boolean;
   onSale?: boolean;
   page?: number;
@@ -135,6 +136,10 @@ export async function getAllProductsPageData(
 
   if (filters.category) {
     where.category = { slug: filters.category };
+  }
+
+  if (filters.brand) {
+    where.brand = { slug: filters.brand };
   }
 
   if (filters.inStock) {
