@@ -159,9 +159,17 @@ export type StoreSettings = {
   whatsappNumber: string; callNumber: string;
 };
 
+const _getStoreSettingsCached = unstable_cache(
+  async () => {
+    const rows = await prisma.setting.findMany({ where: { category: 'store' } });
+    return rows.reduce((acc, r) => { acc[r.key] = r.value; return acc; }, {} as Record<string, string>);
+  },
+  ['store-settings'],
+  { revalidate: 300, tags: ['store-settings'] }
+);
+
 export async function getStoreSettings(): Promise<StoreSettings> {
-  const rows = await prisma.setting.findMany({ where: { category: 'store' } });
-  const map = rows.reduce((acc, r) => { acc[r.key] = r.value; return acc; }, {} as Record<string, string>);
+  const map = await _getStoreSettingsCached();
   return {
     storeName: map.storeName || 'TechHat',
     tagline: map.tagline || '',
@@ -192,6 +200,7 @@ export async function updateStoreSettings(data: StoreSettings) {
       )
     );
     revalidatePath('/admin/settings/store');
+    revalidateTag('store-settings');
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

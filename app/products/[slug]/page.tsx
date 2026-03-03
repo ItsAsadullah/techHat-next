@@ -9,7 +9,8 @@ import { getStoreSettings } from '@/lib/actions/invoice-settings-actions';
 import { unstable_cache } from 'next/cache';
 
 
-export const dynamic = 'force-dynamic';
+// ISR: cache each product page for 5 minutes, re-validate in background
+export const revalidate = 300;
 
 interface Props {
   params: Promise<{ slug: string }>;
