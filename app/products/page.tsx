@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/products' },
 };
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

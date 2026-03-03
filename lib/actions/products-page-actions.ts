@@ -150,27 +150,32 @@ export async function getAllProductsPageData(
     ];
   }
 
-  const [rawProducts, totalCount, categories] = await Promise.all([
-    prisma.product.findMany({
-      where,
-      select: PRODUCT_SELECT,
-      orderBy: buildOrderBy(sort),
-      skip: (page - 1) * PER_PAGE,
-      take: PER_PAGE,
-    }),
-    prisma.product.count({ where }),
-    prisma.category.findMany({
-      where: { isActive: true },
-      select: { id: true, name: true, slug: true },
-      orderBy: { name: 'asc' },
-    }),
-  ]);
+  try {
+    const [rawProducts, totalCount, categories] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        select: PRODUCT_SELECT,
+        orderBy: buildOrderBy(sort),
+        skip: (page - 1) * PER_PAGE,
+        take: PER_PAGE,
+      }),
+      prisma.product.count({ where }),
+      prisma.category.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, slug: true },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
 
-  return {
-    products: rawProducts.map(mapProduct),
-    totalCount,
-    totalPages: Math.max(1, Math.ceil(totalCount / PER_PAGE)),
-    page,
-    categories,
-  };
+    return {
+      products: rawProducts.map(mapProduct),
+      totalCount,
+      totalPages: Math.max(1, Math.ceil(totalCount / PER_PAGE)),
+      page,
+      categories,
+    };
+  } catch (err) {
+    console.error('[getAllProductsPageData] DB error:', err);
+    return { products: [], totalCount: 0, totalPages: 1, page, categories: [] };
+  }
 }
