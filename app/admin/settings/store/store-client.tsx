@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { Store, Phone, Mail, MapPin, Globe, Save, Loader2, MessageCircle } from 'lucide-react';
@@ -8,6 +8,39 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { updateStoreSettings, type StoreSettings } from '@/lib/actions/invoice-settings-actions';
+import type { LucideIcon } from 'lucide-react';
+
+// ── Field component defined OUTSIDE parent to prevent remount on each keystroke ──
+interface FieldProps {
+  label: string;
+  id: string;
+  icon?: LucideIcon;
+  value: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+  type?: string;
+}
+
+function Field({ label, id, icon: Icon, value, onChange, placeholder, type = 'text' }: FieldProps) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id} className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+        {Icon && <Icon className="w-3.5 h-3.5 text-gray-400" />}
+        {label}
+      </Label>
+      <Input
+        id={id}
+        type={type}
+        className="rounded-xl h-10"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function StoreSettingsClient({ initial }: { initial: StoreSettings }) {
   const [saving, setSaving] = useState(false);
@@ -28,29 +61,14 @@ export function StoreSettingsClient({ initial }: { initial: StoreSettings }) {
     }
   }
 
-  const F = ({ label, id, icon: Icon, ...props }: any) => (
-    <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
-        {Icon && <Icon className="w-3.5 h-3.5 text-gray-400" />}{label}
-      </Label>
-      <Input
-        id={id}
-        className="rounded-xl h-10"
-        value={form[id as keyof StoreSettings] ?? ''}
-        onChange={(e) => set(id as keyof StoreSettings, e.target.value)}
-        {...props}
-      />
-    </div>
-  );
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-blue-100 rounded-xl"><Store className="w-5 h-5 text-blue-600" /></div>
           <div>
             <h2 className="text-xl font-bold text-gray-900">Store Information</h2>
-            <p className="text-sm text-gray-500">Business identity & contact details — saved to database</p>
+            <p className="text-sm text-gray-500">Business identity &amp; contact details — saved to database</p>
           </div>
         </div>
         <Button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl gap-2">
@@ -63,8 +81,8 @@ export function StoreSettingsClient({ initial }: { initial: StoreSettings }) {
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Business Identity</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <F label="Store Name" id="storeName" icon={Store} placeholder="TechHat" />
-          <F label="Tagline" id="tagline" placeholder="Your one-stop tech shop" />
+          <Field label="Store Name" id="storeName" icon={Store} value={form.storeName ?? ''} onChange={(v) => set('storeName', v)} placeholder="TechHat" />
+          <Field label="Tagline" id="tagline" value={form.tagline ?? ''} onChange={(v) => set('tagline', v)} placeholder="Your one-stop tech shop" />
         </div>
       </div>
 
@@ -74,10 +92,10 @@ export function StoreSettingsClient({ initial }: { initial: StoreSettings }) {
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Contact Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <F label="Primary Phone" id="phone" icon={Phone} placeholder="+880 1XXX-XXXXXX" />
-          <F label="Alternative Phone" id="altPhone" icon={Phone} placeholder="+880 1XXX-XXXXXX" />
-          <F label="Email Address" id="email" icon={Mail} placeholder="info@techhat.com" type="email" />
-          <F label="Website" id="website" icon={Globe} placeholder="https://techhat.com" />
+          <Field label="Primary Phone" id="phone" icon={Phone} value={form.phone ?? ''} onChange={(v) => set('phone', v)} placeholder="+880 1XXX-XXXXXX" />
+          <Field label="Alternative Phone" id="altPhone" icon={Phone} value={form.altPhone ?? ''} onChange={(v) => set('altPhone', v)} placeholder="+880 1XXX-XXXXXX" />
+          <Field label="Email Address" id="email" icon={Mail} value={form.email ?? ''} onChange={(v) => set('email', v)} placeholder="info@techhat.com" type="email" />
+          <Field label="Website" id="website" icon={Globe} value={form.website ?? ''} onChange={(v) => set('website', v)} placeholder="https://techhat.com" />
         </div>
       </div>
 
@@ -86,10 +104,10 @@ export function StoreSettingsClient({ initial }: { initial: StoreSettings }) {
       {/* Address */}
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Address</h3>
-        <F label="Street Address" id="address" icon={MapPin} placeholder="Street, Area" />
+        <Field label="Street Address" id="address" icon={MapPin} value={form.address ?? ''} onChange={(v) => set('address', v)} placeholder="Street, Area" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <F label="City" id="city" placeholder="Dhaka" />
-          <F label="Country" id="country" placeholder="Bangladesh" />
+          <Field label="City" id="city" value={form.city ?? ''} onChange={(v) => set('city', v)} placeholder="Dhaka" />
+          <Field label="Country" id="country" value={form.country ?? ''} onChange={(v) => set('country', v)} placeholder="Bangladesh" />
         </div>
       </div>
 
@@ -144,19 +162,25 @@ export function StoreSettingsClient({ initial }: { initial: StoreSettings }) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium text-gray-700">Currency</Label>
-            <select value={form.currency} onChange={(e) => set('currency', e.target.value)}
-              className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select
+              value={form.currency}
+              onChange={(e) => set('currency', e.target.value)}
+              className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
               <option value="BDT">BDT — Bangladeshi Taka</option>
               <option value="USD">USD — US Dollar</option>
               <option value="EUR">EUR — Euro</option>
               <option value="GBP">GBP — British Pound</option>
             </select>
           </div>
-          <F label="Currency Symbol" id="currencySymbol" placeholder="৳" />
+          <Field label="Currency Symbol" id="currencySymbol" value={form.currencySymbol ?? ''} onChange={(v) => set('currencySymbol', v)} placeholder="৳" />
           <div className="space-y-1.5">
             <Label className="text-sm font-medium text-gray-700">Timezone</Label>
-            <select value={form.timezone} onChange={(e) => set('timezone', e.target.value)}
-              className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select
+              value={form.timezone}
+              onChange={(e) => set('timezone', e.target.value)}
+              className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
               <option value="Asia/Dhaka">Asia/Dhaka (UTC+6)</option>
               <option value="UTC">UTC</option>
               <option value="Asia/Kolkata">Asia/Kolkata (UTC+5:30)</option>

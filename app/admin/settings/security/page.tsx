@@ -10,6 +10,36 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 
+// ── Defined OUTSIDE parent to prevent focus loss on mobile ──
+interface PwInputProps {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+  show: boolean;
+  onToggleShow: () => void;
+}
+function PwInput({ label, value, onChange, show, onToggleShow }: PwInputProps) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-sm font-medium text-gray-700">{label}</Label>
+      <div className="relative">
+        <Input
+          type={show ? 'text' : 'password'}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="rounded-xl pr-10"
+          placeholder="••••••••"
+        />
+        <button type="button" onClick={onToggleShow}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+          {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+        </button>
+      </div>
+    </div>
+  );
+}
+// ────────────────────────────────────────────────────────────
+
 export default function SecuritySettingsPage() {
   const [saving, setSaving] = useState(false);
   const [showOld, setShowOld] = useState(false);
@@ -58,8 +88,8 @@ export default function SecuritySettingsPage() {
 
       toast.success('Password changed successfully');
       setPasswords({ old: '', new: '', confirm: '' });
-    } catch (err: any) {
-      toast.error(err.message || 'Password change failed');
+    } catch (err: unknown) {
+      toast.error((err as { message?: string })?.message || 'Password change failed');
     } finally {
       setSaving(false);
     }
@@ -73,24 +103,6 @@ export default function SecuritySettingsPage() {
     toast.success('Security settings saved');
   }
 
-  const PwInput = ({ label, field, show, toggle }: any) => (
-    <div className="space-y-1.5">
-      <Label className="text-sm font-medium text-gray-700">{label}</Label>
-      <div className="relative">
-        <Input
-          type={show ? 'text' : 'password'}
-          value={passwords[field as keyof typeof passwords]}
-          onChange={(e) => setPasswords({ ...passwords, [field]: e.target.value })}
-          className="rounded-xl pr-10"
-          placeholder="••••••••"
-        />
-        <button type="button" onClick={toggle}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-          {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-        </button>
-      </div>
-    </div>
-  );
 
   return (
     <div className="space-y-6">
@@ -109,9 +121,9 @@ export default function SecuritySettingsPage() {
           <h3 className="text-sm font-semibold text-gray-700">Change Password</h3>
         </div>
         <div className="space-y-3 max-w-sm">
-          <PwInput label="Current Password" field="old" show={showOld} toggle={() => setShowOld(!showOld)} />
-          <PwInput label="New Password" field="new" show={showNew} toggle={() => setShowNew(!showNew)} />
-          <PwInput label="Confirm New Password" field="confirm" show={showConfirm} toggle={() => setShowConfirm(!showConfirm)} />
+          <PwInput label="Current Password" value={passwords.old} onChange={(v) => setPasswords(p => ({ ...p, old: v }))} show={showOld} onToggleShow={() => setShowOld(!showOld)} />
+          <PwInput label="New Password" value={passwords.new} onChange={(v) => setPasswords(p => ({ ...p, new: v }))} show={showNew} onToggleShow={() => setShowNew(!showNew)} />
+          <PwInput label="Confirm New Password" value={passwords.confirm} onChange={(v) => setPasswords(p => ({ ...p, confirm: v }))} show={showConfirm} onToggleShow={() => setShowConfirm(!showConfirm)} />
           <Button onClick={handleChangePassword} disabled={saving}
             className="w-full bg-gray-900 hover:bg-gray-700 text-white rounded-xl gap-2">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
