@@ -34,7 +34,8 @@ function publicImageUrl(url: string | undefined | null): string | null {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const branding = await getBrandingSettings();
+  let branding = { siteLogo: '', siteFavicon: '' };
+  try { branding = await getBrandingSettings(); } catch {}
   const logoUrl = publicImageUrl(branding.siteLogo);
 
   return {
@@ -60,8 +61,9 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const brandingPromise = getBrandingSettings();
-  const branding = await brandingPromise;
+  const brandingDefaults = { siteLogo: '', siteFavicon: '', topbarHotline: '', topbarDelivery: '', topbarShowDelivery: true };
+  let branding = brandingDefaults;
+  try { branding = await getBrandingSettings(); } catch {}
   const logoUrl = publicImageUrl(branding.siteLogo);
 
   // JSON-LD Organization schema so Google indexes the logo

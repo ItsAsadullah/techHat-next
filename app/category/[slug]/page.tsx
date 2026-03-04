@@ -5,21 +5,8 @@ import { parseSearchParams } from '@/lib/types/category-page';
 import CategoryPageClient from './category-page-client';
 import { isLucideIcon } from '@/lib/category-icon';
 
-
-export async function generateStaticParams() {
-  try {
-    const { prisma: p } = await import('@/lib/prisma');
-    const categories = await (p as any).category.findMany({
-      where: { isActive: true },
-      select: { slug: true },
-    });
-    return categories.map(({ slug }: { slug: string }) => ({ slug }));
-  } catch {
-    return [];
-  }
-}
-
-export const revalidate = 60;
+// ISR: revalidate every 5 minutes instead of pre-rendering all categories at build time
+export const revalidate = 300;
 
 interface PageProps {
   params: Promise<{ slug: string }>;
