@@ -972,13 +972,6 @@ export default function ProductForm({ categories: initialCategories, brands: ini
     }
   }
 
-  const handleSaveDraft = handleSubmit(async (data) => {
-    // Force isActive to false for draft
-    const draftData = { ...data, isActive: false };
-    // Pass false to prevent redirect
-    await onSubmit(draftData, false);
-  }, handleValidationError);
-
   // Handles validation errors from React Hook Form — shows the first error
   // as a toast and switches to the tab that contains the failing field.
   const handleValidationError = (validationErrors: Record<string, any>) => {
@@ -992,6 +985,13 @@ export default function ProductForm({ categories: initialCategories, brands: ini
     else if (pricingFields.includes(firstErrorField)) setActiveTab('pricing');
     else if (inventoryFields.includes(firstErrorField)) setActiveTab('inventory');
   };
+
+  const handleSaveDraft = handleSubmit(async (data) => {
+    // Force isActive to false for draft
+    const draftData = { ...data, isActive: false };
+    // Pass false to prevent redirect
+    await onSubmit(draftData, false);
+  }, handleValidationError);
 
   const handlePreview = () => {
      setIsPreviewOpen(true);
