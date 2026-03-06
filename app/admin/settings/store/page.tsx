@@ -1,7 +1,10 @@
-import { getStoreSettings } from '@/lib/actions/invoice-settings-actions';
+import { getStoreSettings, getShippingSettings } from '@/lib/actions/invoice-settings-actions';
 import { StoreSettingsClient } from './store-client';
 
 export default async function StoreSettingsPage() {
-  const initial = await getStoreSettings();
-  return <StoreSettingsClient initial={initial} />;
+  const [initial, initialShipping] = await Promise.all([
+    getStoreSettings(),
+    getShippingSettings(),
+  ]);
+  return <StoreSettingsClient initial={initial} initialShipping={initialShipping} />;
 }

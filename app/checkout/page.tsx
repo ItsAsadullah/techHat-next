@@ -62,8 +62,6 @@ const EMPTY_FORM: DeliveryForm = {
   customerName: '', customerPhone: '', customerEmail: '',
   division: '', district: '', upazila: '', shippingAddress: '', orderNote: '',
 };
-const SHIPPING_DHAKA = 60;
-const SHIPPING_OUTSIDE = 120;
 const STORAGE_KEY = 'techhat_addresses';
 
 const BANK_INFO = {
@@ -150,6 +148,15 @@ export default function CheckoutPage() {
   // — Misc —
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const [shippingRates, setShippingRates] = useState({ dhaka: 60, outside: 120, freeThreshold: 0 });
+
+  // ─── Load dynamic shipping rates ─────────────────────
+  useEffect(() => {
+    fetch('/api/settings/shipping')
+      .then((r) => r.json())
+      .then((d) => setShippingRates({ dhaka: d.dhaka ?? 60, outside: d.outside ?? 120, freeThreshold: d.freeThreshold ?? 0 }))
+      .catch(() => {});
+  }, []);
 
   // ─── Auth init ────────────────────────────────────────
   useEffect(() => {
@@ -201,7 +208,10 @@ export default function CheckoutPage() {
     () => cart.reduce((s: number, i: CartItem) => s + (i.offerPrice ?? i.price) * i.quantity, 0),
     [cart]
   );
-  const shippingCost = form.division === 'Dhaka' ? SHIPPING_DHAKA : SHIPPING_OUTSIDE;
+  const shippingCost = (() => {
+    if (shippingRates.freeThreshold > 0 && subTotal >= shippingRates.freeThreshold) return 0;
+    return form.division === 'Dhaka' ? shippingRates.dhaka : shippingRates.outside;
+  })();
   const discount = couponDiscount;
   const grandTotal = subTotal + shippingCost - discount;
   const totalItems = cart.reduce((s: number, i: CartItem) => s + i.quantity, 0);

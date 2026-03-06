@@ -25,7 +25,7 @@ interface CheckoutModalProps {
 
 type Step = 'info' | 'shipping' | 'payment' | 'confirm';
 
-const SHIPPING_RATES: Record<string, number> = {
+const SHIPPING_RATES_FALLBACK: Record<string, number> = {
   'Dhaka': 60,
   'Chattogram': 120,
   'Rajshahi': 120,
@@ -62,6 +62,15 @@ export default function CheckoutModal({ isOpen, onClose, items }: CheckoutModalP
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [transactionId, setTransactionId] = useState('');
   const [orderNote, setOrderNote] = useState('');
+  const [shippingRates, setShippingRates] = useState({ dhaka: 60, outside: 120, freeThreshold: 0 });
+
+  // Load dynamic shipping rates from admin settings
+  useEffect(() => {
+    fetch('/api/settings/shipping')
+      .then((r) => r.json())
+      .then((d) => setShippingRates({ dhaka: d.dhaka ?? 60, outside: d.outside ?? 120, freeThreshold: d.freeThreshold ?? 0 }))
+      .catch(() => {});
+  }, []);
 
   // Division/district cascade reset — প্রথম render এ fire করবে না
   const divisionMounted = useRef(false);
@@ -73,7 +82,11 @@ export default function CheckoutModal({ isOpen, onClose, items }: CheckoutModalP
   const upazilas = district && division ? getUpazilas(division, district) : [];
 
   const subtotal = items.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
-  const shippingCost = division ? (SHIPPING_RATES[division] || 120) : 0;
+  const isDhaka = division === 'Dhaka';
+  const baseShipping = isDhaka ? shippingRates.dhaka : (shippingRates.outside ?? SHIPPING_RATES_FALLBACK[division] ?? 120);
+  const shippingCost = division
+    ? (shippingRates.freeThreshold > 0 && subtotal >= shippingRates.freeThreshold ? 0 : baseShipping)
+    : 0;
   const grandTotal = subtotal + shippingCost;
 
   // Reset on open/close

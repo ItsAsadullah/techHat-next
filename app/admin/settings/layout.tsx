@@ -16,6 +16,8 @@ import {
   ChevronRight,
   Home,
   Globe2,
+  Ticket,
+  BarChart3,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -45,12 +47,14 @@ const settingsNav = [
       { name: 'POS Settings', href: '/admin/settings/pos', icon: ShoppingCart },
       { name: 'Payment Methods', href: '/admin/settings/payments', icon: CreditCard },
       { name: 'Staff & Roles', href: '/admin/settings/staff', icon: Users },
+      { name: 'Coupons', href: '/admin/settings/coupons', icon: Ticket },
     ],
   },
   {
     group: 'System',
     items: [
       { name: 'Notifications', href: '/admin/settings/notifications', icon: Bell },
+      { name: 'Analytics & Tracking', href: '/admin/settings/analytics', icon: BarChart3 },
       { name: 'Appearance', href: '/admin/settings/appearance', icon: Palette },
       { name: 'Security', href: '/admin/settings/security', icon: ShieldCheck },
       { name: 'Data Backup', href: '/admin/settings/backup', icon: HardDrive },

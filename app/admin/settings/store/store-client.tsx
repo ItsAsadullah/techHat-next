@@ -1,13 +1,16 @@
 ﻿'use client';
 
 import { useState } from 'react';
-import { Store, Phone, Mail, MapPin, Globe, Save, Loader2, MessageCircle } from 'lucide-react';
+import { Store, Phone, Mail, MapPin, Globe, Save, Loader2, MessageCircle, Truck, PackageOpen } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { updateStoreSettings, type StoreSettings } from '@/lib/actions/invoice-settings-actions';
+import {
+  updateStoreSettings, updateShippingSettings,
+  type StoreSettings, type ShippingSettings,
+} from '@/lib/actions/invoice-settings-actions';
 import type { LucideIcon } from 'lucide-react';
 
 // ── Field component defined OUTSIDE parent to prevent remount on each keystroke ──
@@ -42,22 +45,36 @@ function Field({ label, id, icon: Icon, value, onChange, placeholder, type = 'te
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function StoreSettingsClient({ initial }: { initial: StoreSettings }) {
+export function StoreSettingsClient({
+  initial,
+  initialShipping,
+}: {
+  initial: StoreSettings;
+  initialShipping: ShippingSettings;
+}) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<StoreSettings>(initial);
+  const [shipping, setShipping] = useState<ShippingSettings>(initialShipping);
 
   function set(key: keyof StoreSettings, val: string) {
     setForm((f) => ({ ...f, [key]: val }));
   }
 
+  function setS(key: keyof ShippingSettings, val: string) {
+    setShipping((f) => ({ ...f, [key]: Number(val) || 0 }));
+  }
+
   async function handleSave() {
     setSaving(true);
-    const result = await updateStoreSettings(form);
+    const [r1, r2] = await Promise.all([
+      updateStoreSettings(form),
+      updateShippingSettings(shipping),
+    ]);
     setSaving(false);
-    if (result.success) {
-      toast.success('Store settings saved to database');
+    if (r1.success && r2.success) {
+      toast.success('Store & shipping settings saved');
     } else {
-      toast.error('Save failed: ' + result.error);
+      toast.error('Save failed: ' + (r1.error ?? r2.error));
     }
   }
 
@@ -186,6 +203,63 @@ export function StoreSettingsClient({ initial }: { initial: StoreSettings }) {
               <option value="Asia/Kolkata">Asia/Kolkata (UTC+5:30)</option>
               <option value="America/New_York">America/New_York (UTC-5)</option>
             </select>
+          </div>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Shipping & Delivery */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Truck className="w-4 h-4 text-gray-400" />
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Shipping & Delivery Charges</h3>
+        </div>
+        <p className="text-xs text-gray-400 -mt-2">
+          এই রেট গুলো চেকআউটে অর্ডার মোটের সাথে যোগ হবে। শিপিং চার্জ এখান থেকে পরিবর্তন করলে সব জায়গায় আপডেট হয়ে যাবে।
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+              <Truck className="w-3.5 h-3.5 text-green-500" /> Dhaka Shipping (৳)
+            </Label>
+            <Input
+              type="number"
+              value={String(shipping.shippingDhaka)}
+              onChange={(e) => setS('shippingDhaka', e.target.value)}
+              placeholder="60"
+              className="rounded-xl h-10"
+              min="0"
+            />
+            <p className="text-xs text-gray-400">ঢাকার মধ্যে ডেলিভারি চার্জ</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+              <Truck className="w-3.5 h-3.5 text-orange-500" /> Outside Dhaka (৳)
+            </Label>
+            <Input
+              type="number"
+              value={String(shipping.shippingOutsideDhaka)}
+              onChange={(e) => setS('shippingOutsideDhaka', e.target.value)}
+              placeholder="120"
+              className="rounded-xl h-10"
+              min="0"
+            />
+            <p className="text-xs text-gray-400">ঢাকার বাইরে ডেলিভারি চার্জ</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+              <PackageOpen className="w-3.5 h-3.5 text-blue-500" /> Free Delivery Threshold (৳)
+            </Label>
+            <Input
+              type="number"
+              value={String(shipping.freeDeliveryThreshold)}
+              onChange={(e) => setS('freeDeliveryThreshold', e.target.value)}
+              placeholder="0 (disabled)"
+              className="rounded-xl h-10"
+              min="0"
+            />
+            <p className="text-xs text-gray-400">এর বেশি অর্ডারে ফ্রি ডেলিভারি। 0 = বন্ধ</p>
           </div>
         </div>
       </div>

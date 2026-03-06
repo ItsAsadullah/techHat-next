@@ -12,6 +12,7 @@ import {
   canTransitionPayment,
   getAllowedTransitions,
 } from '@/lib/utils/order-helpers';
+import { getShippingSettings } from '@/lib/actions/invoice-settings-actions';
 
 // ─── String-typed enums (Prisma client may lag behind schema changes) ─────────
 type OrderStatus =
@@ -240,7 +241,14 @@ export async function placeOrder(input: PlaceOrderInput) {
 
     // 4. Server-side totals
     const subTotal = validatedItems.reduce((s, i) => s + i.total, 0);
-    const shippingCost = calculateShippingCost(input.division);
+    // Read shipping rates from DB (falls back to hardcoded 60/120 if not set)
+    const shippingSettings = await getShippingSettings();
+    const isDhaka = ['Dhaka', 'dhaka'].includes(input.division);
+    let shippingCost = isDhaka ? shippingSettings.shippingDhaka : shippingSettings.shippingOutsideDhaka;
+    // Free delivery override
+    if (shippingSettings.freeDeliveryThreshold > 0 && subTotal >= shippingSettings.freeDeliveryThreshold) {
+      shippingCost = 0;
+    }
 
     // 5. Coupon validation (server-side)
     let couponDiscount = 0;

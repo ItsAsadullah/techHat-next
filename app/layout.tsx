@@ -7,7 +7,7 @@ import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Providers } from '@/components/Providers';
 import { BrandingProvider } from '@/lib/context/branding-context';
-import { getBrandingSettings } from '@/lib/actions/invoice-settings-actions';
+import { getBrandingSettings, getAnalyticsSettings } from '@/lib/actions/invoice-settings-actions';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import MetaPixel from '@/components/MetaPixel';
 import Loading from './loading';
@@ -67,6 +67,10 @@ export default async function RootLayout({
   try { branding = await getBrandingSettings(); } catch {}
   const logoUrl = publicImageUrl(branding.siteLogo);
 
+  // Analytics tracking IDs from admin settings (DB-driven)
+  let analytics = { metaPixelId: '', googleAnalyticsId: '', googleTagManagerId: '', tiktokPixelId: '' };
+  try { analytics = await getAnalyticsSettings(); } catch {}
+
   // JSON-LD Organization schema so Google indexes the logo
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -79,8 +83,13 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        {/* Meta Pixel — fires PageView on every page/navigation */}
-        <MetaPixel />
+        {/* Meta Pixel + Analytics — fires PageView on every page/navigation */}
+        <MetaPixel
+          pixelId={analytics.metaPixelId || undefined}
+          googleAnalyticsId={analytics.googleAnalyticsId || undefined}
+          googleTagManagerId={analytics.googleTagManagerId || undefined}
+          tiktokPixelId={analytics.tiktokPixelId || undefined}
+        />
 
         {/* JSON-LD for Google rich results / logo */}
         <script

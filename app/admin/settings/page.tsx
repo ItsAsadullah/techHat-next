@@ -16,6 +16,8 @@ import {
   Zap,
   Globe2,
   Home,
+  Ticket,
+  BarChart3,
 } from 'lucide-react';
 import { getStoreSettings } from '@/lib/actions/invoice-settings-actions';
 import { prisma } from '@/lib/prisma';
@@ -32,8 +34,8 @@ const sections = [
   {
     href: '/admin/settings/store',
     icon: Store,
-    title: 'Store Info',
-    desc: 'Business name, address, phone, currency & regional settings',
+    title: 'Store Info & Shipping',
+    desc: 'Business name, address, phone, currency, shipping charges & free delivery threshold',
     color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
     dot: 'bg-blue-500',
   },
@@ -86,6 +88,14 @@ const sections = [
     dot: 'bg-pink-500',
   },
   {
+    href: '/admin/settings/coupons',
+    icon: Ticket,
+    title: 'Coupon Management',
+    desc: 'Create, edit, and manage discount coupon codes with usage limits and expiry dates',
+    color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
+    dot: 'bg-amber-500',
+  },
+  {
     href: '/admin/settings/notifications',
     icon: Bell,
     title: 'Notifications',
@@ -94,12 +104,20 @@ const sections = [
     dot: 'bg-yellow-500',
   },
   {
+    href: '/admin/settings/analytics',
+    icon: BarChart3,
+    title: 'Analytics & Tracking',
+    desc: 'Meta Pixel, Google Analytics, Google Tag Manager, and TikTok Pixel IDs',
+    color: 'bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400',
+    dot: 'bg-violet-500',
+  },
+  {
     href: '/admin/settings/branding',
     icon: Globe2,
     title: 'Branding & Header',
     desc: 'Site logo, favicon, and top info bar (hotline, delivery offer)',
-    color: 'bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400',
-    dot: 'bg-violet-500',
+    color: 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400',
+    dot: 'bg-indigo-500',
   },
   {
     href: '/admin/settings/appearance',

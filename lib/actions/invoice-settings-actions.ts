@@ -264,6 +264,91 @@ export async function updatePaymentMethodSettings(data: PaymentMethodSettings) {
   }
 }
 
+// ─── SHIPPING SETTINGS ────────────────────────────────────────────────────────
+
+export type ShippingSettings = {
+  shippingDhaka: number;
+  shippingOutsideDhaka: number;
+  freeDeliveryThreshold: number;
+};
+
+export async function getShippingSettings(): Promise<ShippingSettings> {
+  try {
+    const rows = await prisma.setting.findMany({ where: { category: 'shipping' } });
+    const m = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    return {
+      shippingDhaka: Number(m.shippingDhaka) || 60,
+      shippingOutsideDhaka: Number(m.shippingOutsideDhaka) || 120,
+      freeDeliveryThreshold: Number(m.freeDeliveryThreshold) || 0,
+    };
+  } catch {
+    return { shippingDhaka: 60, shippingOutsideDhaka: 120, freeDeliveryThreshold: 0 };
+  }
+}
+
+export async function updateShippingSettings(data: ShippingSettings) {
+  try {
+    await prisma.$transaction([
+      prisma.setting.upsert({ where: { key: 'shippingDhaka' }, update: { value: String(data.shippingDhaka), category: 'shipping' }, create: { key: 'shippingDhaka', value: String(data.shippingDhaka), category: 'shipping' } }),
+      prisma.setting.upsert({ where: { key: 'shippingOutsideDhaka' }, update: { value: String(data.shippingOutsideDhaka), category: 'shipping' }, create: { key: 'shippingOutsideDhaka', value: String(data.shippingOutsideDhaka), category: 'shipping' } }),
+      prisma.setting.upsert({ where: { key: 'freeDeliveryThreshold' }, update: { value: String(data.freeDeliveryThreshold), category: 'shipping' }, create: { key: 'freeDeliveryThreshold', value: String(data.freeDeliveryThreshold), category: 'shipping' } }),
+    ]);
+    revalidatePath('/admin/settings/store');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// ─── ANALYTICS SETTINGS ───────────────────────────────────────────────────────
+
+export type AnalyticsSettings = {
+  metaPixelId: string;
+  googleAnalyticsId: string;
+  googleTagManagerId: string;
+  tiktokPixelId: string;
+};
+
+export async function getAnalyticsSettings(): Promise<AnalyticsSettings> {
+  try {
+    const rows = await prisma.setting.findMany({ where: { category: 'analytics' } });
+    const m = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    return {
+      metaPixelId: m.metaPixelId ?? '',
+      googleAnalyticsId: m.googleAnalyticsId ?? '',
+      googleTagManagerId: m.googleTagManagerId ?? '',
+      tiktokPixelId: m.tiktokPixelId ?? '',
+    };
+  } catch {
+    return { metaPixelId: '', googleAnalyticsId: '', googleTagManagerId: '', tiktokPixelId: '' };
+  }
+}
+
+export async function updateAnalyticsSettings(data: AnalyticsSettings) {
+  try {
+    const pairs: [string, string][] = [
+      ['metaPixelId', data.metaPixelId],
+      ['googleAnalyticsId', data.googleAnalyticsId],
+      ['googleTagManagerId', data.googleTagManagerId],
+      ['tiktokPixelId', data.tiktokPixelId],
+    ];
+    await prisma.$transaction(
+      pairs.map(([key, value]) =>
+        prisma.setting.upsert({
+          where: { key },
+          update: { value, category: 'analytics' },
+          create: { key, value, category: 'analytics' },
+        })
+      )
+    );
+    revalidatePath('/admin/settings/analytics');
+    revalidatePath('/');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
 // ─── BRANDING SETTINGS ────────────────────────────────────────────────────────
 
 export const getBrandingSettings = unstable_cache(
