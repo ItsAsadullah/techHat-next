@@ -814,6 +814,22 @@ export default function ProductForm({ categories: initialCategories, brands: ini
   };
 
   async function onSubmit(data: ProductFormValues, shouldRedirect: boolean | any = true) {
+    // ── Pre-flight checks (before touching loading state so button stays stable) ──
+
+    // 1. Block if any images are still uploading
+    const stillUploading = galleryImages.filter(img => img.uploading === true);
+    if (stillUploading.length > 0) {
+      toast.warning(`${stillUploading.length}টি ছবি এখনো আপলোড হচ্ছে, অপেক্ষা করুন…`);
+      return;
+    }
+
+    // 2. Block if any images had upload errors
+    const failedImages = galleryImages.filter(img => img.uploadError);
+    if (failedImages.length > 0) {
+      toast.error(`${failedImages.length}টি ছবি আপলোড হয়নি। সরিয়ে আবার চেষ্টা করুন।`);
+      return;
+    }
+
     setLoading(true);
     try {
       const formData = new FormData();
@@ -902,20 +918,11 @@ export default function ProductForm({ categories: initialCategories, brands: ini
         formData.append('attributes', JSON.stringify(attributes));
       }
 
-      // Guard: block submit if any images are still uploading
-      const stillUploading = galleryImages.filter(img => img.uploading);
-      if (stillUploading.length > 0) {
-        toast.warning(`১টি ছবি আপলোড হচ্ছে, অপেক্ষা করুন... (${stillUploading.length} remaining)`);
-        setLoading(false);
-        return;
-      }
-
-      // Guard: remove images that had upload errors before submitting
+      // Gallery images are already uploaded to Cloudinary — only send URLs & metadata.
+      // No binary files are sent through the server action which prevents the
+      // "Server Action not found" error caused by large multipart request bodies.
       const validImages = galleryImages.filter(img => !img.uploadError && img.url && !img.url.startsWith('blob:'));
 
-      // Gallery images are already uploaded to Cloudinary — only send URLs & metadata.
-      // No binary files are sent through the server action, which prevents the
-      // "Server Action not found" error caused by large multipart request bodies.
       const galleryMetadata = validImages.map((img) => ({
           id: img.id,
           isThumbnail: img.isThumbnail,
@@ -970,7 +977,21 @@ export default function ProductForm({ categories: initialCategories, brands: ini
     const draftData = { ...data, isActive: false };
     // Pass false to prevent redirect
     await onSubmit(draftData, false);
-  });
+  }, handleValidationError);
+
+  // Handles validation errors from React Hook Form — shows the first error
+  // as a toast and switches to the tab that contains the failing field.
+  const handleValidationError = (validationErrors: Record<string, any>) => {
+    const firstErrorField = Object.keys(validationErrors)[0] as string;
+    const firstError = validationErrors[firstErrorField];
+    toast.error(`❌ ${firstError?.message || 'ফর্মে কিছু তথ্য সঠিক নয়'}`);
+    const generalFields = ['name', 'categoryId', 'brandId', 'unit', 'description', 'videoUrl', 'warrantyMonths', 'warrantyType', 'isActive', 'isFlashSale'];
+    const pricingFields = ['costPrice', 'expense', 'price', 'offerPrice', 'sku', 'upc'];
+    const inventoryFields = ['stock', 'minStock', 'hasSerial'];
+    if (generalFields.includes(firstErrorField)) setActiveTab('general');
+    else if (pricingFields.includes(firstErrorField)) setActiveTab('pricing');
+    else if (inventoryFields.includes(firstErrorField)) setActiveTab('inventory');
+  };
 
   const handlePreview = () => {
      setIsPreviewOpen(true);
@@ -978,7 +999,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
 
   return (
     <form 
-      onSubmit={handleSubmit(onSubmit)} 
+      onSubmit={handleSubmit(onSubmit, handleValidationError)} 
       onKeyDown={(e) => {
         // Prevent accidental form submission on Enter, but allow it in Textarea and ContentEditable (RichText)
         if (
