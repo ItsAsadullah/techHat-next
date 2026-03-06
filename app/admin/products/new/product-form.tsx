@@ -155,9 +155,14 @@ interface Variation {
 
 interface GalleryImage {
   id: string;
+  /** Cloudinary URL (set once upload completes) or a blob preview URL while uploading */
   url: string;
   file?: File;
   isThumbnail: boolean;
+  /** true while the file is being uploaded to Cloudinary */
+  uploading?: boolean;
+  /** non-empty when the upload failed */
+  uploadError?: string;
 }
 
 interface Spec {
@@ -599,22 +604,61 @@ export default function ProductForm({ categories: initialCategories, brands: ini
     toast.success("Generated SKUs for empty fields");
   };
   
-  const handleGalleryUpload = (files: FileList | null) => {
-     if (!files) return;
-     const newImages: GalleryImage[] = Array.from(files).map(file => ({
-         id: Math.random().toString(36).substr(2, 9),
-         url: URL.createObjectURL(file),
-         file: file,
-         isThumbnail: galleryImages.length === 0 && Array.from(files).indexOf(file) === 0 // Make first image thumbnail if none exists
-     }));
-     
-     // If we already have images, check if we have a thumbnail
-     const hasThumbnail = galleryImages.some(img => img.isThumbnail);
-     if (!hasThumbnail && newImages.length > 0) {
-         newImages[0].isThumbnail = true;
-     }
+  /**
+   * Upload each selected file immediately to /api/upload (which converts any format → WebP).
+   * We store the returned Cloudinary URL so the server action never has to handle binary data,
+   * which eliminates the "Server Action not found" error caused by large multipart bodies.
+   */
+  const handleGalleryUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
 
-     setGalleryImages([...galleryImages, ...newImages]);
+    const hasThumbnail = galleryImages.some(img => img.isThumbnail);
+    const fileArray = Array.from(files);
+
+    // 1. Add placeholder entries with blob preview + uploading=true
+    const placeholders: GalleryImage[] = fileArray.map((file, i) => ({
+      id: Math.random().toString(36).substr(2, 9),
+      url: URL.createObjectURL(file),
+      file,
+      isThumbnail: !hasThumbnail && i === 0,
+      uploading: true,
+    }));
+    setGalleryImages(prev => [...prev, ...placeholders]);
+
+    // 2. Upload each file in parallel
+    await Promise.all(
+      placeholders.map(async (placeholder, i) => {
+        const file = fileArray[i];
+        try {
+          const fd = new FormData();
+          fd.append('file', file);
+          fd.append('folder', 'products/gallery');
+
+          const res = await fetch('/api/upload', { method: 'POST', body: fd });
+          const data = await res.json();
+
+          if (!res.ok || !data.url) throw new Error(data.error || 'Upload failed');
+
+          // 3. Replace blob URL with Cloudinary URL, clear uploading state
+          setGalleryImages(prev =>
+            prev.map(img =>
+              img.id === placeholder.id
+                ? { ...img, url: data.url, file: undefined, uploading: false }
+                : img
+            )
+          );
+        } catch (err: any) {
+          setGalleryImages(prev =>
+            prev.map(img =>
+              img.id === placeholder.id
+                ? { ...img, uploading: false, uploadError: err.message || 'Upload failed' }
+                : img
+            )
+          );
+          toast.error(`ছবি আপলোড ব্যর্থ: ${err.message || 'Unknown error'}`);
+        }
+      })
+    );
   };
 
   const handleLibrarySelect = (url: string) => {
@@ -858,19 +902,25 @@ export default function ProductForm({ categories: initialCategories, brands: ini
         formData.append('attributes', JSON.stringify(attributes));
       }
 
-      // Append Gallery Images
-      // We need to send files and metadata to link them
-      galleryImages.forEach((img, index) => {
-          if (img.file) {
-              formData.append(`gallery_file_${index}`, img.file);
-          }
-      });
-      
-      const galleryMetadata = galleryImages.map((img, index) => ({
+      // Guard: block submit if any images are still uploading
+      const stillUploading = galleryImages.filter(img => img.uploading);
+      if (stillUploading.length > 0) {
+        toast.warning(`১টি ছবি আপলোড হচ্ছে, অপেক্ষা করুন... (${stillUploading.length} remaining)`);
+        setLoading(false);
+        return;
+      }
+
+      // Guard: remove images that had upload errors before submitting
+      const validImages = galleryImages.filter(img => !img.uploadError && img.url && !img.url.startsWith('blob:'));
+
+      // Gallery images are already uploaded to Cloudinary — only send URLs & metadata.
+      // No binary files are sent through the server action, which prevents the
+      // "Server Action not found" error caused by large multipart request bodies.
+      const galleryMetadata = validImages.map((img) => ({
           id: img.id,
           isThumbnail: img.isThumbnail,
-          fileKey: img.file ? `gallery_file_${index}` : undefined,
-          url: img.file ? undefined : img.url // If it's an existing URL (future edit mode)
+          url: img.url,
+          fileKey: undefined, // no binary data
       }));
       formData.append('gallery_metadata', JSON.stringify(galleryMetadata));
 
@@ -2110,8 +2160,25 @@ export default function ProductForm({ categories: initialCategories, brands: ini
 
                           {/* Image List */}
                           {galleryImages.map((img, index) => (
-                              <div key={img.id} className={`relative aspect-square rounded-xl overflow-hidden border group ${img.isThumbnail ? 'ring-2 ring-blue-500 border-blue-500' : 'border-gray-200'}`}>
-                                  <img src={img.url} className="w-full h-full object-cover" />
+                              <div key={img.id} className={`relative aspect-square rounded-xl overflow-hidden border group ${img.uploadError ? 'ring-2 ring-red-400 border-red-300' : img.isThumbnail ? 'ring-2 ring-blue-500 border-blue-500' : 'border-gray-200'}`}>
+                                  <img src={img.url} className={`w-full h-full object-cover ${img.uploading ? 'opacity-40' : ''}`} />
+
+                                  {/* Uploading Overlay */}
+                                  {img.uploading && (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 z-20">
+                                      <div className="w-7 h-7 border-4 border-blue-400 border-t-transparent rounded-full animate-spin mb-1" />
+                                      <span className="text-[10px] font-semibold text-blue-600">Uploading…</span>
+                                    </div>
+                                  )}
+
+                                  {/* Upload Error Overlay */}
+                                  {img.uploadError && !img.uploading && (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-50/90 z-20 p-2">
+                                      <AlertTriangle className="h-5 w-5 text-red-500 mb-1" />
+                                      <span className="text-[9px] text-red-600 text-center leading-tight">{img.uploadError}</span>
+                                      <button type="button" onClick={() => removeGalleryImage(img.id)} className="mt-1 text-[9px] text-red-500 underline">Remove</button>
+                                    </div>
+                                  )}
                                   
                                   {/* Overlay Actions */}
                                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2 z-10">

@@ -358,12 +358,15 @@ export default function CheckoutPage() {
           orderNote: form.orderNote.trim() || undefined,
           paymentMethod,
           transactionId: paymentMethod === 'MOBILE_BANKING' ? transactionId.trim() : undefined,
-          shippingCost,
-          discount,
+          // Send couponCode so server validates & applies it independently.
+          // shippingCost and discount are intentionally omitted —
+          // the server always recalculates them from the DB.
+          couponCode: couponDiscount > 0 ? couponCode.trim().toUpperCase() : undefined,
           items: cart.map((i: CartItem) => ({
             productId: i.id,
             productName: i.name,
             quantity: i.quantity,
+            // unitPrice is sent as a hint only; server re-fetches from DB
             unitPrice: i.offerPrice ?? i.price,
           })),
         }),

@@ -86,9 +86,36 @@ async function generateOrderNumberSequential(): Promise<string> {
   }
 }
 
-// ─── COUPON VALIDATOR (server-side) ───────────────────────────────────────────
+// ─── STATIC COUPON FALLBACK (used when DB has no matching record) ─────────────
+// Keep in sync with /api/coupons/validate route until all coupons are migrated to DB.
 
-async function validateCouponServer(
+const STATIC_COUPONS = [
+  { code: 'TECHHAT100', type: 'flat',    value: 100,  minOrder: 500,  maxDiscount: undefined as number | undefined },
+  { code: 'TECHHAT200', type: 'flat',    value: 200,  minOrder: 1000, maxDiscount: undefined as number | undefined },
+  { code: 'SAVE10',     type: 'percent', value: 10,   minOrder: 500,  maxDiscount: 300 },
+  { code: 'SAVE15',     type: 'percent', value: 15,   minOrder: 1000, maxDiscount: 500 },
+  { code: 'WELCOME50',  type: 'flat',    value: 50,   minOrder: 0,    maxDiscount: undefined as number | undefined },
+];
+
+function applyStaticCoupon(
+  code: string,
+  subTotal: number
+): { valid: boolean; discount: number; error?: string } {
+  const sc = STATIC_COUPONS.find(c => c.code === code.toUpperCase());
+  if (!sc) return { valid: false, discount: 0, error: 'Invalid coupon code' };
+  if (subTotal < sc.minOrder)
+    return { valid: false, discount: 0, error: `Minimum order ৳${sc.minOrder} required` };
+  const raw = sc.type === 'flat'
+    ? sc.value
+    : Math.round((subTotal * sc.value) / 100);
+  const discount = sc.maxDiscount != null ? Math.min(raw, sc.maxDiscount) : raw;
+  return { valid: true, discount: Math.min(discount, subTotal) };
+}
+
+// ─── COUPON VALIDATOR (server-side) — DB-first, static fallback ───────────────
+// Exported so /api/coupons/validate can share the same logic.
+
+export async function validateCouponServer(
   code: string,
   subTotal: number
 ): Promise<{ valid: boolean; discount: number; error?: string }> {
@@ -100,7 +127,10 @@ async function validateCouponServer(
       WHERE code = ${code.toUpperCase()} AND is_active = true
       LIMIT 1
     `;
-    if (!rows.length) return { valid: false, discount: 0, error: 'Invalid coupon code' };
+    if (!rows.length) {
+      // DB has no matching coupon — fall back to static list
+      return applyStaticCoupon(code, subTotal);
+    }
     const c = rows[0];
     if (c.expires_at && new Date(c.expires_at) < new Date())
       return { valid: false, discount: 0, error: 'Coupon has expired' };
@@ -113,7 +143,8 @@ async function validateCouponServer(
       : c.discount_value;
     return { valid: true, discount: Math.min(discount, subTotal) };
   } catch {
-    return { valid: false, discount: 0 };
+    // DB unavailable — gracefully fall back to static list
+    return applyStaticCoupon(code, subTotal);
   }
 }
 

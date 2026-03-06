@@ -47,4 +47,8 @@ next-env.d.ts
 
 # Sensitive notes
 Resend api.txt
+
+# Copilot / Claude temp files
+tmpclaude-*
+dev.log
 *.txt

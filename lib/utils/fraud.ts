@@ -1,6 +1,40 @@
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 const db = prisma as any;
+
+/**
+ * Safely extract the real client IP.
+ *
+ * Priority order:
+ *  1. cf-connecting-ip  — set by Cloudflare, cannot be spoofed by client
+ *  2. x-forwarded-for   — rightmost non-trusted IP (controlled by TRUSTED_PROXY_COUNT env)
+ *     TRUSTED_PROXY_COUNT=0 → no proxy, take first entry (default)
+ *     TRUSTED_PROXY_COUNT=1 → 1 trusted proxy (Vercel / Railway load balancer)
+ *     TRUSTED_PROXY_COUNT=2 → 2 trusted proxies, etc.
+ *  3. x-real-ip fallback
+ *  4. '0.0.0.0' last resort
+ */
+export function getClientIp(request: NextRequest): string {
+  // 1. Cloudflare header — always trustworthy
+  const cfIp = request.headers.get('cf-connecting-ip');
+  if (cfIp) return cfIp.trim();
+
+  // 2. X-Forwarded-For with proxy-count awareness
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  if (forwardedFor) {
+    const ips = forwardedFor.split(',').map(s => s.trim()).filter(Boolean);
+    if (ips.length > 0) {
+      const proxyCount = parseInt(process.env.TRUSTED_PROXY_COUNT ?? '0', 10);
+      // The client IP sits at index (total - 1 - proxyCount); clamp to 0
+      const idx = Math.max(0, ips.length - 1 - proxyCount);
+      return ips[idx];
+    }
+  }
+
+  // 3. x-real-ip (nginx etc.)
+  return request.headers.get('x-real-ip')?.trim() ?? '0.0.0.0';
+}
 
 interface RateLimitOptions {
   windowMinutes?: number; // sliding window in minutes
