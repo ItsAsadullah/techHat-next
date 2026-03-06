@@ -9,6 +9,7 @@ import { Providers } from '@/components/Providers';
 import { BrandingProvider } from '@/lib/context/branding-context';
 import { getBrandingSettings } from '@/lib/actions/invoice-settings-actions';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import MetaPixel from '@/components/MetaPixel';
 import Loading from './loading';
 
 export const revalidate = 600;
@@ -78,6 +79,9 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
+        {/* Meta Pixel — fires PageView on every page/navigation */}
+        <MetaPixel />
+
         {/* JSON-LD for Google rich results / logo */}
         <script
           type="application/ld+json"

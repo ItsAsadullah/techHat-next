@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { useCart } from '@/lib/context/cart-context';
 import type { CartItem } from '@/lib/types/cart-wishlist';
 import { bangladeshLocations } from '@/lib/location-data';
+import { pixelInitiateCheckout, pixelPurchase } from '@/lib/pixel';
 import {
   ShoppingCart, Plus, Minus, Trash2, Tag, ChevronRight, ChevronDown,
   MapPin, Phone, Mail, User, Building2, Truck, CreditCard,
@@ -279,6 +280,8 @@ export default function CheckoutPage() {
       if (cart.length === 0) return;
       setCompletedSteps(prev => new Set([...prev, 1]));
       setStep(2);
+      // ★ Meta Pixel: user moved from cart to delivery = checkout started
+      pixelInitiateCheckout({ value: subTotal, num_items: totalItems });
     } else if (target === 3 && step === 2) {
       if (!validateDelivery()) return;
       setCompletedSteps(prev => new Set([...prev, 2]));
@@ -374,6 +377,11 @@ export default function CheckoutPage() {
 
       const data = await res.json();
       if (data.success) {
+        // ★ Meta Pixel: purchase completed
+        pixelPurchase({
+          value: data.grandTotal ?? grandTotal,
+          order_id: data.orderNumber,
+        });
         clearCart();
         setOrderSuccess({
           orderNumber: data.orderNumber,

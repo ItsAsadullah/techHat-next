@@ -47,6 +47,7 @@ import { getDivisions, getDistricts, getUpazilas, getUnions } from '@/lib/locati
 import { useCart } from '@/lib/context/cart-context';
 import { useWishlistSafe } from '@/lib/context/wishlist-context';
 import { toast } from 'sonner';
+import { pixelViewContent, pixelAddToCart } from '@/lib/pixel';
 
 // Types
 interface ProductImage {
@@ -349,6 +350,16 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
     return () => observer.disconnect();
   }, []);
   
+  // Meta Pixel: ViewContent on page load
+  useEffect(() => {
+    pixelViewContent({
+      content_name: product.name,
+      content_ids: [product.id],
+      value: product.offerPrice ?? product.price,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
+
   // Scroll spy effect
   useEffect(() => {
     const handleScroll = () => {
@@ -462,8 +473,14 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
       },
       sourceEl ?? undefined
     );
+    pixelAddToCart({
+      content_name: product.name,
+      content_ids: [cartId],
+      value: (currentOfferPrice ?? currentPrice) * quantity,
+      quantity,
+    });
     toast.success(`${product.name.slice(0, 30)}... added to cart`);
-  }, [inStock, selectedVariant, product, currentPrice, currentOfferPrice, displayImage, currentStock, addToCart]);
+  }, [inStock, selectedVariant, product, currentPrice, currentOfferPrice, displayImage, currentStock, quantity, addToCart]);
 
   const handleShare = (platform: string) => {
     const url = window.location.href;
