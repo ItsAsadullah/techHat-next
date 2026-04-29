@@ -427,12 +427,12 @@ export default function ProductForm({ categories: initialCategories, brands: ini
     const cat = categories.find((c: any) => c.id === categoryId || c.id?.toString() === categoryId?.toString());
     const dbShortCode = (cat?.shortCode || '').toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
     if (dbShortCode) return dbShortCode;
-    const name = (cat?.name || 'GEN').toLowerCase();
+    const name = String(cat?.name || 'GEN').toLowerCase();
     // custom mapping first
     if (categorySuffixMap[name]) return categorySuffixMap[name];
     // multi-word -> initials
-    const words = name.split(/[^a-z0-9]+/).filter(Boolean);
-    if (words.length >= 2) return (words.map(w => w[0]).slice(0, 2).join('') || 'GN').toUpperCase();
+    const words: string[] = name.split(/[^a-z0-9]+/).filter((part): part is string => Boolean(part));
+    if (words.length >= 2) return (words.map((w: string) => w[0]).slice(0, 2).join('') || 'GN').toUpperCase();
     // single word -> prefer first two consonants, otherwise first two letters
     const word = words[0] || 'gen';
     const consonants = word.replace(/[aeiou0-9]/g, '');
