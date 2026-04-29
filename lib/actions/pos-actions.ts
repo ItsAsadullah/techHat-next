@@ -416,7 +416,7 @@ export async function completeSale(input: CompleteSaleInput): Promise<SaleResult
             where: { productId: item.productId },
             select: { stock: true },
           });
-          const totalStock = allVariants.reduce((sum, v) => sum + v.stock, 0);
+          const totalStock = allVariants.reduce((sum: number, v: { stock: number }) => sum + v.stock, 0);
           await tx.product.update({
             where: { id: item.productId },
             data: { stock: totalStock },
@@ -464,7 +464,7 @@ export async function completeSale(input: CompleteSaleInput): Promise<SaleResult
     console.error('POS Sale Error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to complete sale',
+      error: (error as any)?.message || 'Failed to complete sale',
     };
   }
 }

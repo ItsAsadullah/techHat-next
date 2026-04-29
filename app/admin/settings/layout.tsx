@@ -3,6 +3,7 @@
 import {
   Settings,
   Layers,
+  Tags,
   Users,
   Store,
   CreditCard,
@@ -38,6 +39,7 @@ const settingsNav = [
     group: 'Catalog',
     items: [
       { name: 'Categories', href: '/admin/settings/categories', icon: Layers },
+      { name: 'Brands', href: '/admin/settings/brands', icon: Tags },
       { name: 'Spec Templates', href: '/admin/settings/spec-templates', icon: ListChecks },
     ],
   },

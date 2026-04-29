@@ -12,17 +12,30 @@ export async function GET(request: NextRequest) {
   // Use 127.0.0.1 to avoid IPv6 resolution issues with localhost
   // The path parameter should be relative to the techhat folder
   const backendBase = 'http://127.0.0.1/techhat/';
-  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  let cleanPath: string;
+  try {
+    cleanPath = decodeURIComponent(path).replace(/\\/g, '/');
+  } catch {
+    return new NextResponse('Invalid path parameter', { status: 400 });
+  }
+  cleanPath = cleanPath.startsWith('/') ? cleanPath.slice(1) : cleanPath;
+
+  if (
+    cleanPath.includes('..') ||
+    cleanPath.includes('//') ||
+    !/^(uploads|products|categories|brands|homepage)\//i.test(cleanPath) ||
+    !/\.(png|jpe?g|webp|gif|svg|avif)$/i.test(cleanPath)
+  ) {
+    return new NextResponse('Forbidden path', { status: 403 });
+  }
   
   // If path already includes 'techhat/', strip it to avoid duplication if user passed weird path
   // but assuming path is just 'uploads/...'
   
   const backendUrl = `${backendBase}${cleanPath}`;
 
-  console.log(`Proxying request for: ${path} -> ${backendUrl}`);
-
   try {
-    const response = await fetch(backendUrl);
+    const response = await fetch(backendUrl, { cache: 'force-cache' });
     
     if (!response.ok) {
       return new NextResponse(`Backend responded with ${response.status}`, { status: response.status });

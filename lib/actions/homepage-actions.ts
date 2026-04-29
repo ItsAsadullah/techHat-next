@@ -142,6 +142,26 @@ export async function saveFlashSaleConfig(config: FlashSaleConfig) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// HERO GIF BANNER (below hero section)
+// ─────────────────────────────────────────────────────────────
+
+const _getHomepageHeroGifCache = unstable_cache(
+  async () => getSettingJson<string>('homepage_hero_gif', ''),
+  ['homepage-hero-gif'],
+  { revalidate: 300, tags: ['homepage'] }
+);
+
+export async function getHomepageHeroGif(): Promise<string> {
+  return _getHomepageHeroGifCache();
+}
+
+export async function saveHomepageHeroGif(url: string) {
+  await saveSettingJson('homepage_hero_gif', url);
+  revalidatePath('/');
+  return { success: true };
+}
+
+// ─────────────────────────────────────────────────────────────
 // PRODUCT QUERIES
 // ─────────────────────────────────────────────────────────────
 
@@ -597,17 +617,42 @@ export async function getHomepageReviews(limit = 10): Promise<HomepageReview[]> 
 // SEARCH
 // ─────────────────────────────────────────────────────────────
 
-export async function searchProducts(query: string, limit = 8) {
-  if (!query || query.length < 2) return { products: [], categories: [] };
+export async function searchProducts(query: string, limit = 20) {
+  const term = query.trim();
+  if (!term) return { products: [], categories: [] };
   try {
     const [products, categories] = await Promise.all([
       prisma.product.findMany({
         where: {
           isActive: true,
           OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { category: { name: { contains: query, mode: 'insensitive' } } },
-            { brand: { name: { contains: query, mode: 'insensitive' } } },
+            { name: { contains: term, mode: 'insensitive' } },
+            { sku: { contains: term, mode: 'insensitive' } },
+            { barcode: { contains: term, mode: 'insensitive' } },
+            { shortDesc: { contains: term, mode: 'insensitive' } },
+            { category: { name: { contains: term, mode: 'insensitive' } } },
+            { brand: { name: { contains: term, mode: 'insensitive' } } },
+            {
+              variants: {
+                some: {
+                  OR: [
+                    { name: { contains: term, mode: 'insensitive' } },
+                    { sku: { contains: term, mode: 'insensitive' } },
+                    { upc: { contains: term, mode: 'insensitive' } },
+                  ],
+                },
+              },
+            },
+            {
+              specs: {
+                some: {
+                  OR: [
+                    { name: { contains: term, mode: 'insensitive' } },
+                    { value: { contains: term, mode: 'insensitive' } },
+                  ],
+                },
+              },
+            },
           ],
         },
         select: {
@@ -616,16 +661,45 @@ export async function searchProducts(query: string, limit = 8) {
           slug: true,
           price: true,
           offerPrice: true,
+          sku: true,
+          barcode: true,
           images: true,
           category: { select: { name: true } },
+          brand: { select: { name: true } },
+          specs: {
+            where: {
+              OR: [
+                { name: { contains: term, mode: 'insensitive' } },
+                { value: { contains: term, mode: 'insensitive' } },
+              ],
+            },
+            select: { name: true, value: true },
+            take: 1,
+          },
+          variants: {
+            where: {
+              OR: [
+                { name: { contains: term, mode: 'insensitive' } },
+                { sku: { contains: term, mode: 'insensitive' } },
+                { upc: { contains: term, mode: 'insensitive' } },
+              ],
+            },
+            select: { name: true, sku: true, upc: true },
+            take: 1,
+          },
           productImages: { where: { isThumbnail: true }, select: { url: true }, take: 1 },
         },
         take: limit,
+        orderBy: [
+          { isFeatured: 'desc' },
+          { soldCount: 'desc' },
+          { name: 'asc' },
+        ],
       }),
       prisma.category.findMany({
         where: {
           isActive: true,
-          name: { contains: query, mode: 'insensitive' },
+          name: { contains: term, mode: 'insensitive' },
         },
         select: { id: true, name: true, slug: true, image: true },
         take: 4,
@@ -639,8 +713,16 @@ export async function searchProducts(query: string, limit = 8) {
         slug: p.slug,
         price: p.price,
         offerPrice: p.offerPrice,
+        sku: p.sku,
+        barcode: p.barcode,
         image: p.productImages?.[0]?.url || p.images?.[0] || '',
         categoryName: p.category?.name || '',
+        brandName: p.brand?.name || '',
+        matchedText: p.variants?.[0]
+          ? [p.variants[0].name, p.variants[0].sku, p.variants[0].upc].filter(Boolean).join(' / ')
+          : p.specs?.[0]
+            ? `${p.specs[0].name}: ${p.specs[0].value}`
+            : '',
       })),
       categories: categories.map((c) => ({
         id: c.id,
@@ -660,15 +742,16 @@ export async function searchProducts(query: string, limit = 8) {
 // ─────────────────────────────────────────────────────────────
 
 export async function getHomepageData() {
-  const [banners, sections, promoBanners, flashSaleConfig, campaigns] = await Promise.all([
+  const [banners, sections, promoBanners, flashSaleConfig, campaigns, heroGifUrl] = await Promise.all([
     getHomepageBanners(),
     getHomepageSections(),
     getPromoBanners(),
     getFlashSaleConfig(),
     getActiveCampaigns(),
+    getHomepageHeroGif(),
   ]);
 
-  return { banners, sections, promoBanners, flashSaleConfig, campaigns };
+  return { banners, sections, promoBanners, flashSaleConfig, campaigns, heroGifUrl };
 }
 
 // ─────────────────────────────────────────────────────────────

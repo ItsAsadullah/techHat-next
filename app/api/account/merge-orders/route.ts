@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mergeGuestOrdersToUser } from '@/lib/actions/order-actions';
+import { createServerClient } from '@/lib/supabase-server';
 
 /**
  * POST /api/account/merge-orders
@@ -8,13 +9,19 @@ import { mergeGuestOrdersToUser } from '@/lib/actions/order-actions';
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userId, email, phone } = await request.json();
-
-    if (!userId) {
-      return NextResponse.json({ success: false, error: 'userId is required' }, { status: 400 });
+    const supabase = await createServerClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const result = await mergeGuestOrdersToUser(userId, email, phone);
+    const { userId, email, phone } = await request.json();
+
+    if (!userId || userId !== user.id) {
+      return NextResponse.json({ success: false, error: 'Invalid user' }, { status: 403 });
+    }
+
+    const result = await mergeGuestOrdersToUser(user.id, email || user.email, phone);
     return NextResponse.json(result);
   } catch (error) {
     console.error('merge-orders error:', error);

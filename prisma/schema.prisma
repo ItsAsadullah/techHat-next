@@ -162,6 +162,7 @@ model Payout {
 model Category {
   id            String     @id @default(uuid())
   name          String
+  shortCode     String?    @map("short_code")
   slug          String     @unique
   image         String?
   description   String?
@@ -330,6 +331,7 @@ model ProductImage {
 model Brand {
   id            String    @id @default(uuid())
   name          String
+  shortCode     String?   @map("short_code")
   slug          String    @unique
   logo          String?
   isFeatured    Boolean   @default(false) @map("is_featured")

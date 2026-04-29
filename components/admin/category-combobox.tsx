@@ -15,6 +15,7 @@ import { createCategory } from '@/lib/actions/category-actions';
 interface Category {
   id: string;
   name: string;
+  shortCode?: string | null;
   parentId: string | null;
 }
 
@@ -35,6 +36,7 @@ export function CategoryCombobox({
   const [searchQuery, setSearchQuery] = React.useState('');
   const [categories, setCategories] = React.useState<Category[]>(initialCategories);
   const [isCreating, setIsCreating] = React.useState(false);
+  const [newCategoryShortCode, setNewCategoryShortCode] = React.useState('');
 
   // Sub-category chain: array of selected category IDs forming the hierarchy
   const [categoryChain, setCategoryChain] = React.useState<string[]>([]);
@@ -103,6 +105,9 @@ export function CategoryCombobox({
     try {
       const formData = new FormData();
       formData.append('name', name.trim());
+      if (newCategoryShortCode.trim()) {
+        formData.append('shortCode', newCategoryShortCode.trim().toUpperCase());
+      }
       if (parentId) formData.append('parentId', parentId);
 
       const result = await createCategory(formData);
@@ -115,6 +120,7 @@ export function CategoryCombobox({
         onValueChange(newCat.id);
         setSearchQuery('');
         setNewSubName('');
+        setNewCategoryShortCode('');
         setAddingSubAt(null);
         setOpen(false);
       }
@@ -183,6 +189,19 @@ export function CategoryCombobox({
                 </button>
               )}
             </div>
+
+            {/* Optional shortcode for newly created category */}
+            {searchQuery.trim() && !exactMatch && (
+              <div className="flex items-center gap-2 border-b px-3 py-2 bg-gray-50/50">
+                <span className="text-[11px] font-semibold text-gray-600 whitespace-nowrap">Short Code</span>
+                <Input
+                  value={newCategoryShortCode}
+                  onChange={(e) => setNewCategoryShortCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+                  placeholder="e.g. HP"
+                  className="h-8 text-xs font-mono uppercase"
+                />
+              </div>
+            )}
 
             {/* Category List */}
             <div className="max-h-[250px] overflow-y-auto p-1">

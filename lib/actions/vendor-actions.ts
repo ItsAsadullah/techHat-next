@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 
-const db = prisma as any;
+const db = prisma as any
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TYPES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
@@ -121,7 +121,7 @@ export async function getSuppliers(filters: SupplierFilters = {}) {
       pages: Math.ceil(total / limit),
     };
   } catch (error: any) {
-    return { success: false, error: error.message, data: [], total: 0, pages: 0 };
+    return { success: false, error: (error as any)?.message, data: [], total: 0, pages: 0 };
   }
 }
 
@@ -177,7 +177,7 @@ export async function getSupplierById(id: string) {
       },
     };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -196,7 +196,7 @@ export async function createSupplier(input: SupplierInput) {
     revalidatePath('/admin/vendors');
     return { success: true, data: supplier };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -217,7 +217,7 @@ export async function updateSupplier(id: string, input: SupplierInput) {
     revalidatePath(`/admin/vendors/${id}`);
     return { success: true, data: supplier };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -241,7 +241,7 @@ export async function deleteSupplier(id: string) {
     revalidatePath('/admin/vendors');
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -256,7 +256,7 @@ export async function getSupplierList() {
     });
     return { success: true, data: suppliers };
   } catch (error: any) {
-    return { success: false, error: error.message, data: [] };
+    return { success: false, error: (error as any)?.message, data: [] };
   }
 }
 
@@ -313,7 +313,7 @@ export async function getPurchases(filters: PurchaseFilters = {}) {
       pages: Math.ceil(total / limit),
     };
   } catch (error: any) {
-    return { success: false, error: error.message, data: [], total: 0, pages: 0 };
+    return { success: false, error: (error as any)?.message, data: [], total: 0, pages: 0 };
   }
 }
 
@@ -354,7 +354,7 @@ export async function getPurchaseById(id: string) {
       },
     };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -467,10 +467,10 @@ export async function createPurchase(input: PurchaseInput) {
     revalidatePath('/admin/products');
     return { success: true, data: result };
   } catch (error: any) {
-    if (error.code === 'P2002') {
+    if ((error as any)?.code === 'P2002') {
       return { success: false, error: 'Invoice number already exists' };
     }
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -521,7 +521,7 @@ export async function deletePurchase(id: string) {
     revalidatePath('/admin/products');
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -579,7 +579,7 @@ export async function createSupplierPayment(input: SupplierPaymentInput) {
     revalidatePath('/admin/vendors');
     return { success: true, data: result };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -663,7 +663,7 @@ export async function deleteSupplierPayment(paymentId: string) {
     revalidatePath('/admin/vendors');
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -682,7 +682,7 @@ export async function getSupplierPayments(supplierId: string) {
       })),
     };
   } catch (error: any) {
-    return { success: false, error: error.message, data: [] };
+    return { success: false, error: (error as any)?.message, data: [] };
   }
 }
 
@@ -756,7 +756,7 @@ export async function getSupplierLedger(supplierId: string) {
 
     return { success: true, data: entries };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -833,7 +833,7 @@ export async function getVendorDashboardStats() {
       },
     };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -869,6 +869,6 @@ export async function getProductsForPurchase(search?: string) {
 
     return { success: true, data: products };
   } catch (error: any) {
-    return { success: false, error: error.message, data: [] };
+    return { success: false, error: (error as any)?.message, data: [] };
   }
 }

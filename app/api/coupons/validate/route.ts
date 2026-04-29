@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateCouponServer } from '@/lib/actions/order-actions';
+import { checkIpRateLimit, getClientIp } from '@/lib/utils/fraud';
 
 // Uses the shared validateCouponServer (DB-first + static fallback)
 // so UI validation and actual order placement always use the same logic.
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getClientIp(req);
+    const rateCheck = await checkIpRateLimit(ip, 'coupon_validate', { windowMinutes: 10, maxRequests: 20 });
+    if (!rateCheck.allowed) {
+      return NextResponse.json({ valid: false, message: 'Too many attempts. Please try again later.' }, { status: 429 });
+    }
+
     const body = await req.json();
     const code: string = (body.code ?? '').trim().toUpperCase();
     const subtotal: number = Number(body.subtotal ?? 0);

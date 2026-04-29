@@ -61,10 +61,10 @@ export default async function ProductsPage({
     price: p.price,
     costPrice: p.costPrice,
     stock: p.stock,
-    category: p.category.name,
+    category: (p as any).category?.name || '',
     status: p.isActive,
-    images: p.productImages,
-    variants: p.variants,
+    images: (p as any).productImages || [],
+    variants: (p as any).variants || [],
     minStock: p.minStock,
     updatedAt: p.updatedAt,
     sku: p.sku

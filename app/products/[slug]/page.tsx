@@ -7,6 +7,7 @@ import type { Metadata } from 'next';
 import { getProductReviewStats } from '@/lib/actions/review-actions';
 import { getStoreSettings } from '@/lib/actions/invoice-settings-actions';
 import { unstable_cache } from 'next/cache';
+import sanitizeHtml from 'sanitize-html';
 
 
 // ISR: cache each product page for 5 minutes, re-validate in background
@@ -182,7 +183,22 @@ function processContent(content: string | null) {
     return `src="${PROXY_BASE}${encodeURIComponent(cleanSrc)}"`;
   });
   
-  return processed;
+  return sanitizeHtml(processed, {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img', 'h1', 'h2', 'h3', 'figure', 'figcaption']),
+    allowedAttributes: {
+      ...sanitizeHtml.defaults.allowedAttributes,
+      '*': ['class', 'style'],
+      a: ['href', 'name', 'target', 'rel', 'class', 'style'],
+      img: ['src', 'alt', 'title', 'width', 'height', 'loading', 'class', 'style'],
+    },
+    allowedSchemes: ['http', 'https', 'mailto', 'tel', 'data'],
+    allowedSchemesByTag: {
+      img: ['http', 'https', 'data'],
+    },
+    transformTags: {
+      a: sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' }, true),
+    },
+  });
 }
 
 export default async function ProductPage({ params }: Props) {

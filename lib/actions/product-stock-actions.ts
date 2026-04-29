@@ -217,7 +217,7 @@ export async function updateStock(
     revalidatePath('/admin/products');
     return { success: true, newStock };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -242,7 +242,7 @@ export async function bulkDeleteProducts(ids: string[]) {
         revalidatePath('/admin/products');
         return { success: true };
     } catch (error: any) {
-        return { success: false, error: error.message };
+        return { success: false, error: (error as any)?.message };
     }
 }
 
@@ -310,7 +310,7 @@ export async function bulkUpdateStockIndividual(
         return { success: true };
     } catch (error: any) {
         console.error("Bulk individual update error:", error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as any)?.message };
     }
 }
 
@@ -371,7 +371,7 @@ export async function bulkUpdateStock(
         return { success: true };
     } catch (error: any) {
         console.error("Bulk update error:", error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as any)?.message };
     }
 }
 
@@ -385,7 +385,7 @@ export async function bulkUpdateStatus(ids: string[], isActive: boolean) {
         revalidatePath('/admin/products');
         return { success: true };
     } catch (error: any) {
-        return { success: false, error: error.message };
+        return { success: false, error: (error as any)?.message };
     }
 }
 

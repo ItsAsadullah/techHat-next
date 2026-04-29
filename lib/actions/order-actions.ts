@@ -25,7 +25,7 @@ type PaymentStatus =
 
 type PaymentMethod = 'CASH' | 'CARD' | 'MOBILE_BANKING' | 'ONLINE' | 'MIXED';
 
-const db = prisma as any;
+const db = prisma as any
 
 // ─── INPUT TYPES ───────────────────────────────────────────────────────────────
 
@@ -324,7 +324,7 @@ export async function placeOrder(input: PlaceOrderInput) {
   } catch (error: any) {
     console.error('placeOrder error:', error);
     if (error?.message?.includes('Insufficient stock'))
-      return { success: false, error: error.message };
+      return { success: false, error: (error as any)?.message };
     return { success: false, error: 'Could not place order. Please try again.' };
   }
 }
@@ -575,7 +575,7 @@ export async function getOrders(filters: OrderFilters = {}) {
     if (status) where.status = status;
     if (paymentStatus) where.paymentStatus = paymentStatus;
     if (dateFrom || dateTo) {
-      where.createdAt = {} as any;
+      where.createdAt = {} as any
       if (dateFrom) where.createdAt.gte = new Date(dateFrom);
       if (dateTo) where.createdAt.lte = new Date(dateTo + 'T23:59:59.999Z');
     }

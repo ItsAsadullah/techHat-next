@@ -50,7 +50,7 @@ export async function getCategoryAncestors(categoryId: string) {
       id: r.id,
       name: r.name,
       slug: r.slug,
-      parentId: (r as any).parentId ?? null,
+      parentId: (r as { parentId?: string }).parentId ?? null,
     }));
 
     return { success: true, path };
@@ -110,6 +110,7 @@ export async function getCategoryPathWithChildren(categoryId: string) {
 export async function createCategory(formData: FormData) {
   try {
     const name = formData.get('name') as string;
+    const shortCodeRaw = formData.get('shortCode') as string;
     const parentId = formData.get('parentId') as string;
     const description = formData.get('description') as string;
     const image = formData.get('image') as string;
@@ -131,6 +132,7 @@ export async function createCategory(formData: FormData) {
     const category = await prisma.category.create({
       data: {
         name: name.trim(),
+        shortCode: shortCodeRaw ? shortCodeRaw.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) : null,
         slug: uniqueSlug,
         parentId: parentId || null,
         description: description || null,
@@ -150,19 +152,21 @@ export async function createCategory(formData: FormData) {
 export async function updateCategory(id: string, formData: FormData) {
   try {
     const name = formData.get('name') as string;
+    const shortCodeRaw = formData.get('shortCode') as string;
     const parentId = formData.get('parentId') as string;
     const description = formData.get('description') as string;
     const image = formData.get('image') as string;
 
     if (!id) return { success: false, error: 'Category ID is required' };
 
-    const data: any = {};
+    const data: Record<string, string | null> = {};
     if (name) {
        data.name = name.trim();
        // We might want to update slug too, but usually it's better to keep slugs stable for SEO
        // data.slug = slugify(name, { lower: true, strict: true }); 
     }
     if (parentId !== undefined) data.parentId = parentId || null;
+    if (shortCodeRaw !== undefined) data.shortCode = shortCodeRaw ? shortCodeRaw.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) : null;
     if (description !== undefined) data.description = description || null;
     if (image !== undefined) data.image = image || null;
 
@@ -219,7 +223,17 @@ export const getCategoriesTree = unstable_cache(
         },
         orderBy: { name: 'asc' }
       });
-      const buildTree = (parentId: string | null = null): any[] => {
+
+      interface CategoryTree {
+        id: string;
+        name: string;
+        slug: string;
+        image: string | null;
+        parentId: string | null;
+        children: CategoryTree[];
+      }
+
+      const buildTree = (parentId: string | null = null): CategoryTree[] => {
         return categories
           .filter(cat => cat.parentId === parentId)
           .map(cat => ({

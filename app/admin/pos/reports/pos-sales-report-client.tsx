@@ -329,7 +329,7 @@ export function POSSalesReport({ initialData, dailySummary, invoiceSettings }: P
           status: status as any,
         });
         setOrders(data.orders as any);
-        setSummary(data.summary);
+        setSummary(data.summary as any);
       } catch {
         toast.error('Failed to fetch report');
       }

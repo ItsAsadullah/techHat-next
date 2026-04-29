@@ -65,8 +65,8 @@ export default function SpecTemplatesSettingsPage() {
     if (!newTemplateName.trim()) { alert('Template name is required'); return; }
     if (newTemplateKeys.length === 0) { alert('At least one key is required'); return; }
     const result = await createSavedTemplate(newTemplateName, newTemplateKeys);
-    if (result.success) {
-      setTemplates([...templates, result.template]);
+    if (result.success && result.template) {
+      setTemplates([...templates, result.template as any]);
       setNewTemplateName(''); setNewTemplateKeys([]); setIsDialogOpen(false);
     } else {
       alert('Failed: ' + (result.error || 'Unknown error'));

@@ -30,7 +30,7 @@ async function checkVerifiedPurchase(productId: string, userId?: string): Promis
   if (!userId) return { isVerified: false };
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const orderItem = await (prisma as any).orderItem.findFirst({
       where: {
         productId,
@@ -67,7 +67,7 @@ export async function createReview(input: CreateReviewInput) {
     // Check verified purchase
     const { isVerified, orderId } = await checkVerifiedPurchase(input.productId, input.userId);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const review = await (prisma as any).review.create({
       data: {
         productId: input.productId,
@@ -92,7 +92,7 @@ export async function createReview(input: CreateReviewInput) {
 
     return { success: true, review, message: 'Review submitted successfully! It will be visible after admin approval.' };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to create review';
+    const message = error instanceof Error ? (error as any)?.message : 'Failed to create review';
     return { success: false, error: message };
   }
 }
@@ -101,9 +101,9 @@ export async function createReview(input: CreateReviewInput) {
 
 export async function getProductReviews(productId: string, page = 1, limit = 10) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const [reviews, total] = await Promise.all([
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (prisma as any).review.findMany({
         where: {
           productId,
@@ -126,7 +126,7 @@ export async function getProductReviews(productId: string, page = 1, limit = 10)
         skip: (page - 1) * limit,
         take: limit,
       }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (prisma as any).review.count({
         where: {
           productId,
@@ -154,7 +154,7 @@ export async function getProductReviewStats(productId: string) {
   const _fetch = unstable_cache(
     async () => {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const reviews = await (prisma as any).review.findMany({
       where: { productId, status: 'APPROVED' },
       select: { rating: true },
@@ -172,13 +172,13 @@ export async function getProductReviewStats(productId: string) {
       };
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const ratingBreakdown = reviews.reduce((acc: Record<number, number>, r: any) => {
       acc[r.rating] = (acc[r.rating] || 0) + 1;
       return acc;
     }, { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<number, number>);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const averageRating = reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / total;
 
     return {
@@ -210,7 +210,7 @@ export async function toggleHelpful(reviewId: string, userIp: string) {
     if (!reviewId || !userIp) throw new Error('Missing required fields');
 
     // Check if already voted
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const existing = await (prisma as any).reviewHelpful.findUnique({
       where: {
         reviewId_userIp: { reviewId, userIp },
@@ -219,13 +219,13 @@ export async function toggleHelpful(reviewId: string, userIp: string) {
 
     if (existing) {
       // Remove vote
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       await (prisma as any).$transaction([
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         (prisma as any).reviewHelpful.delete({
           where: { id: existing.id },
         }),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         (prisma as any).review.update({
           where: { id: reviewId },
           data: { helpfulCount: { decrement: 1 } },
@@ -234,13 +234,13 @@ export async function toggleHelpful(reviewId: string, userIp: string) {
       return { success: true, action: 'removed' };
     } else {
       // Add vote
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       await (prisma as any).$transaction([
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         (prisma as any).reviewHelpful.create({
           data: { reviewId, userIp },
         }),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         (prisma as any).review.update({
           where: { id: reviewId },
           data: { helpfulCount: { increment: 1 } },
@@ -249,7 +249,7 @@ export async function toggleHelpful(reviewId: string, userIp: string) {
       return { success: true, action: 'added' };
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to toggle helpful';
+    const message = error instanceof Error ? (error as any)?.message : 'Failed to toggle helpful';
     return { success: false, error: message };
   }
 }
@@ -260,7 +260,7 @@ export async function getAdminReviews(filters: ReviewFilters = {}) {
   try {
     const { status, isVerified, productId, search, page = 1, limit = 20 } = filters;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const where: any = {};
     if (status) where.status = status;
     if (typeof isVerified === 'boolean') where.isVerified = isVerified;
@@ -274,7 +274,7 @@ export async function getAdminReviews(filters: ReviewFilters = {}) {
     }
 
     const [reviews, total] = await Promise.all([
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (prisma as any).review.findMany({
         where,
         include: {
@@ -286,19 +286,19 @@ export async function getAdminReviews(filters: ReviewFilters = {}) {
         skip: (page - 1) * limit,
         take: limit,
       }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (prisma as any).review.count({ where }),
     ]);
 
     // Get counts per status
     const [pendingCount, approvedCount, rejectedCount, verifiedCount] = await Promise.all([
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (prisma as any).review.count({ where: { status: 'PENDING' } }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (prisma as any).review.count({ where: { status: 'APPROVED' } }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (prisma as any).review.count({ where: { status: 'REJECTED' } }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (prisma as any).review.count({ where: { isVerified: true } }),
     ]);
 
@@ -333,7 +333,7 @@ export async function getAdminReviews(filters: ReviewFilters = {}) {
 
 export async function approveReview(reviewId: string) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await (prisma as any).review.update({
       where: { id: reviewId },
       data: { status: 'APPROVED' },
@@ -342,7 +342,7 @@ export async function approveReview(reviewId: string) {
     revalidatePath('/admin/reviews');
     return { success: true, message: 'Review approved successfully' };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to approve review';
+    const message = error instanceof Error ? (error as any)?.message : 'Failed to approve review';
     return { success: false, error: message };
   }
 }
@@ -351,7 +351,7 @@ export async function approveReview(reviewId: string) {
 
 export async function rejectReview(reviewId: string, adminNote?: string) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await (prisma as any).review.update({
       where: { id: reviewId },
       data: {
@@ -363,7 +363,7 @@ export async function rejectReview(reviewId: string, adminNote?: string) {
     revalidatePath('/admin/reviews');
     return { success: true, message: 'Review rejected' };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to reject review';
+    const message = error instanceof Error ? (error as any)?.message : 'Failed to reject review';
     return { success: false, error: message };
   }
 }
@@ -372,7 +372,7 @@ export async function rejectReview(reviewId: string, adminNote?: string) {
 
 export async function deleteReview(reviewId: string) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await (prisma as any).review.delete({
       where: { id: reviewId },
     });
@@ -380,7 +380,7 @@ export async function deleteReview(reviewId: string) {
     revalidatePath('/admin/reviews');
     return { success: true, message: 'Review deleted permanently' };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to delete review';
+    const message = error instanceof Error ? (error as any)?.message : 'Failed to delete review';
     return { success: false, error: message };
   }
 }
@@ -389,7 +389,7 @@ export async function deleteReview(reviewId: string) {
 
 export async function bulkUpdateReviewStatus(reviewIds: string[], status: 'APPROVED' | 'REJECTED') {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await (prisma as any).review.updateMany({
       where: { id: { in: reviewIds } },
       data: { status },
@@ -398,7 +398,7 @@ export async function bulkUpdateReviewStatus(reviewIds: string[], status: 'APPRO
     revalidatePath('/admin/reviews');
     return { success: true, message: `${reviewIds.length} reviews ${status.toLowerCase()} successfully` };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to update reviews';
+    const message = error instanceof Error ? (error as any)?.message : 'Failed to update reviews';
     return { success: false, error: message };
   }
 }
@@ -407,7 +407,7 @@ export async function bulkUpdateReviewStatus(reviewIds: string[], status: 'APPRO
 
 export async function bulkDeleteReviews(reviewIds: string[]) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await (prisma as any).review.deleteMany({
       where: { id: { in: reviewIds } },
     });
@@ -415,7 +415,7 @@ export async function bulkDeleteReviews(reviewIds: string[]) {
     revalidatePath('/admin/reviews');
     return { success: true, message: `${reviewIds.length} reviews deleted` };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to delete reviews';
+    const message = error instanceof Error ? (error as any)?.message : 'Failed to delete reviews';
     return { success: false, error: message };
   }
 }

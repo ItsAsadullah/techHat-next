@@ -10,6 +10,7 @@ const getCategoriesTree = cache(async () => {
         select: {
             id: true,
             name: true,
+            shortCode: true,
             slug: true,
             parentId: true,
             image: true,

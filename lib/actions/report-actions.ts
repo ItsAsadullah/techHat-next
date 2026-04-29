@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 
-const db = prisma as any;
+const db = prisma as any
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -57,7 +57,7 @@ export async function getReportSummary() {
   const totalSales = monthSales._sum.grandTotal ?? 0;
   const totalCost = await prisma.orderItem.aggregate({ _sum: { total: true } });
   const totalExpense = totalExpenses._sum.amount ?? 0;
-  const totalVendorDue = (vendorDue as any[]).reduce((s: number, sup: any) => {
+  const totalVendorDue = (vendorDue as any).reduce((s: number, sup: any) => {
     const purchased = sup.purchases.reduce((a: number, p: any) => a + p.totalAmount, 0);
     const paid = sup.payments.reduce((a: number, p: any) => a + p.amount, 0);
     return s + Math.max(0, purchased - paid);
@@ -255,7 +255,7 @@ export async function getCustomerDueReport() {
     },
   });
 
-  const rows = (customers as any[]).map((c: any) => ({
+  const rows = (customers as any).map((c: any) => ({
     ...c,
     totalPaid: c.totalPurchase - c.totalDue,
   }));
@@ -293,7 +293,7 @@ export async function getVendorDueReport() {
     orderBy: { name: 'asc' },
   });
 
-  const rows = (suppliers as any[]).map((s: any) => {
+  const rows = (suppliers as any).map((s: any) => {
     const totalPurchase = s.purchases.reduce((a: number, p: any) => a + p.totalAmount, 0);
     const totalPaid = s.payments.reduce((a: number, p: any) => a + p.amount, 0);
     const due = Math.max(0, totalPurchase - totalPaid);

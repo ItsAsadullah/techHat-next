@@ -79,8 +79,8 @@ export default function SpecTemplatesPage() {
     }
 
     const result = await createSavedTemplate(newTemplateName, newTemplateKeys);
-    if (result.success) {
-      setTemplates([...templates, result.template]);
+    if (result.success && result.template) {
+      setTemplates([...templates, result.template as any]);
       setNewTemplateName('');
       setNewTemplateKeys([]);
       setIsDialogOpen(false);

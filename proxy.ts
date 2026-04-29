@@ -98,6 +98,12 @@ export async function proxy(request: NextRequest) {
       url.searchParams.set('next', pathname);
       return NextResponse.redirect(url);
     }
+    if (roleKnownAndLow) {
+      const url = request.nextUrl.clone();
+      url.pathname = ADMIN_LOGIN;
+      url.searchParams.set('error', 'forbidden');
+      return NextResponse.redirect(url);
+    }
   }
 
   // ---------------------------------------------------------------------------

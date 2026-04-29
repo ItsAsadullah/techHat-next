@@ -10,6 +10,22 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+function sanitizePreviewHtml(html: string) {
+  if (typeof window === 'undefined') return '';
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll('script, iframe, object, embed, link, meta').forEach((node) => node.remove());
+  doc.querySelectorAll('*').forEach((node) => {
+    [...node.attributes].forEach((attr) => {
+      const name = attr.name.toLowerCase();
+      const value = attr.value.trim().toLowerCase();
+      if (name.startsWith('on') || value.startsWith('javascript:')) {
+        node.removeAttribute(attr.name);
+      }
+    });
+  });
+  return doc.body.innerHTML;
+}
+
 interface GalleryImage {
   id: string;
   url: string;
@@ -588,7 +604,7 @@ export function ProductPreviewModal({ open, onClose, data }: Props) {
                     <h2 className="text-xl font-bold text-gray-900 mb-4">Product Description</h2>
                     <div
                       className="prose prose-gray prose-headings:font-bold prose-a:text-blue-600 prose-img:rounded-lg prose-img:max-w-full max-w-none text-gray-600 leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: data.description }}
+                      dangerouslySetInnerHTML={{ __html: sanitizePreviewHtml(data.description) }}
                     />
                   </div>
                 )}

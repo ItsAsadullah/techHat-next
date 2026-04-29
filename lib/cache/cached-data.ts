@@ -10,6 +10,7 @@ export const getCachedCategories = unstable_cache(
       select: {
         id: true,
         name: true,
+        shortCode: true,
         slug: true,
         parentId: true,
       },
@@ -27,6 +28,7 @@ export const getCachedBrands = unstable_cache(
       select: {
         id: true,
         name: true,
+        shortCode: true,
         slug: true,
         logo: true,
       },

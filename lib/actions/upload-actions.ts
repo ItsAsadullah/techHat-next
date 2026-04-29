@@ -16,7 +16,7 @@ export async function uploadImage(formData: FormData) {
     return { success: true, url };
   } catch (error: any) {
     console.error('Upload failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -42,6 +42,6 @@ export async function getCloudinaryImages(nextCursor?: string) {
     };
   } catch (error: any) {
     console.error('Failed to fetch images:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }

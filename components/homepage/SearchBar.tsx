@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Clock, TrendingUp, X } from 'lucide-react';
+import { Search, Clock, TrendingUp, Camera, X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
 import { isLucideIcon, ICON_MAP } from '@/lib/category-icon';
 
 interface SearchResult {
@@ -13,8 +12,12 @@ interface SearchResult {
   slug: string;
   price: number;
   offerPrice: number | null;
+  sku: string | null;
+  barcode: string | null;
   image: string;
   categoryName: string;
+  brandName: string;
+  matchedText: string;
 }
 
 interface CategoryResult {
@@ -37,7 +40,10 @@ export default function SearchBar() {
   const [categories, setCategories] = useState<CategoryResult[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageSearchName, setImageSearchName] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -57,12 +63,13 @@ export default function SearchBar() {
   }, []);
 
   const doSearch = useCallback(async (q: string) => {
-    if (q.length < 2) {
+    const term = q.trim();
+    if (term.length < 1) {
       setProducts([]);
       setCategories([]);
       return;
     }
-    const cached = _resultCache.get(q);
+    const cached = _resultCache.get(term);
     if (cached && Date.now() - cached.t < RESULT_CACHE_TTL) {
       setProducts(cached.products);
       setCategories(cached.categories);
@@ -70,11 +77,11 @@ export default function SearchBar() {
     }
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+      const res = await fetch(`/api/search?q=${encodeURIComponent(term)}`);
       const data = await res.json();
       const products = data.products || [];
       const categories = data.categories || [];
-      _resultCache.set(q, { products, categories, t: Date.now() });
+      _resultCache.set(term, { products, categories, t: Date.now() });
       if (_resultCache.size > 100) _resultCache.delete(_resultCache.keys().next().value!);
       setProducts(products);
       setCategories(categories);
@@ -89,7 +96,39 @@ export default function SearchBar() {
     setQuery(value);
     setIsOpen(true);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => doSearch(value), 300);
+    debounceRef.current = setTimeout(() => doSearch(value), 150);
+  };
+
+  const handleImageSearch = async (file: File | null) => {
+    if (!file) return;
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+
+    const previewUrl = URL.createObjectURL(file);
+
+    setImagePreview(previewUrl);
+    setImageSearchName(file.name);
+    setQuery('');
+    setIsOpen(true);
+    setProducts([]);
+    setCategories([]);
+    setIsLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch('/api/search/image', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      setProducts(data.products || []);
+      setCategories([]);
+    } catch {
+      setProducts([]);
+      setCategories([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const saveSearch = (term: string) => {
@@ -119,25 +158,53 @@ export default function SearchBar() {
     localStorage.removeItem('recent_searches');
   };
 
-  const showDropdown = isOpen && (query.length >= 2 || recentSearches.length > 0);
+  const clearImageSearch = () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImagePreview(null);
+    setImageSearchName('');
+    setProducts([]);
+    setCategories([]);
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  };
+
+  const showDropdown = isOpen && (query.trim().length >= 1 || recentSearches.length > 0 || imagePreview);
 
   return (
     <div ref={containerRef} className="relative flex-1 max-w-2xl">
-      <form onSubmit={handleSubmit} className="relative">
+      <form
+        onSubmit={handleSubmit}
+        className="flex h-12 items-center gap-1 rounded-full border border-gray-200 bg-gray-50 pl-4 pr-1.5 shadow-sm transition-all focus-within:border-blue-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500"
+      >
+        <Search className="h-5 w-5 flex-shrink-0 text-gray-400" />
         <input
           ref={inputRef}
           type="search"
           value={query}
           onChange={(e) => handleChange(e.target.value)}
           onFocus={() => setIsOpen(true)}
-          placeholder="Search products, brands, categories..."
-          className="w-full h-11 pl-12 pr-24 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-blue-300 transition-all"
+          placeholder="Search products, brands, model..."
+          className="min-w-0 flex-1 bg-transparent px-2 text-sm text-gray-800 outline-none placeholder:text-gray-400"
           autoComplete="off"
         />
-        <Search className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => handleImageSearch(e.target.files?.[0] || null)}
+        />
+        <button
+          type="button"
+          onClick={() => imageInputRef.current?.click()}
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
+          aria-label="Search by image"
+          title="Search by image"
+        >
+          <Camera className="h-4 w-4" />
+        </button>
         <button
           type="submit"
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-full transition-colors"
+          className="h-9 flex-shrink-0 rounded-full bg-blue-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-blue-700 sm:px-5"
         >
           Search
         </button>
@@ -147,7 +214,31 @@ export default function SearchBar() {
       {showDropdown && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden max-h-[70vh] overflow-y-auto">
           {/* Recent Searches */}
-          {query.length < 2 && recentSearches.length > 0 && (
+          {imagePreview && (
+            <div className="p-3 border-b border-gray-50">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                  <Image src={imagePreview} alt="Selected search image" width={48} height={48} className="object-cover w-full h-full" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-800 truncate">Visual image search</p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {isLoading ? 'Matching similar product photos...' : imageSearchName}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearImageSearch}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                  aria-label="Clear image search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {query.trim().length < 1 && recentSearches.length > 0 && (
             <div className="p-3 border-b border-gray-50">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Recent Searches</span>
@@ -171,7 +262,7 @@ export default function SearchBar() {
           )}
 
           {/* Trending Searches */}
-          {query.length < 2 && (
+          {query.trim().length < 1 && (
             <div className="p-3 border-b border-gray-50">
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1 mb-2">
                 <TrendingUp className="w-3 h-3" /> Trending
@@ -191,8 +282,10 @@ export default function SearchBar() {
           )}
 
           {/* Loading */}
-          {isLoading && query.length >= 2 && (
-            <div className="p-4 text-center text-sm text-gray-400">Searching...</div>
+          {isLoading && (query.trim().length >= 1 || imagePreview) && (
+            <div className="p-4 text-center text-sm text-gray-400">
+              {imagePreview ? 'Finding visually similar products...' : 'Searching...'}
+            </div>
           )}
 
           {/* Category Results */}
@@ -244,7 +337,7 @@ export default function SearchBar() {
                     key={p.id}
                     href={`/products/${p.slug}`}
                     onClick={() => {
-                      saveSearch(query);
+                      if (query.trim()) saveSearch(query.trim());
                       setIsOpen(false);
                     }}
                     className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
@@ -258,7 +351,9 @@ export default function SearchBar() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
-                      <p className="text-xs text-gray-500">{p.categoryName}</p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {[p.brandName, p.categoryName, p.sku ? `SKU: ${p.sku}` : '', p.matchedText].filter(Boolean).join(' - ')}
+                      </p>
                     </div>
                     <div className="text-right">
                       {p.offerPrice ? (
@@ -273,24 +368,30 @@ export default function SearchBar() {
                   </Link>
                 ))}
               </div>
-              <Link
-                href={`/products?search=${encodeURIComponent(query)}`}
-                onClick={() => {
-                  saveSearch(query);
-                  setIsOpen(false);
-                }}
-                className="block text-center text-sm text-blue-600 hover:text-blue-700 font-medium py-2 mt-2 border-t border-gray-50"
-              >
-                View all results for &ldquo;{query}&rdquo;
-              </Link>
+              {query.trim() && (
+                <Link
+                  href={`/products?search=${encodeURIComponent(query)}`}
+                  onClick={() => {
+                    saveSearch(query);
+                    setIsOpen(false);
+                  }}
+                  className="block text-center text-sm text-blue-600 hover:text-blue-700 font-medium py-2 mt-2 border-t border-gray-50"
+                >
+                  View all results for &ldquo;{query}&rdquo;
+                </Link>
+              )}
             </div>
           )}
 
           {/* No Results */}
-          {!isLoading && query.length >= 2 && products.length === 0 && categories.length === 0 && (
+          {!isLoading && (query.trim().length >= 1 || imagePreview) && products.length === 0 && categories.length === 0 && (
             <div className="p-6 text-center">
-              <p className="text-sm text-gray-500">No results found for &ldquo;{query}&rdquo;</p>
-              <p className="text-xs text-gray-400 mt-1">Try searching with different keywords</p>
+              <p className="text-sm text-gray-500">
+                {imagePreview ? 'No visually similar products found' : `No results found for "${query}"`}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {imagePreview ? 'Try a clearer product photo' : 'Try searching with different keywords'}
+              </p>
             </div>
           )}
         </div>

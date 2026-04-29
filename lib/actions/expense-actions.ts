@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 
-const db = prisma as any;
+const db = prisma as any
 
 // ═══════════════ TYPES ═══════════════
 
@@ -73,7 +73,7 @@ export interface ExpenseFilters {
 
 export async function getExpenseCategories() {
   try {
-    const categories = await db.expenseCategory.findMany({
+    const categories = await prisma.expenseCategory.findMany({
       orderBy: { name: 'asc' },
       include: {
         _count: { select: { expenses: true } },
@@ -81,7 +81,7 @@ export async function getExpenseCategories() {
     });
     return { success: true, data: categories };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -93,7 +93,7 @@ function buildSlug(name: string): string {
 export async function createExpenseCategory(input: ExpenseCategoryInput) {
   try {
     const slug = input.slug || buildSlug(input.name);
-    const category = await db.expenseCategory.create({
+    const category = await prisma.expenseCategory.create({
       data: {
         name: input.name,
         slug,
@@ -106,14 +106,14 @@ export async function createExpenseCategory(input: ExpenseCategoryInput) {
     revalidatePath('/admin/expenses');
     return { success: true, data: category };
   } catch (error: any) {
-    if (error.code === 'P2002') {
-      if (error.meta?.target?.includes('name')) {
+    if ((error as any)?.code === 'P2002') {
+      if ((error as any)?.meta?.target?.includes('name')) {
         return { success: false, error: 'এই নামের ক্যাটাগরি আগে থেকেই আছে' };
       }
       // slug collision — retry with a unique slug
       try {
         const slug = `cat-${Date.now().toString(36)}`;
-        const category = await db.expenseCategory.create({
+        const category = await prisma.expenseCategory.create({
           data: {
             name: input.name,
             slug,
@@ -126,11 +126,11 @@ export async function createExpenseCategory(input: ExpenseCategoryInput) {
         revalidatePath('/admin/expenses');
         return { success: true, data: category };
       } catch (retryErr: any) {
-        if (retryErr.code === 'P2002') return { success: false, error: 'এই নামের ক্যাটাগরি আগে থেকেই আছে' };
-        return { success: false, error: retryErr.message };
+        if ((retryErr as any)?.code === 'P2002') return { success: false, error: 'এই নামের ক্যাটাগরি আগে থেকেই আছে' };
+        return { success: false, error: (retryErr as any)?.message };
       }
     }
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -146,28 +146,28 @@ export async function updateExpenseCategory(id: string, input: Partial<ExpenseCa
     if (input.description !== undefined) data.description = input.description;
     if (input.isActive !== undefined) data.isActive = input.isActive;
 
-    const category = await db.expenseCategory.update({
+    const category = await prisma.expenseCategory.update({
       where: { id },
       data,
     });
     revalidatePath('/admin/expenses');
     return { success: true, data: category };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
 export async function deleteExpenseCategory(id: string) {
   try {
-    const count = await db.expense.count({ where: { categoryId: id } });
+    const count = await prisma.expense.count({ where: { categoryId: id } });
     if (count > 0) {
       return { success: false, error: `এই ক্যাটাগরিতে ${count}টি খরচ আছে। আগে সেগুলো মুছুন বা অন্য ক্যাটাগরিতে সরান।` };
     }
-    await db.expenseCategory.delete({ where: { id } });
+    await prisma.expenseCategory.delete({ where: { id } });
     revalidatePath('/admin/expenses');
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -175,7 +175,7 @@ export async function deleteExpenseCategory(id: string) {
 
 export async function createExpense(input: ExpenseInput) {
   try {
-    const expense = await db.expense.create({
+    const expense = await prisma.expense.create({
       data: {
         categoryId: input.categoryId,
         title: input.title,
@@ -194,7 +194,7 @@ export async function createExpense(input: ExpenseInput) {
     revalidatePath('/admin/expenses');
     return { success: true, data: expense };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -215,7 +215,7 @@ export async function updateExpense(id: string, input: Partial<ExpenseInput>) {
     if (input.addedBy !== undefined) data.addedBy = input.addedBy;
     if (input.staffId !== undefined) data.staffId = input.staffId;
 
-    const expense = await db.expense.update({
+    const expense = await prisma.expense.update({
       where: { id },
       data,
       include: { category: true },
@@ -223,31 +223,31 @@ export async function updateExpense(id: string, input: Partial<ExpenseInput>) {
     revalidatePath('/admin/expenses');
     return { success: true, data: expense };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
 export async function updateExpenseStatus(id: string, status: string) {
   try {
-    const expense = await db.expense.update({
+    const expense = await prisma.expense.update({
       where: { id },
-      data: { status },
+      data: { status } as any,
       include: { category: true },
     });
     revalidatePath('/admin/expenses');
     return { success: true, data: expense };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
 export async function deleteExpense(id: string) {
   try {
-    await db.expense.delete({ where: { id } });
+    await prisma.expense.delete({ where: { id } });
     revalidatePath('/admin/expenses');
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -302,20 +302,20 @@ export async function getExpenses(filters: ExpenseFilters = {}) {
       },
     };
   } catch (error: any) {
-    return { success: false, error: error.message, data: [], pagination: { total: 0, page: 1, limit: 20, totalPages: 0 } };
+    return { success: false, error: (error as any)?.message, data: [], pagination: { total: 0, page: 1, limit: 20, totalPages: 0 } };
   }
 }
 
 export async function getExpenseById(id: string) {
   try {
-    const expense = await db.expense.findUnique({
+    const expense = await prisma.expense.findUnique({
       where: { id },
       include: { category: true, vendor: true },
     });
     if (!expense) return { success: false, error: 'খরচ পাওয়া যায়নি' };
     return { success: true, data: expense };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -420,7 +420,7 @@ export async function getExpenseStats() {
     ]);
 
     // Get categories for breakdown labels
-    const categories = await db.expenseCategory.findMany({
+    const categories = await prisma.expenseCategory.findMany({
       select: { id: true, name: true, color: true, icon: true },
     });
     const categoryMap = new Map(categories.map((c: any) => [c.id, c]));
@@ -456,7 +456,7 @@ export async function getExpenseStats() {
         expenseCountToday: totalToday._count || 0,
         monthlyChange: Math.round(monthlyChange * 10) / 10,
         categoryBreakdown: categoryData,
-        monthlyTrend: (monthlyTrend as any[]).map((m: any) => ({
+        monthlyTrend: (monthlyTrend as any).map((m: any) => ({
           month: Number(m.month),
           year: Number(m.year),
           total: Number(m.total),
@@ -466,7 +466,7 @@ export async function getExpenseStats() {
         salaryThisMonth: totalSalaryThisMonth._sum?.netSalary || 0,
         salaryPaidThisMonth: totalSalaryThisMonth._sum?.paidAmount || 0,
         salaryDueTotal: totalSalaryDue._sum?.dueAmount || 0,
-        salaryDueBreakdown: (salaryDueBreakdown as any[]).map((s: any) => ({
+        salaryDueBreakdown: (salaryDueBreakdown as any).map((s: any) => ({
           id: s.id,
           staffName: s.staff?.name || 'অজানা',
           month: s.month,
@@ -479,7 +479,7 @@ export async function getExpenseStats() {
       },
     };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -513,7 +513,7 @@ export async function getMonthlyReport(month: number, year: number) {
       }),
     ]);
 
-    const categories = await db.expenseCategory.findMany({
+    const categories = await prisma.expenseCategory.findMany({
       select: { id: true, name: true, color: true, icon: true },
     });
     const categoryMap = new Map(categories.map((c: any) => [c.id, c]));
@@ -546,7 +546,7 @@ export async function getMonthlyReport(month: number, year: number) {
       },
     };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -591,7 +591,7 @@ export async function getReport(params: {
     // Monthly salary data
     let salaries: any[] = [];
     if (params.mode === 'monthly' && params.month && params.year) {
-      salaries = await db.staffSalary.findMany({
+      salaries = await prisma.staffSalary.findMany({
         where: { month: params.month, year: params.year },
         include: { staff: true },
         orderBy: { staff: { name: 'asc' } },
@@ -601,13 +601,13 @@ export async function getReport(params: {
     // Yearly: monthly salary aggregates
     let yearlySalaryByMonth: any[] = [];
     if (params.mode === 'yearly' && params.year) {
-      const rows = await db.staffSalary.groupBy({
+      const rows = await prisma.staffSalary.groupBy({
         by: ['month'],
         where: { year: params.year },
         _sum: { netSalary: true, paidAmount: true, dueAmount: true },
         orderBy: { month: 'asc' },
       });
-      yearlySalaryByMonth = (rows as any[]).map((r: any) => ({
+      yearlySalaryByMonth = (rows as any).map((r: any) => ({
         month: r.month,
         netSalary: r._sum?.netSalary || 0,
         paid: r._sum?.paidAmount || 0,
@@ -615,12 +615,12 @@ export async function getReport(params: {
       }));
     }
 
-    const categories = await db.expenseCategory.findMany({
+    const categories = await prisma.expenseCategory.findMany({
       select: { id: true, name: true, color: true, icon: true },
     });
     const categoryMap = new Map(categories.map((c: any) => [c.id, c]));
 
-    const totalExpense = (expenses as any[]).reduce((s: number, e: any) => s + e.amount, 0);
+    const totalExpense = (expenses as any).reduce((s: number, e: any) => s + e.amount, 0);
     const totalSalary = salaries.reduce((s: number, sal: any) => s + sal.netSalary, 0);
     const totalSalaryPaid = salaries.reduce((s: number, sal: any) => s + sal.paidAmount, 0);
     const totalSalaryDue = salaries.reduce((s: number, sal: any) => s + sal.dueAmount, 0);
@@ -650,12 +650,12 @@ export async function getReport(params: {
         totalSalaryDue,
         grandTotal: totalExpense + (params.mode === 'yearly' ? yearlySalaryTotal : totalSalary),
         categoryBreakdown: catBreakdown,
-        paymentBreakdown: (paymentBreakdown as any[]).map((item: any) => ({
+        paymentBreakdown: (paymentBreakdown as any).map((item: any) => ({
           method: item.paymentMethod,
           total: item._sum.amount || 0,
           count: item._count || 0,
         })),
-        dailyTrend: (dailyTrend as any[]).map((d: any) => ({
+        dailyTrend: (dailyTrend as any).map((d: any) => ({
           day: String(d.day).split('T')[0],
           total: Number(d.total) || 0,
           count: Number(d.count) || 0,
@@ -665,7 +665,7 @@ export async function getReport(params: {
       },
     };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -673,7 +673,7 @@ export async function getReport(params: {
 
 export async function getStaffMembers() {
   try {
-    const staff = await db.staff.findMany({
+    const staff = await prisma.staff.findMany({
       orderBy: { name: 'asc' },
       include: {
         _count: { select: { salaries: true } },
@@ -681,25 +681,25 @@ export async function getStaffMembers() {
     });
     return { success: true, data: staff };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
 export async function getStaffByEmail(email: string) {
   try {
-    const staff = await db.staff.findFirst({
+    const staff = await prisma.staff.findFirst({
       where: { email, isActive: true },
       select: { id: true, name: true, role: true, permissions: true },
     });
     return { success: true, data: staff ?? null };
   } catch (error: any) {
-    return { success: false, error: error.message, data: null };
+    return { success: false, error: (error as any)?.message, data: null };
   }
 }
 
 export async function createStaff(input: StaffInput) {
   try {
-    const staff = await db.staff.create({
+    const staff = await prisma.staff.create({
       data: {
         name: input.name,
         phone: input.phone,
@@ -715,10 +715,10 @@ export async function createStaff(input: StaffInput) {
     revalidatePath('/admin/expenses');
     return { success: true, data: staff };
   } catch (error: any) {
-    if (error.code === 'P2002') {
+    if ((error as any)?.code === 'P2002') {
       return { success: false, error: 'এই ফোন নম্বর দিয়ে আগে থেকেই একজন স্টাফ আছে' };
     }
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -736,24 +736,24 @@ export async function updateStaff(id: string, input: Partial<StaffInput>) {
     if (input.emergencyContact !== undefined) data.emergencyContact = input.emergencyContact;
     if (input.isActive !== undefined) data.isActive = input.isActive;
 
-    const staff = await db.staff.update({
+    const staff = await prisma.staff.update({
       where: { id },
       data,
     });
     revalidatePath('/admin/expenses');
     return { success: true, data: staff };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
 export async function deleteStaff(id: string) {
   try {
-    await db.staff.delete({ where: { id } });
+    await prisma.staff.delete({ where: { id } });
     revalidatePath('/admin/expenses');
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -761,7 +761,7 @@ export async function deleteStaff(id: string) {
 
 export async function generateMonthlySalaries(month: number, year: number) {
   try {
-    const activeStaff = await db.staff.findMany({
+    const activeStaff = await prisma.staff.findMany({
       where: { isActive: true },
     });
 
@@ -769,7 +769,7 @@ export async function generateMonthlySalaries(month: number, year: number) {
 
     for (const staff of activeStaff) {
       // Check if salary already exists
-      const existing = await db.staffSalary.findUnique({
+      const existing = await prisma.staffSalary.findUnique({
         where: {
           staffId_month_year: {
             staffId: staff.id,
@@ -781,7 +781,7 @@ export async function generateMonthlySalaries(month: number, year: number) {
 
       if (!existing) {
         const netSalary = staff.baseSalary;
-        const salary = await db.staffSalary.create({
+        const salary = await prisma.staffSalary.create({
           data: {
             staffId: staff.id,
             month,
@@ -802,26 +802,26 @@ export async function generateMonthlySalaries(month: number, year: number) {
       message: `${results.length}জন স্টাফের বেতন তৈরি করা হয়েছে`,
     };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
 export async function getSalaries(month: number, year: number) {
   try {
-    const salaries = await db.staffSalary.findMany({
+    const salaries = await prisma.staffSalary.findMany({
       where: { month, year },
       include: { staff: true },
       orderBy: { staff: { name: 'asc' } },
     });
     return { success: true, data: salaries };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
 export async function updateSalary(id: string, input: Partial<SalaryInput> & { paidAmount?: number; status?: string; paymentDate?: string }) {
   try {
-    const existing = await db.staffSalary.findUnique({ where: { id } });
+    const existing = await prisma.staffSalary.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'বেতন রেকর্ড পাওয়া যায়নি' };
 
     const data: any = {};
@@ -862,7 +862,7 @@ export async function updateSalary(id: string, input: Partial<SalaryInput> & { p
 
     if (input.status) data.status = input.status;
 
-    const salary = await db.staffSalary.update({
+    const salary = await prisma.staffSalary.update({
       where: { id },
       data,
       include: { staff: true },
@@ -870,13 +870,13 @@ export async function updateSalary(id: string, input: Partial<SalaryInput> & { p
     revalidatePath('/admin/expenses');
     return { success: true, data: salary };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
 export async function paySalary(id: string, amount: number, paymentMethod: string = 'CASH') {
   try {
-    const existing = await db.staffSalary.findUnique({ where: { id } });
+    const existing = await prisma.staffSalary.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'বেতন রেকর্ড পাওয়া যায়নি' };
 
     const newPaidAmount = existing.paidAmount + amount;
@@ -889,7 +889,7 @@ export async function paySalary(id: string, amount: number, paymentMethod: strin
       status = 'PENDING';
     }
 
-    const salary = await db.staffSalary.update({
+    const salary = await prisma.staffSalary.update({
       where: { id },
       data: {
         paidAmount: newPaidAmount,
@@ -903,16 +903,16 @@ export async function paySalary(id: string, amount: number, paymentMethod: strin
     revalidatePath('/admin/expenses');
     return { success: true, data: salary };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
 export async function deleteSalary(id: string) {
   try {
-    await db.staffSalary.delete({ where: { id } });
+    await prisma.staffSalary.delete({ where: { id } });
     revalidatePath('/admin/expenses');
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }

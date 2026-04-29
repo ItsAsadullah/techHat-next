@@ -158,7 +158,11 @@ function BannerCarousel({
   const prev = useCallback(() => setCurrent((c) => (c - 1 + banners.length) % banners.length), [banners.length]);
 
   // Reset index if banners list changes
-  useEffect(() => { setCurrent(0); }, [banners.length]);
+  const [prevBannersLength, setPrevBannersLength] = useState(banners.length);
+  if (prevBannersLength !== banners.length) {
+    setPrevBannersLength(banners.length);
+    setCurrent(0);
+  }
 
   useEffect(() => {
     if (hovered || banners.length <= 1) return;

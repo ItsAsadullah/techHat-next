@@ -78,13 +78,17 @@ interface RichTextEditorProps {
 import { MediaLibrary } from '@/components/admin/media-library';
 
 const Toolbar = ({ editor, isFullScreen, toggleFullScreen }: { editor: Editor | null, isFullScreen: boolean, toggleFullScreen: () => void }) => {
-  if (!editor) {
-    return null;
-  }
 
   const [linkUrl, setLinkUrl] = React.useState('');
   const [formatCopied, setFormatCopied] = React.useState<any>(null);
   const [isMediaLibraryOpen, setIsMediaLibraryOpen] = React.useState(false);
+  const [tableRows, setTableRows] = React.useState(3);
+  const [tableCols, setTableCols] = React.useState(3);
+  const [tableHeader, setTableHeader] = React.useState(true);
+
+  if (!editor) {
+    return null;
+  }
 
   const copyFormat = () => {
     const marks = editor.getAttributes('textStyle');
@@ -132,10 +136,6 @@ const Toolbar = ({ editor, isFullScreen, toggleFullScreen }: { editor: Editor | 
     { label: '1.5', value: '1.5' },
     { label: 'Double', value: '2.0' },
   ];
-
-  const [tableRows, setTableRows] = React.useState(3);
-  const [tableCols, setTableCols] = React.useState(3);
-  const [tableHeader, setTableHeader] = React.useState(true);
 
   const insertTable = () => {
     editor.chain().focus().insertTable({ rows: tableRows, cols: tableCols, withHeaderRow: tableHeader }).run();

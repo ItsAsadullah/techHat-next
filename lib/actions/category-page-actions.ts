@@ -49,46 +49,47 @@ const PRODUCT_SELECT = {
 // ─── Map raw Prisma product to CategoryProduct ────────────────────────────────
 
 function mapProduct(raw: any): CategoryProduct {
-  const reviews: { rating: number }[] = raw.reviews ?? [];
+  const r = raw as any;
+  const reviews: { rating: number }[] = r.reviews ?? [];
   const avgRating =
     reviews.length > 0
       ? Math.round((reviews.reduce((s: number, r: { rating: number }) => s + r.rating, 0) / reviews.length) * 10) / 10
       : 0;
 
-  const thumbnailImg = raw.productImages?.find((i: any) => i.isThumbnail)?.url ?? raw.productImages?.[0]?.url ?? raw.images?.[0] ?? null;
-  const hoverImg = raw.productImages?.find((i: any) => !i.isThumbnail && i.url !== thumbnailImg)?.url ?? raw.images?.[1] ?? null;
+  const thumbnailImg = r.productImages?.find((i: any) => i.isThumbnail)?.url ?? r.productImages?.[0]?.url ?? r.images?.[0] ?? null;
+  const hoverImg = r.productImages?.find((i: any) => !i.isThumbnail && i.url !== thumbnailImg)?.url ?? r.images?.[1] ?? null;
 
   const effectiveDiscount =
-    raw.discountPercentage != null
-      ? raw.discountPercentage
-      : raw.offerPrice != null && raw.offerPrice < raw.price
-      ? Math.round(((raw.price - raw.offerPrice) / raw.price) * 100)
+    r.discountPercentage != null
+      ? r.discountPercentage
+      : r.offerPrice != null && r.offerPrice < r.price
+      ? Math.round(((r.price - r.offerPrice) / r.price) * 100)
       : null;
 
   return {
-    id: raw.id,
-    name: raw.name,
-    slug: raw.slug,
-    price: raw.price,
-    offerPrice: raw.offerPrice ?? null,
+    id: r.id,
+    name: r.name,
+    slug: r.slug,
+    price: r.price,
+    offerPrice: r.offerPrice ?? null,
     discountPercentage: effectiveDiscount,
-    stock: raw.stock,
-    minStock: raw.minStock ?? 5,
-    isFeatured: raw.isFeatured,
-    isFlashSale: raw.isFlashSale,
-    isBestSeller: raw.isBestSeller,
-    soldCount: raw.soldCount,
-    viewCount: raw.viewCount,
-    shortDesc: raw.shortDesc ?? null,
-    images: raw.images ?? [],
+    stock: r.stock,
+    minStock: r.minStock ?? 5,
+    isFeatured: r.isFeatured,
+    isFlashSale: r.isFlashSale,
+    isBestSeller: r.isBestSeller,
+    soldCount: r.soldCount,
+    viewCount: r.viewCount,
+    shortDesc: r.shortDesc ?? null,
+    images: r.images ?? [],
     primaryImage: thumbnailImg,
     hoverImage: hoverImg,
-    brand: raw.brand ?? null,
+    brand: r.brand ?? null,
     avgRating,
     reviewCount: reviews.length,
-    warrantyMonths: raw.warrantyMonths ?? null,
-    warrantyType: raw.warrantyType ?? null,
-    specifications: (raw.specifications as Record<string, string> | null) ?? null,
+    warrantyMonths: r.warrantyMonths ?? null,
+    warrantyType: r.warrantyType ?? null,
+    specifications: (r.specifications as Record<string, string> | null) ?? null,
   };
 }
 
@@ -225,7 +226,7 @@ function aggregateSpecFilters(products: any[]): SpecFilterOption[] {
   const specMap: Map<string, Map<string, number>> = new Map();
 
   for (const product of products) {
-    const specs = product.specifications as Record<string, string> | null;
+    const specs = (product as any).specifications as Record<string, string> | null;
     if (!specs) continue;
     for (const [key, value] of Object.entries(specs)) {
       if (!key || !value) continue;
@@ -330,7 +331,7 @@ async function _getCategoryPageData(
   const ratingBuckets = [5, 4, 3, 2, 1].map((stars) => ({ stars, count: _ratingCounts[stars] }));
 
   // Spec filters (from full product set)
-  const specFilters: SpecFilterOption[] = aggregateSpecFilters(allProducts as any[]);
+  const specFilters: SpecFilterOption[] = aggregateSpecFilters(allProducts as any);
 
   const filterOptions: FilterOptions = {
     brands,

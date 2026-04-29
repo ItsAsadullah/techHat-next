@@ -103,8 +103,8 @@ export async function upsertSetting(data: SettingData, performedBy?: string) {
     );
     revalidatePath('/admin/settings');
     return { success: true, setting };
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Unknown error';
+  } catch (error: any) {
+    const msg = error instanceof Error ? (error as any)?.message : 'Unknown error';
     return { success: false, error: msg };
   }
 }
@@ -143,8 +143,8 @@ export async function upsertManySettings(
     revalidatePath('/admin/settings');
     revalidatePath('/admin/pos');
     return { success: true };
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Unknown error';
+  } catch (error: any) {
+    const msg = error instanceof Error ? (error as any)?.message : 'Unknown error';
     return { success: false, error: msg };
   }
 }
@@ -156,8 +156,8 @@ export async function deleteSetting(key: string, performedBy?: string) {
     await writeAuditLog('setting', 'delete', key, { key, value: existing?.value }, performedBy);
     revalidatePath('/admin/settings');
     return { success: true };
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Unknown error';
+  } catch (error: any) {
+    const msg = error instanceof Error ? (error as any)?.message : 'Unknown error';
     return { success: false, error: msg };
   }
 }

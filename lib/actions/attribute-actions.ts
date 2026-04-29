@@ -4,9 +4,19 @@ import { prisma } from '@/lib/prisma';
 
 export async function getAttributes() {
   try {
+    interface AttributeRow {
+      id: string;
+      name: string;
+      slug: string;
+      type: string;
+      vid: string | null;
+      vvalue: string | null;
+      vcolor: string | null;
+    }
+
     // Fallback to raw query because Prisma Client might be stale (locked file on Windows)
     // and not have the new 'attribute' model generated yet.
-    const rows: any[] = await prisma.$queryRaw`
+    const rows = await prisma.$queryRaw<AttributeRow[]>`
       SELECT 
         a.id as id, 
         a.name as name, 

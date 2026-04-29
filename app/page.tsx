@@ -171,6 +171,17 @@ export default async function HomePage() {
               {/* Right: Hero Banner */}
               <div className="flex-1 min-w-0">
                 <HeroBanner banners={homepageData.banners} />
+
+                {homepageData.heroGifUrl ? (
+                  <div className="mt-4 rounded-xl overflow-hidden border border-gray-200 bg-white">
+                    <img
+                      src={homepageData.heroGifUrl}
+                      alt="Promotional banner"
+                      className="w-full h-auto"
+                      loading="lazy"
+                    />
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>

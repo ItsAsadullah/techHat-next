@@ -138,7 +138,7 @@ export async function updateInvoiceSettings(input: {
     return { success: true };
   } catch (error: any) {
     console.error(error);
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -200,11 +200,11 @@ export async function updateStoreSettings(data: StoreSettings) {
       )
     );
     revalidatePath('/admin/settings/store');
-    // @ts-ignore - Next.js 16 requires a second argument for revalidateTag
+    // @ts-expect-error - Next.js 16 requires a second argument for revalidateTag
     revalidateTag('store-settings');
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -260,7 +260,7 @@ export async function updatePaymentMethodSettings(data: PaymentMethodSettings) {
     revalidatePath('/admin/settings/payments');
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -296,7 +296,7 @@ export async function updateShippingSettings(data: ShippingSettings) {
     revalidatePath('/admin/settings/store');
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -345,7 +345,7 @@ export async function updateAnalyticsSettings(data: AnalyticsSettings) {
     revalidatePath('/');
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -387,12 +387,12 @@ export async function updateBrandingSettings(data: BrandingSettings) {
         })
       )
     );
-    // @ts-ignore - Next.js 16 requires a second argument for revalidateTag
+    // @ts-expect-error - Next.js 16 requires a second argument for revalidateTag
     revalidateTag('branding');
     revalidatePath('/');
     revalidatePath('/admin/settings/branding');
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }

@@ -58,7 +58,7 @@ export async function createProduct(formData: FormData) {
                         imageUrl = await uploadToCloudinary(buffer, 'products/gallery');
                     } catch (e) {
                         console.error("Failed to upload gallery image", e);
-                        throw new Error(`Image upload failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+                        throw new Error(`Image upload failed: ${e instanceof Error ? (e as any)?.message : 'Unknown error'}`);
                     }
                 }
             }
@@ -263,7 +263,7 @@ export async function createProduct(formData: FormData) {
     return { success: true, product };
   } catch (error: any) {
     console.error('Create product error:', error);
-    return { success: false, error: error.message || 'Failed to create product' };
+    return { success: false, error: (error as any)?.message || 'Failed to create product' };
   }
 }
 
@@ -636,7 +636,7 @@ export async function updateProduct(id: string, formData: FormData) {
     return { success: true, product };
   } catch (error: any) {
     console.error('Update product error:', error);
-    return { success: false, error: error.message || 'Failed to update product' };
+    return { success: false, error: (error as any)?.message || 'Failed to update product' };
   }
 }
 
@@ -686,7 +686,7 @@ export async function getProducts({
         category ? { categoryId: category } : {},
         vendor ? { vendorId: vendor } : {},
         status ? { isActive: status === 'PUBLISHED' } : {}, // Mapping status string to boolean
-        // type ? { type: type as any } : {},
+        // type ? { type: type as any} : {},
         stockStatus
           ? stockStatus === 'LOW_STOCK'
             ? { stock: { lte: 5 } } 
@@ -821,6 +821,6 @@ export async function duplicateProduct(id: string) {
 
   } catch (error: any) {
     console.error('Duplicate error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }

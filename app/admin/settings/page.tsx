@@ -3,6 +3,7 @@ import {
   Store,
   FileText,
   Layers,
+  Tags,
   ListChecks,
   ShoppingCart,
   CreditCard,
@@ -54,6 +55,14 @@ const sections = [
     desc: 'Create and manage product category hierarchy',
     color: 'bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400',
     dot: 'bg-violet-500',
+  },
+  {
+    href: '/admin/settings/brands',
+    icon: Tags,
+    title: 'Brands',
+    desc: 'Create and manage product brands and SKU short codes',
+    color: 'bg-fuchsia-50 dark:bg-fuchsia-900/30 text-fuchsia-600 dark:text-fuchsia-400',
+    dot: 'bg-fuchsia-500',
   },
   {
     href: '/admin/settings/spec-templates',

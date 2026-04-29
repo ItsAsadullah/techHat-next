@@ -18,8 +18,8 @@ export default async function POSSalesReportPage() {
 
   return (
     <POSSalesReport
-      initialData={salesData}
-      dailySummary={dailySummary}
+      initialData={salesData as any}
+      dailySummary={dailySummary as any}
       invoiceSettings={invoiceSettings}
     />
   );

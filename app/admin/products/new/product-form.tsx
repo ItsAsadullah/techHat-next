@@ -87,6 +87,8 @@ import {
 import { toast } from "sonner";
 import { ProductPreviewModal } from './product-preview-modal';
 
+import Barcode from 'react-barcode';
+
 // Zod Schema
 import { BrandCombobox } from '@/components/admin/brand-combobox';
 import { MediaLibrary } from '@/components/admin/media-library';
@@ -101,6 +103,7 @@ const productSchema = z.object({
   videoUrl: z.string().optional().or(z.literal('')),
   warrantyMonths: z.number(),
   warrantyType: z.string().optional().or(z.literal('')),
+  model: z.string().optional().or(z.literal('')),
   isActive: z.boolean(),
   isFlashSale: z.boolean(),
   description: z.string().optional().or(z.literal('')),
@@ -327,7 +330,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
 
       const result = await createSavedTemplate(newTemplateName, keys);
       if (result.success) {
-          setSavedTemplates([...savedTemplates, result.template]);
+          setSavedTemplates([...savedTemplates, result.template as any]);
           setNewTemplateName('');
           setIsSaveTemplateOpen(false);
           toast.success('টেমপ্লেট সফলভাবে সেভ হয়েছে!');
@@ -372,20 +375,6 @@ export default function ProductForm({ categories: initialCategories, brands: ini
       }
   };
   
-  // Custom Scanner Handlers for buttons
-  // Instead of starting a new session, we just focus the input and let the global scanner type into it
-  const generateSKU = () => {
-    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const prefix = watchedValues.name ? watchedValues.name.substring(0, 3).toUpperCase() : 'PRD';
-    const sku = `${prefix}-${random}`;
-    setValue('sku', sku, { shouldValidate: true });
-  };
-
-  const handleScanClick = (fieldName: string) => {
-      focusInput(fieldName);
-      toast.info("Ready to scan. Use your connected phone.");
-  };
-
   // Generate QR code when scanner session starts
   // We don't need this anymore as it's global in the header
   /* 
@@ -407,6 +396,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
       isFlashSale: initialData?.isFlashSale ?? false,
       description: initialData?.description || '',
       costPrice: initialData?.costPrice || 0,
+      model: initialData?.model || '',
       expense: initialData?.variants?.[0]?.expense || 0,
       price: initialData?.price || 0,
       offerPrice: initialData?.offerPrice || 0,
@@ -420,6 +410,137 @@ export default function ProductForm({ categories: initialCategories, brands: ini
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = form;
   const watchedValues = watch();
+
+  // Track last automatically generated SKU so we don't overwrite manual edits
+  const [lastAutoSku, setLastAutoSku] = useState<string>('');
+
+  // Category suffix mapping + syllable-ish fallback
+  const categorySuffixMap: Record<string, string> = {
+    headphone: 'HP',
+    headphones: 'HP',
+    'head-phone': 'HP',
+    // add more explicit mappings here as needed
+  };
+
+  const getCategorySuffix = (categoryId?: string) => {
+    if (!categoryId) return 'GEN';
+    const cat = categories.find((c: any) => c.id === categoryId || c.id?.toString() === categoryId?.toString());
+    const dbShortCode = (cat?.shortCode || '').toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    if (dbShortCode) return dbShortCode;
+    const name = (cat?.name || 'GEN').toLowerCase();
+    // custom mapping first
+    if (categorySuffixMap[name]) return categorySuffixMap[name];
+    // multi-word -> initials
+    const words = name.split(/[^a-z0-9]+/).filter(Boolean);
+    if (words.length >= 2) return (words.map(w => w[0]).slice(0, 2).join('') || 'GN').toUpperCase();
+    // single word -> prefer first two consonants, otherwise first two letters
+    const word = words[0] || 'gen';
+    const consonants = word.replace(/[aeiou0-9]/g, '');
+    if (consonants.length >= 2) return consonants.slice(0, 2).toUpperCase();
+    return word.slice(0, Math.min(2, word.length)).toUpperCase();
+  };
+
+  const handleScanClick = (fieldName: string) => {
+      focusInput(fieldName);
+      toast.info("Ready to scan. Use your connected phone.");
+  };
+
+  // Dynamic SKU Logic
+  const getCipherCost = (totalCost: number) => {
+    const cipherMap: Record<string, string> = { '1':'I', '2':'Z', '3':'E', '4':'4', '5':'S', '6':'G', '7':'T', '8':'B', '9':'9', '0':'O' };
+    const costStr = Math.round(Math.max(0, totalCost)).toString();
+    return costStr.split('').map(char => cipherMap[char] || char).join('');
+  };
+
+  const calculateAutoSKU = () => {
+    const name = watchedValues.name || '';
+    const brandId = watchedValues.brandId;
+    const modelField = watchedValues.model || '';
+    // Use total cost (purchase price + extra expense) for cipher, change to selling price if desired
+    const totalCost = (watchedValues.costPrice || 0) + (watchedValues.expense || 0);
+
+    const selectedBrand = brands.find((b: any) => b.id === brandId || b.id?.toString() === brandId?.toString());
+    const brandName = selectedBrand?.name || 'GEN';
+    const brandShortFromDb = (selectedBrand?.shortCode || '').toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    const brandShort = brandShortFromDb || brandName.substring(0, 3).toUpperCase();
+
+    const categorySuffix = getCategorySuffix(watchedValues.categoryId);
+    const cipherCost = getCipherCost(totalCost);
+
+    // Model = use the dedicated model field (full, remove spaces, uppercase)
+    const modelStr = modelField ? modelField.replace(/\s+/g, '').toUpperCase() : name.replace(/\s+/g, '').toUpperCase() || 'MODEL';
+
+    // Format: [BrandShort]-[CategorySuffix]-[CipherCost]-[Model]
+    return `${brandShort}-${categorySuffix}-${cipherCost}-${modelStr}`;
+  };
+
+  useEffect(() => {
+    // Generate SKU automatically as the user types (updates Live)
+    if (watchedValues.productType === 'simple') {
+      const autoSku = calculateAutoSKU();
+      // Only overwrite SKU if user hasn't customized it: empty or previously auto-generated
+      const currentSku = watchedValues.sku || '';
+      if (!currentSku || currentSku === lastAutoSku) {
+        setValue('sku', autoSku, { shouldValidate: true });
+        setLastAutoSku(autoSku);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    watchedValues.name, 
+    watchedValues.brandId, 
+    watchedValues.costPrice, 
+    watchedValues.expense, 
+    watchedValues.productType,
+    watchedValues.sku,
+    setValue,
+    brands
+  ]);
+
+  const generateSKU = () => {
+    setValue('sku', calculateAutoSKU(), { shouldValidate: true });
+  };
+
+  const downloadBarcode = () => {
+    const svgElement = document.querySelector('.barcode-wrapper svg') as SVGElement | null;
+    if (!svgElement) {
+        toast.error("Barcode not generated yet.");
+        return;
+    }
+
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    // Use element bbox when available for precise sizing
+    const bbox = (svgElement as any).getBBox ? (svgElement as any).getBBox() : svgElement.getBoundingClientRect();
+    const svgWidth = Math.ceil(bbox.width || svgElement.getBoundingClientRect().width || 300);
+    const svgHeight = Math.ceil(bbox.height || svgElement.getBoundingClientRect().height || 100);
+
+    // For print-quality PNG, render at a higher pixel density (e.g., 3x)
+    const dpiScale = 3;
+    canvas.width = svgWidth * dpiScale;
+    canvas.height = svgHeight * dpiScale;
+
+    img.onload = () => {
+      if (ctx) {
+        // White background
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Draw the SVG at the scaled resolution
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const pngFile = canvas.toDataURL("image/png");
+        const downloadLink = document.createElement("a");
+        downloadLink.download = `${watchedValues.sku || 'barcode'}.png`;
+        downloadLink.href = pngFile;
+        downloadLink.click();
+        toast.success("Barcode downloaded successfully!");
+      }
+    };
+    img.crossOrigin = 'anonymous';
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+  };
 
   // Load spec templates on category change
   useEffect(() => {
@@ -838,6 +959,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
       formData.append('name', data.name);
       formData.append('categoryId', data.categoryId);
       formData.append('brandId', data.brandId || '');
+      formData.append('model', data.model || '');
       formData.append('productType', data.productType);
       formData.append('unit', data.unit);
       formData.append('videoUrl', data.videoUrl || '');
@@ -1116,6 +1238,12 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                         {errors.name && <span className="text-red-500 text-xs">{errors.name.message}</span>}
                       </div>
                       
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">Model / Variant (e.g. F6)</label>
+                        <Input {...register('model')} placeholder="Enter model identifier (e.g. F6)" className="h-10 bg-gray-50/50 border-gray-200" />
+                        <p className="text-xs text-gray-500">Separate model field used for SKU generation (keeps model concise).</p>
+                      </div>
+                      
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-gray-700">Category <span className="text-red-500">*</span></label>
@@ -1390,6 +1518,33 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                           <Input type="number" {...register('minStock', { valueAsNumber: true })} className="h-12 bg-gray-50/50 border-gray-200 focus:bg-white" />
                         </div>
                       </div>
+
+                      {/* Visual Barcode Display */}
+                      {watchedValues.sku && (
+                        <div className="bg-gray-50/80 border border-gray-200 rounded-xl p-5 flex flex-col items-center justify-center space-y-4 animate-in fade-in duration-300">
+                          <h4 className="text-sm font-semibold text-gray-700 w-full text-left">Generated Barcode</h4>
+                          <div className="barcode-wrapper bg-white p-4 rounded-xl shadow-sm overflow-hidden flex items-center justify-center">
+                            <Barcode
+                              value={watchedValues.sku}
+                              background="#ffffff"
+                              lineColor="#000000"
+                              margin={10}
+                              width={2}
+                              height={80}
+                              font="Arial"
+                              fontSize={18}
+                              displayValue={true}
+                              textMargin={8}
+                            />
+                          </div>
+                          <div className="w-full flex justify-end">
+                            <Button type="button" onClick={downloadBarcode} variant="outline" className="flex items-center gap-2 border-gray-300 bg-white hover:bg-gray-50">
+                              <ScanLine className="h-4 w-4" />
+                              Download Barcode
+                            </Button>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-5 flex items-center justify-between">
                          <div className="space-y-1">

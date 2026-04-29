@@ -14,7 +14,7 @@ export async function upsertPOSCustomer(name: string, phone: string) {
     return prisma.pOSCustomer.create({ data: { name, phone } });
   } catch (error: any) {
     console.error('upsertPOSCustomer error:', error);
-    throw new Error(error.message || 'Failed to save customer');
+    throw new Error((error as any)?.message || 'Failed to save customer');
   }
 }
 
@@ -82,7 +82,7 @@ export async function createGuarantor(data: {
     return await prisma.guarantor.create({ data });
   } catch (error: any) {
     console.error('createGuarantor error:', error);
-    throw new Error(error.message || 'Failed to create guarantor');
+    throw new Error((error as any)?.message || 'Failed to create guarantor');
   }
 }
 
@@ -121,7 +121,7 @@ export async function recordDuePayment(orderId: string, amount: number, note?: s
         data: {
           dueAmount: newDue,
           paidAmount: newPaid,
-          posPaymentStatus: newStatus as any,
+          posPaymentStatus: newStatus as any
         },
       }),
     ]);
@@ -134,7 +134,7 @@ export async function recordDuePayment(orderId: string, amount: number, note?: s
     revalidatePath('/admin/pos/customers');
   } catch (error: any) {
     console.error('recordDuePayment error:', error);
-    throw new Error(error.message || 'Failed to record payment');
+    throw new Error((error as any)?.message || 'Failed to record payment');
   }
 }
 

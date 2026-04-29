@@ -137,7 +137,7 @@ export async function processReturn(input: ProcessReturnInput) {
     console.error('Process return error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to process return',
+      error: (error as any)?.message || 'Failed to process return',
     };
   }
 }
@@ -152,7 +152,7 @@ export async function approveReturn(returnId: string) {
     revalidatePath('/admin/pos/returns');
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -166,7 +166,7 @@ export async function completeReturn(returnId: string) {
     revalidatePath('/admin/pos/returns');
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
@@ -183,13 +183,13 @@ export async function rejectReturn(returnId: string, note?: string) {
     revalidatePath('/admin/pos/returns');
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message };
   }
 }
 
 export async function getReturns(status?: string) {
   try {
-    const where = status ? { status: status as any } : {};
+    const where = status ? { status: status as any} : {};
     
     return await prisma.return.findMany({
       where,

@@ -39,7 +39,7 @@ const PRODUCT_SELECT = {
 
 type RawImage = { url: string; isThumbnail: boolean; displayOrder: number };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 function mapProduct(raw: any): CategoryProduct {
   const reviews: { rating: number }[] = raw.reviews ?? [];
   const avgRating =

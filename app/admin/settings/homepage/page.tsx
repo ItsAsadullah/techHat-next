@@ -25,6 +25,8 @@ import {
   savePromoBanners,
   getFlashSaleConfig,
   saveFlashSaleConfig,
+  getHomepageHeroGif,
+  saveHomepageHeroGif,
 } from '@/lib/actions/homepage-actions';
 
 // ─── Media upload field ───────────────────────────────────────────────────────
@@ -233,6 +235,7 @@ function EmptySlotCard({ label, onAdd }: { label: string; onAdd: () => void }) {
 export default function HomepageSettingsPage() {
   const [activeTab, setActiveTab] = useState<'banners' | 'sections' | 'promos' | 'flash-sale'>('banners');
   const [banners, setBanners] = useState<HomepageBanner[]>([]);
+  const [heroGifUrl, setHeroGifUrl] = useState('');
   const [sections, setSections] = useState<HomepageSectionConfig[]>([]);
   const [promoBanners, setPromoBanners] = useState<PromoBanner[]>([]);
   const [flashConfig, setFlashConfig] = useState<FlashSaleConfig>({
@@ -245,13 +248,18 @@ export default function HomepageSettingsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [b, s, p, f] = await Promise.all([
-          getAllHomepageBannersAdmin(), getHomepageSections(), getPromoBanners(), getFlashSaleConfig(),
+        const [b, s, p, f, gif] = await Promise.all([
+          getAllHomepageBannersAdmin(),
+          getHomepageSections(),
+          getPromoBanners(),
+          getFlashSaleConfig(),
+          getHomepageHeroGif(),
         ]);
         setBanners(b.length ? b : DEFAULT_BANNERS);
         setSections(s.length ? s : DEFAULT_HOMEPAGE_SECTIONS);
         setPromoBanners(p.length ? p : DEFAULT_PROMO_BANNERS);
         setFlashConfig(f);
+        setHeroGifUrl(gif || '');
       } catch { toast.error('Failed to load homepage settings'); }
       setLoading(false);
     }
@@ -359,6 +367,39 @@ export default function HomepageSettingsPage() {
       {/* ─── BANNERS TAB ─────────────────────────────────────────────── */}
       {activeTab === 'banners' && (
         <div className="space-y-8">
+
+          {/* ── Hero GIF banner (below hero section) ── */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                <Megaphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-800 dark:text-gray-100">Hero GIF Banner Ad</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Shows directly under the hero banners on the homepage.</p>
+                <p className="text-xs text-emerald-500 dark:text-emerald-400 font-medium mt-0.5">Recommended: Wide GIF (e.g. 1200×200px)</p>
+              </div>
+            </div>
+
+            <MediaUploadField
+              label="GIF Image" value={heroGifUrl} onChange={setHeroGifUrl}
+              accept="image/gif" folder="homepage/hero-gif" placeholder="https://... (gif)"
+              hint="Tip: Upload an animated .gif to keep animation. Remove URL to hide section."
+            />
+
+            <div className="flex justify-end pt-1">
+              <button
+                onClick={() => save(() => saveHomepageHeroGif(heroGifUrl), 'Hero GIF saved')}
+                disabled={saving}
+                className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {saving ? 'Saving…' : 'Save Hero GIF'}
+              </button>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-200 dark:border-gray-700" />
 
           {/* ── Section 1: Main Carousel ── */}
           <div className="space-y-3">

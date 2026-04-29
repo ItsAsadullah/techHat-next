@@ -42,6 +42,7 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -69,11 +70,13 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
   }, []);
 
   // Sync active tab with pathname
-  useEffect(() => {
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
     if (pathname === '/') setActiveTab('home');
     else if (pathname?.startsWith('/account')) setActiveTab('account');
     else setActiveTab(null);
-  }, [pathname]);
+  }
 
   // Hide on admin/scanner
   if (pathname?.startsWith('/admin') || pathname?.startsWith('/scanner')) return null;

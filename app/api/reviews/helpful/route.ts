@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { toggleHelpful } from '@/lib/actions/review-actions';
+import { checkIpRateLimit, getClientIp } from '@/lib/utils/fraud';
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const rateCheck = await checkIpRateLimit(ip, 'review_helpful', { windowMinutes: 10, maxRequests: 30 });
+    if (!rateCheck.allowed) {
+      return NextResponse.json({ error: 'Too many votes. Please try again later.' }, { status: 429 });
+    }
+
     const body = await request.json();
     const { reviewId } = body;
 
@@ -11,9 +18,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user IP
-    const forwarded = request.headers.get('x-forwarded-for');
-    const ip = forwarded?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || '127.0.0.1';
-
     const result = await toggleHelpful(reviewId, ip);
 
     if (!result.success) {

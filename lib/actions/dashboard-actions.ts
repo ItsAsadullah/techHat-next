@@ -96,7 +96,8 @@ export async function getDashboardStats() {
       where: {
         isActive: true,
         stock: { gt: 0 },
-        AND: [{ stock: { lte: prisma.product.fields.minStock as any } }],
+        // Use a raw query or bypass strict type checking where Prisma is lagging
+        AND: [{ stock: { lte: prisma.product.fields.minStock as any as number } }],
       },
     }).catch(() =>
       // fallback: count where stock <= 5

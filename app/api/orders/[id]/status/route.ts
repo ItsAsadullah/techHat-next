@@ -9,6 +9,7 @@ import {
   getAllowedTransitions,
   ORDER_STATUS_LABELS,
 } from '@/lib/utils/order-helpers';
+import { requireAdmin } from '@/lib/auth/require-role';
 
 /**
  * PATCH /api/orders/[id]/status
@@ -20,6 +21,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -76,6 +80,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     const { id } = await params;
     const { prisma }  = await import('@/lib/prisma');

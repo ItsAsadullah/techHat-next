@@ -26,6 +26,7 @@ import Image from 'next/image';
 interface Brand {
   id: string;
   name: string;
+  shortCode?: string | null;
   logo?: string | null;
 }
 
@@ -47,6 +48,7 @@ export function BrandCombobox({
   const [brands, setBrands] = React.useState<Brand[]>(initialBrands);
   const [showAddDialog, setShowAddDialog] = React.useState(false);
   const [newBrandName, setNewBrandName] = React.useState('');
+  const [newBrandShortCode, setNewBrandShortCode] = React.useState('');
   const [logoFile, setLogoFile] = React.useState<File | null>(null);
   const [logoPreview, setLogoPreview] = React.useState<string>('');
   const [isCreating, setIsCreating] = React.useState(false);
@@ -89,6 +91,7 @@ export function BrandCombobox({
 
   const resetDialog = () => {
     setNewBrandName('');
+    setNewBrandShortCode('');
     setLogoFile(null);
     setLogoPreview('');
     setShowAddDialog(false);
@@ -104,7 +107,7 @@ export function BrandCombobox({
         logoBase64 = await compressImage(logoFile, 400, 400, 0.85, 0.3);
       }
 
-      const result = await createBrand(newBrandName.trim(), logoBase64);
+      const result = await createBrand(newBrandName.trim(), logoBase64, newBrandShortCode.trim().toUpperCase());
 
       if (result.success && result.data) {
         const newBrand = result.data as Brand;
@@ -285,6 +288,19 @@ export function BrandCombobox({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') { e.preventDefault(); handleCreateBrand(); }
                 }}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="brandShortCode" className="text-sm font-semibold text-gray-700">
+                Short Code <span className="text-gray-400 font-normal text-xs">(SKU prefix, optional)</span>
+              </Label>
+              <Input
+                id="brandShortCode"
+                placeholder="e.g. SAM"
+                value={newBrandShortCode}
+                onChange={(e) => setNewBrandShortCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+                className="h-11 bg-gray-50 border-gray-200 focus:bg-white focus:border-blue-400 focus:ring-blue-400/20 transition-all font-mono uppercase"
               />
             </div>
 

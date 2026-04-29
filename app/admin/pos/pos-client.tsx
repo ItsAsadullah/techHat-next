@@ -36,6 +36,28 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings }: 
   const [dailySummary, setDailySummary] = useState(initialDailySummary);
   const [posCustomers, setPosCustomers] = useState<POSCustomerOption[]>([]);
 
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+      // `isFullscreen` is synced via the `fullscreenchange` listener below.
+    } catch {
+      // Ignore (e.g., request not initiated by a user gesture)
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    }
+  }, []);
+
+  // Keep fullscreen UI state in sync even if user exits with Esc
+  useEffect(() => {
+    const sync = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    sync();
+    document.addEventListener('fullscreenchange', sync);
+    return () => document.removeEventListener('fullscreenchange', sync);
+  }, []);
+
   // Fetch POS customers for the combobox
   useEffect(() => {
     getPOSCustomerList().then((data) => setPosCustomers(data)).catch(() => {});
@@ -318,7 +340,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings }: 
       }
 
       // F11 - Toggle fullscreen
-      if (e.key === 'F11') {
+      if (e.key === 'F11' && !isInput) {
         e.preventDefault();
         toggleFullscreen();
         return;
@@ -327,17 +349,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings }: 
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, clearCart, handleCompleteSale, holdOrder]);
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen().catch(() => {});
-      setIsFullscreen(false);
-    }
-  };
+  }, [cart, clearCart, handleCompleteSale, holdOrder, toggleFullscreen]);
 
   return (
     <div className={cn(
@@ -473,7 +485,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings }: 
         {/* Right: Cart & Checkout */}
         <div className={cn(
           'shrink-0 flex flex-col',
-          mobileView === 'cart' ? 'flex w-full' : 'hidden lg:flex lg:w-105'
+          mobileView === 'cart' ? 'flex w-full lg:flex lg:w-105' : 'hidden lg:flex lg:w-105'
         )}>
           <POSCartPanel
             cart={cart}
