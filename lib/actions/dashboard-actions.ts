@@ -269,6 +269,11 @@ export async function getDashboardStats() {
       createdAt: o.createdAt,
     })),
   };
+
+  // Cache the result
+  cachedStats = result;
+  cacheTimestamp = Date.now();
+  return result;
   } catch (error: any) {
     console.error('getDashboardStats error:', error);
     // Return cached stats even if error (graceful fallback)

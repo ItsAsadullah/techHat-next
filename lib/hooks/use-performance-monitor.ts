@@ -36,16 +36,16 @@ export function usePerformanceMonitor() {
 
         // Get resource timing data for this page
         const resources = performance.getEntriesByType('resource');
-        const pageResources = resources.filter(r => 
+        const pageResources = resources.filter((r: PerformanceEntry) => 
           typeof r.name === 'string' && !r.name.includes('chrome-extension')
-        );
+        ) as PerformanceResourceTiming[];
 
         const metrics: PerformanceMetrics = {
           pathname,
           navigationStart,
           navigationEnd,
           duration,
-          resourceTiming: pageResources as PerformanceResourceTiming[],
+          resourceTiming: pageResources,
         };
 
         // Log to console in a structured format
