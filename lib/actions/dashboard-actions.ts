@@ -131,38 +131,34 @@ export async function getDashboardStats() {
       },
     }),
 
-    // Last 7 days daily grouped sales
-    prisma.order.groupBy({
-      by: ['createdAt'],
-      _sum: { grandTotal: true },
-      _count: { id: true },
-      where: { createdAt: { gte: startOf7DaysAgo } },
-      orderBy: { createdAt: 'asc' },
-    }),
+    // Last 7 days daily grouped sales - optimized with raw SQL
+    prisma.$queryRaw`
+      SELECT 
+        DATE("created_at") as "createdAt",
+        SUM("grand_total")::integer as sales,
+        COUNT(id)::integer as orders
+      FROM "orders"
+      WHERE "created_at" >= ${startOf7DaysAgo}
+      GROUP BY DATE("created_at")
+      ORDER BY DATE("created_at") ASC
+    `,
 
-    // Sales by category (top 6)
-    prisma.orderItem.groupBy({
-      by: ['productId'],
-      _sum: { total: true },
-      _count: { id: true },
-      orderBy: { _sum: { total: 'desc' } },
-      take: 50,
-    }).then(async (items: { productId: string | null; _sum: { total: number | null } }[]) => {
-      const productIds = items.map((i) => i.productId).filter(Boolean) as string[];
-      const products = await prisma.product.findMany({
-        where: { id: { in: productIds } },
-        select: { id: true, category: { select: { name: true } } },
-      });
-      const catMap: Record<string, number> = {};
-      items.forEach((item) => {
-        const prod = products.find((p: { id: string; category: { name: string } | null }) => p.id === item.productId);
-        const catName = prod?.category?.name || 'Other';
-        catMap[catName] = (catMap[catName] || 0) + (item._sum.total || 0);
-      });
-      return Object.entries(catMap)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 6)
-        .map(([name, value]) => ({ name, value: Math.round(value) }));
+    // Sales by category (top 6) - optimized with JOIN instead of N+1
+    prisma.$queryRaw`
+      SELECT 
+        c.name,
+        SUM(oi.total)::integer as value
+      FROM "order_items" oi
+      JOIN "products" p ON oi."product_id" = p.id
+      JOIN "categories" c ON p."category_id" = c.id
+      GROUP BY c.id, c.name
+      ORDER BY value DESC
+      LIMIT 6
+    `.then((rows: any[]) => {
+      return rows.map(row => ({
+        name: row.name,
+        value: row.value || 0,
+      }));
     }),
 
     // Top 5 selling products
@@ -182,12 +178,13 @@ export async function getDashboardStats() {
     const key = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     dailySalesMap[key] = { sales: 0, orders: 0 };
   }
-  last7DaysSales.forEach((row: { createdAt: Date; _sum: { grandTotal: number | null }; _count: { id: number } }) => {
-    const d = new Date(row.createdAt);
+  (last7DaysSales as any[]).forEach((row: { createdAt: Date | string; sales?: number; orders?: number; _sum?: { grandTotal: number | null }; _count?: { id: number } }) => {
+    const d = new Date(typeof row.createdAt === 'string' ? row.createdAt : row.createdAt);
     const key = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     if (dailySalesMap[key]) {
-      dailySalesMap[key].sales += row._sum.grandTotal || 0;
-      dailySalesMap[key].orders += row._count.id || 0;
+      // Handle both raw query and groupBy formats
+      dailySalesMap[key].sales += (row.sales !== undefined ? row.sales : row._sum?.grandTotal) || 0;
+      dailySalesMap[key].orders += (row.orders !== undefined ? row.orders : row._count?.id) || 0;
     }
   });
   const salesChartData = Object.entries(dailySalesMap).map(([name, v]) => ({
