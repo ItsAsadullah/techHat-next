@@ -471,6 +471,8 @@ model Order {
   @@index([trackingToken])
   @@index([customerPhone])
   @@index([status])
+  @@index([createdAt])
+  @@index([isPos, paymentStatus, createdAt])
   @@map("orders")
 }
 
@@ -694,6 +696,7 @@ model Setting {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
 
+  @@index([category])
   @@map("settings")
 }
 

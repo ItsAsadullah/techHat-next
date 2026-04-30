@@ -155,23 +155,41 @@ export async function getDashboardStats() {
       ORDER BY DATE("created_at") ASC
     `,
 
-    // Sales by category (top 6) - optimized with JOIN instead of N+1
-    prisma.$queryRaw`
-      SELECT 
-        c.name,
-        SUM(oi.total)::integer as value
-      FROM "order_items" oi
-      JOIN "products" p ON oi."product_id" = p.id
-      JOIN "categories" c ON p."category_id" = c.id
-      GROUP BY c.id, c.name
-      ORDER BY value DESC
-      LIMIT 6
-    `.then((rows: any[]) => {
-      return rows.map(row => ({
-        name: row.name,
-        value: row.value || 0,
-      }));
-    }),
+    // Sales by category (top 6) - using Prisma include to avoid N+1
+    (async () => {
+      const items = await prisma.orderItem.groupBy({
+        by: ['productId'],
+        _sum: { total: true },
+        orderBy: { _sum: { total: 'desc' } },
+        take: 100, // Get top 100 then group by category
+      });
+      
+      // Fetch product categories in one query
+      const products = await prisma.product.findMany({
+        where: { id: { in: items.map((i) => i.productId).filter(Boolean) as string[] } },
+        select: { id: true, categoryId: true },
+      });
+
+      // Fetch categories in another single query
+      const categories = await prisma.category.findMany({
+        select: { id: true, name: true },
+      });
+
+      // Group by category
+      const catMap: Record<string, number> = {};
+      items.forEach((item) => {
+        const prod = products.find((p) => p.id === item.productId);
+        if (!prod) return;
+        const cat = categories.find((c) => c.id === prod.categoryId);
+        const catName = cat?.name || 'Other';
+        catMap[catName] = (catMap[catName] || 0) + (item._sum.total || 0);
+      });
+
+      return Object.entries(catMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([name, value]) => ({ name, value: Math.round(value) }));
+    })(),
 
     // Top 5 selling products
     prisma.orderItem.groupBy({

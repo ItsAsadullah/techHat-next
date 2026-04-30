@@ -385,6 +385,20 @@ export async function getProduct(id: string) {
 
     if (product) {
       (product as any).images = (product as any).productImages;
+      // Sanitize fields to remove CR/LF from database
+      product.name = sanitizeString(product.name);
+      product.sku = sanitizeString(product.sku);
+      product.barcode = sanitizeString(product.barcode);
+      product.description = sanitizeString(product.description);
+      
+      // Sanitize variant fields
+      if (product.variants) {
+        product.variants.forEach((v: any) => {
+          v.name = sanitizeString(v.name);
+          v.sku = sanitizeString(v.sku);
+          v.upc = sanitizeString(v.upc);
+        });
+      }
     }
 
     return product;
