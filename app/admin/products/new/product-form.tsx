@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import Image from 'next/image';
 import {
   LayoutGrid,
   DollarSign,
@@ -19,8 +21,6 @@ import {
   Info,
   Settings,
   ScanLine,
-  QrCode,
-  Link as LinkIcon,
   X,
   CheckCircle2,
   AlertTriangle,
@@ -71,9 +71,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import CategoryHierarchy from '@/components/admin/category-hierarchy';
 import RichTextEditor from '@/components/ui/rich-text-editor';
-import { useScanner } from '@/lib/hooks/use-scanner';
 import { getSpecTemplates, getSavedTemplates, createSavedTemplate, deleteSavedTemplate } from '@/lib/actions/spec-actions';
-import QRCode from 'qrcode';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -125,11 +123,95 @@ const productSchema = z.object({
 
 type ProductFormValues = z.infer<typeof productSchema>;
 
+interface CategoryOption {
+  id: string;
+  name: string;
+  slug: string;
+  shortCode?: string | null;
+  parentId: string | null;
+  children?: CategoryOption[];
+  subcategories?: CategoryOption[];
+}
+
+interface BrandOption {
+  id: string;
+  name: string;
+  shortCode?: string | null;
+}
+
+interface AttributeOption {
+  id: number;
+  name: string;
+  values?: Array<{ id?: number; value: string; colorCode?: string | null }>;
+}
+
+interface ProductVariantData {
+  id: string;
+  name: string;
+  sku?: string | null;
+  upc?: string | null;
+  costPrice?: number | null;
+  expense?: number | null;
+  price?: number | null;
+  offerPrice?: number | null;
+  stock?: number | null;
+  hasSerial?: boolean | null;
+  serials?: Array<{ serialNumber: string }>;
+  image?: string | null;
+  productImageId?: string | null;
+  attributes?: unknown;
+}
+
+interface ProductImageData {
+  id: string;
+  url: string;
+  isThumbnail: boolean;
+}
+
+interface ProductSpecData {
+  id: string;
+  name: string;
+  value: string;
+}
+
+interface InitialProductData {
+  id?: string;
+  name?: string;
+  categoryId?: string;
+  brandId?: string | null;
+  productVariantType?: string;
+  unit?: string | null;
+  videoUrl?: string | null;
+  warrantyMonths?: number | null;
+  warrantyType?: string | null;
+  isActive?: boolean;
+  isFlashSale?: boolean;
+  description?: string | null;
+  costPrice?: number | null;
+  model?: string | null;
+  variants?: ProductVariantData[];
+  price?: number | null;
+  offerPrice?: number | null;
+  sku?: string | null;
+  barcode?: string | null;
+  stock?: number | null;
+  minStock?: number | null;
+  attributes?: unknown;
+  productSpecs?: ProductSpecData[];
+  images?: ProductImageData[];
+}
+
+interface SavedTemplateData {
+  id: string;
+  name: string;
+  keys: string[];
+}
+
 interface ProductFormProps {
-  categories: any[];
-  brands: any[];
-  attributesList: any[];
-  initialData?: any;
+  categories: CategoryOption[];
+  brands: BrandOption[];
+  attributesList: AttributeOption[];
+  initialData?: InitialProductData;
 }
 
 interface Attribute {
@@ -178,24 +260,27 @@ export default function ProductForm({ categories: initialCategories, brands: ini
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('general');
   const [loading, setLoading] = useState(false);
-  const [categories, setCategories] = useState(initialCategories);
+  const categories = initialCategories;
   const [brands, setBrands] = useState(initialBrands);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   
   // Custom States for dynamic sections
-  const [attributes, setAttributes] = useState<Attribute[]>(initialData?.attributes || []);
+  const [attributes, setAttributes] = useState<Attribute[]>(
+    Array.isArray(initialData?.attributes) ? (initialData.attributes as Attribute[]) : []
+  );
   const [variations, setVariations] = useState<Variation[]>([]);
   const [specs, setSpecs] = useState<Spec[]>([{ id: '1', key: '', value: '' }]);
   const [templateSpecs, setTemplateSpecs] = useState<{id: string, name: string, value: string}[]>([]);
   
   // Custom Templates State
-  const [savedTemplates, setSavedTemplates] = useState<{id: string, name: string, keys: string[]}[]>([]);
+  const [savedTemplates, setSavedTemplates] = useState<SavedTemplateData[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [newTemplateName, setNewTemplateName] = useState('');
   const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
 
   // Gallery State
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const galleryImagesRef = useRef<GalleryImage[]>([]);
   const [isImageSelectorOpen, setIsImageSelectorOpen] = useState(false);
   const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
   const [currentVariationIndex, setCurrentVariationIndex] = useState<number | null>(null);
@@ -207,6 +292,8 @@ export default function ProductForm({ categories: initialCategories, brands: ini
     message: string;
     onConfirm: () => void;
   }>({ open: false, title: '', message: '', onConfirm: () => {} });
+
+  galleryImagesRef.current = galleryImages;
 
   const showConfirm = (title: string, message: string, onConfirm: () => void) => {
     setConfirmDialog({ open: true, title, message, onConfirm });
@@ -239,7 +326,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
       // 2. Variations
       if (initialData.variants && initialData.variants.length > 0) {
           if (initialData.productVariantType === 'variable') {
-              const mappedVariations = initialData.variants.map((v: any) => ({
+            const mappedVariations = initialData.variants.map((v) => ({
                   id: v.id,
                   name: v.name,
                   sku: v.sku || '',
@@ -250,16 +337,16 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                   offerPrice: v.offerPrice || 0,
                   stock: v.stock || 0,
                   hasSerial: v.hasSerial || false,
-                  serials: v.serials?.map((s: any) => s.serialNumber) || [],
+              serials: v.serials?.map((s) => s.serialNumber) || [],
                   image: v.image || '',
                   productImageId: v.productImageId || '',
-                  attributes: v.attributes || {},
+                    attributes: (v.attributes as Record<string, string>) || {},
               }));
               setVariations(mappedVariations);
           } else {
               // Simple product serials
               if (initialData.variants[0].serials) {
-                  setSerials(initialData.variants[0].serials.map((s: any) => s.serialNumber));
+              setSerials(initialData.variants[0].serials.map((s) => s.serialNumber));
               }
           }
       }
@@ -272,7 +359,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
       // No, we should wait for templates to load.
       // Let's just load them all into `specs` for now. 
       if (initialData.productSpecs && initialData.productSpecs.length > 0) {
-          const loadedSpecs = initialData.productSpecs.map((s: any) => ({
+          const loadedSpecs = initialData.productSpecs.map((s) => ({
               id: s.id,
               key: s.name,
               value: s.value
@@ -282,7 +369,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
 
       // 4. Gallery
       if (initialData.images && initialData.images.length > 0) {
-          setGalleryImages(initialData.images.map((img: any) => ({
+          setGalleryImages(initialData.images.map((img) => ({
               id: img.id,
               url: img.url,
               isThumbnail: img.isThumbnail,
@@ -328,9 +415,15 @@ export default function ProductForm({ categories: initialCategories, brands: ini
           return;
       }
 
-      const result = await createSavedTemplate(newTemplateName, keys);
+      const result = await createSavedTemplate(newTemplateName, keys) as {
+        success?: boolean;
+        error?: string;
+        template?: SavedTemplateData;
+      };
       if (result.success) {
-          setSavedTemplates([...savedTemplates, result.template as any]);
+          if (result.template) {
+            setSavedTemplates([...savedTemplates, result.template]);
+          }
           setNewTemplateName('');
           setIsSaveTemplateOpen(false);
           toast.success('টেমপ্লেট সফলভাবে সেভ হয়েছে!');
@@ -359,13 +452,11 @@ export default function ProductForm({ categories: initialCategories, brands: ini
 
   const [serials, setSerials] = useState<string[]>([]);
   const [duplicateSerial, setDuplicateSerial] = useState<string | null>(null);
-  const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  const [scannerMode, setScannerMode] = useState<'serial' | 'barcode' | 'sku'>('barcode');
 
   // We remove local useScanner hook and use the global one implicitly via inputs
   // But we still need to handle specific logic if we want "Scan" buttons to focus the right field
   
-  const focusInput = (name: any) => {
+  const focusInput = (name: string) => {
       const input = document.querySelector(`input[name="${name}"]`) as HTMLInputElement;
       if (input) {
           input.focus();
@@ -387,7 +478,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
       name: initialData?.name || '',
       categoryId: initialData?.categoryId || '',
       brandId: initialData?.brandId || '',
-      productType: initialData?.productVariantType || 'simple',
+      productType: initialData?.productVariantType === 'variable' ? 'variable' : 'simple',
       unit: initialData?.unit || 'pc',
       videoUrl: initialData?.videoUrl || '',
       warrantyMonths: initialData?.warrantyMonths || 0,
@@ -424,7 +515,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
 
   const getCategorySuffix = (categoryId?: string) => {
     if (!categoryId) return 'GEN';
-    const cat = categories.find((c: any) => c.id === categoryId || c.id?.toString() === categoryId?.toString());
+    const cat = categories.find((c) => c.id === categoryId || c.id?.toString() === categoryId?.toString());
     const dbShortCode = (cat?.shortCode || '').toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
     if (dbShortCode) return dbShortCode;
     const name = String(cat?.name || 'GEN').toLowerCase();
@@ -459,7 +550,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
     // Use total cost (purchase price + extra expense) for cipher, change to selling price if desired
     const totalCost = (watchedValues.costPrice || 0) + (watchedValues.expense || 0);
 
-    const selectedBrand = brands.find((b: any) => b.id === brandId || b.id?.toString() === brandId?.toString());
+    const selectedBrand = brands.find((b) => b.id === brandId || b.id?.toString() === brandId?.toString());
     const brandName = selectedBrand?.name || 'GEN';
     const brandShortFromDb = (selectedBrand?.shortCode || '').toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
     const brandShort = brandShortFromDb || brandName.substring(0, 3).toUpperCase();
@@ -511,9 +602,10 @@ export default function ProductForm({ categories: initialCategories, brands: ini
     const svgData = new XMLSerializer().serializeToString(svgElement);
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-    const img = new Image();
+    const img = new window.Image();
     // Use element bbox when available for precise sizing
-    const bbox = (svgElement as any).getBBox ? (svgElement as any).getBBox() : svgElement.getBoundingClientRect();
+    const svgGraphicsElement = svgElement as SVGGraphicsElement;
+    const bbox = typeof svgGraphicsElement.getBBox === 'function' ? svgGraphicsElement.getBBox() : svgElement.getBoundingClientRect();
     const svgWidth = Math.ceil(bbox.width || svgElement.getBoundingClientRect().width || 300);
     const svgHeight = Math.ceil(bbox.height || svgElement.getBoundingClientRect().height || 100);
 
@@ -562,7 +654,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
           if (initialData && initialData.categoryId === watchedValues.categoryId && initialData.productSpecs) {
               const specsSource = initialData.productSpecs;
               mappedTemplates = templates.map(t => {
-                 const found = specsSource.find((s: any) => s.name === t.name);
+                const found = specsSource.find((s) => s.name === t.name);
                  return {
                     id: t.id,
                     name: t.name,
@@ -768,15 +860,15 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                 : img
             )
           );
-        } catch (err: any) {
+        } catch (err: unknown) {
           setGalleryImages(prev =>
             prev.map(img =>
               img.id === placeholder.id
-                ? { ...img, uploading: false, uploadError: err.message || 'Upload failed' }
+                ? { ...img, uploading: false, uploadError: err instanceof Error ? err.message : 'Upload failed' }
                 : img
             )
           );
-          toast.error(`ছবি আপলোড ব্যর্থ: ${err.message || 'Unknown error'}`);
+          toast.error(`ছবি আপলোড ব্যর্থ: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
       })
     );
@@ -868,7 +960,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
   useEffect(() => {
     return () => {
       // Cleanup logic if needed
-      galleryImages.forEach(img => {
+        galleryImagesRef.current.forEach(img => {
           if (img.url.startsWith('blob:')) {
               URL.revokeObjectURL(img.url);
           }
@@ -934,7 +1026,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
     setTemplateSpecs(newTemplates);
   };
 
-  async function onSubmit(data: ProductFormValues, shouldRedirect: boolean | any = true) {
+  async function saveProduct(data: ProductFormValues, shouldRedirect = true) {
     // ── Pre-flight checks (before touching loading state so button stays stable) ──
 
     // 1. Block if any images are still uploading
@@ -973,9 +1065,8 @@ export default function ProductForm({ categories: initialCategories, brands: ini
       const validSpecs = specs.filter(s => s.key.trim() !== '');
       const specsRecord = validSpecs.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {});
       
-      const templateSpecsRecord = templateSpecs.reduce((acc, curr) => {
+        const templateSpecsRecord = templateSpecs.reduce<Record<string, string>>((acc, curr) => {
           if (curr.value.trim() !== '') {
-              // @ts-ignore
               acc[curr.name] = curr.value;
           }
           return acc;
@@ -1016,7 +1107,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
         formData.append('variations', JSON.stringify([defaultVariation]));
       } else {
         // Variable product — send all variations with their serials
-        const variationsData = variations.map((v, index) => {
+        const variationsData = variations.map((v) => {
            // Auto-generate SKU if empty
            let finalSku = v.sku;
            if (!finalSku || finalSku.trim() === '') {
@@ -1053,12 +1144,15 @@ export default function ProductForm({ categories: initialCategories, brands: ini
       }));
       formData.append('gallery_metadata', JSON.stringify(galleryMetadata));
 
-      let result;
-      if (initialData && initialData.id) {
-        result = await updateProduct(initialData.id, formData);
-      } else {
-        result = await createProduct(formData);
-      }
+      const productId = initialData?.id;
+      const result = (productId
+        ? await updateProduct(productId, formData)
+        : await createProduct(formData)) as {
+        success?: boolean;
+        error?: string;
+        product?: { id: string };
+        duplicateSerial?: string;
+      };
 
       if (result.success) {
         setDuplicateSerial(null);
@@ -1071,24 +1165,24 @@ export default function ProductForm({ categories: initialCategories, brands: ini
             // Draft save behavior - stay on page
              toast.success('ড্রাফট সেভ হয়েছে! আপনি এডিট চালিয়ে যেতে পারেন।');
              // If new product was created as draft, switch to edit mode URL to keep working
-             if (!initialData && (result as any).product?.id) {
-                 router.replace(`/admin/products/edit/${(result as any).product.id}`);
+             if (!initialData && result.product?.id) {
+                 router.replace(`/admin/products/edit/${result.product.id}`);
              }
         }
       } else {
         console.error('Failed to save product:', result.error);
         
         // If there's a duplicate serial, highlight it and switch to inventory tab
-        if ((result as any).duplicateSerial) {
-          setDuplicateSerial((result as any).duplicateSerial);
+        if (result.duplicateSerial) {
+          setDuplicateSerial(result.duplicateSerial);
           setActiveTab('inventory');
         }
         
         toast.error(`❌ ${result.error || 'অজানা এরর ঘটেছে'}`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Submit error:', error);
-      toast.error(`একটি এরর হয়েছে: ${error.message || error}`);
+      toast.error(`একটি এরর হয়েছে: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
     }
@@ -1096,7 +1190,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
 
   // Handles validation errors from React Hook Form — shows the first error
   // as a toast and switches to the tab that contains the failing field.
-  const handleValidationError = (validationErrors: Record<string, any>) => {
+  const handleValidationError = (validationErrors: Record<string, { message?: string }>) => {
     const firstErrorField = Object.keys(validationErrors)[0] as string;
     const firstError = validationErrors[firstErrorField];
     toast.error(`❌ ${firstError?.message || 'ফর্মে কিছু তথ্য সঠিক নয়'}`);
@@ -1112,7 +1206,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
     // Force isActive to false for draft
     const draftData = { ...data, isActive: false };
     // Pass false to prevent redirect
-    await onSubmit(draftData, false);
+    await saveProduct(draftData, false);
   }, handleValidationError);
 
   const handlePreview = () => {
@@ -1121,7 +1215,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
 
   return (
     <form 
-      onSubmit={handleSubmit(onSubmit, handleValidationError)} 
+      onSubmit={handleSubmit((data) => saveProduct(data, true), handleValidationError)} 
       onKeyDown={(e) => {
         // Prevent accidental form submission on Enter, but allow it in Textarea and ContentEditable (RichText)
         if (
@@ -1232,7 +1326,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                         <Textarea 
                           {...register('name')} 
                           placeholder="e.g. Wireless Noise Cancelling Headphones" 
-                          className="min-h-[3rem] text-lg bg-gray-50/50 border-gray-200 focus:bg-white transition-all resize-none py-3" 
+                          className="min-h-12 text-lg bg-gray-50/50 border-gray-200 focus:bg-white transition-all resize-none py-3"
                           rows={2}
                         />
                         {errors.name && <span className="text-red-500 text-xs">{errors.name.message}</span>}
@@ -1423,7 +1517,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                   </div>
 
                   {/* Profit Visualizer */}
-                  <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800/60 dark:to-gray-900 rounded-2xl border border-gray-200 p-6 shadow-sm">
+                  <div className="bg-linear-to-br from-gray-50 to-white dark:from-gray-800/60 dark:to-gray-900 rounded-2xl border border-gray-200 p-6 shadow-sm">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-gray-200">
                       <div className="pb-4 md:pb-0">
                         <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Total Cost</div>
@@ -1571,7 +1665,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                               {serials.filter(s => s.trim().length > 0).length} entered
                             </span>
                           </div>
-                          <div className="max-h-[400px] overflow-y-auto p-4 space-y-3 bg-white">
+                          <div className="max-h-100 overflow-y-auto p-4 space-y-3 bg-white">
                             {serials.map((serial, index) => {
                               const isDuplicate = duplicateSerial && serial.trim() === duplicateSerial;
                               return (
@@ -1654,7 +1748,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
 
             {/* Tab 4: Attributes */}
             <TabsContent forceMount value="attributes" className="m-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300 data-[state=inactive]:hidden">
-              <Card className="border-0 shadow-md ring-1 ring-gray-100 bg-white overflow-hidden rounded-2xl min-h-[500px]">
+              <Card className="border-0 shadow-md ring-1 ring-gray-100 bg-white overflow-hidden rounded-2xl min-h-125">
                 <CardHeader className="border-b border-gray-50 bg-gray-50/50 pb-4">
                   <div className="flex justify-between items-center">
                     <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
@@ -1727,13 +1821,13 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                    </Button>
                                  </PopoverTrigger>
-                                 <PopoverContent className="w-[300px] p-0" align="start">
+                                 <PopoverContent className="w-75 p-0" align="start">
                                    <Command>
                                      <CommandInput placeholder="Search values..." />
                                      <CommandList>
                                        <CommandEmpty>No value found.</CommandEmpty>
                                        <CommandGroup>
-                                          {attr.attributeId && attributesList?.find(a => a.id === attr.attributeId)?.values.map((val: any) => {
+                                           {attr.attributeId && attributesList?.find(a => a.id === attr.attributeId)?.values?.map((val) => {
                                              const isSelected = attr.values.includes(val.value);
                                              return (
                                                <CommandItem
@@ -1743,7 +1837,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                                                  onSelect={() => {
                                                    handleValueSelect(index, val.value);
                                                  }}
-                                                 className="cursor-pointer data-[disabled]:pointer-events-auto data-[disabled]:opacity-100"
+                                                 className="cursor-pointer data-disabled:pointer-events-auto data-disabled:opacity-100"
                                                >
                                                  <div className={cn(
                                                    "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
@@ -1822,17 +1916,17 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                                <Table>
                                  <TableHeader className="bg-gray-50/80">
                                    <TableRow>
-                                     <TableHead className="font-semibold w-[80px]">Image</TableHead>
-                                    <TableHead className="font-semibold min-w-[140px]">Variant</TableHead>
-                                    <TableHead className="font-semibold min-w-[120px]">SKU</TableHead>
-                                     <TableHead className="font-semibold min-w-[120px]">UPC</TableHead>
-                                     <TableHead className="font-semibold min-w-[100px]">Cost</TableHead>
-                                     <TableHead className="font-semibold min-w-[100px]">Expense</TableHead>
-                                     <TableHead className="font-semibold min-w-[100px]">Price</TableHead>
-                                     <TableHead className="font-semibold min-w-[100px]">Offer</TableHead>
-                                     <TableHead className="font-semibold min-w-[90px]">Stock</TableHead>
-                                     <TableHead className="font-semibold min-w-[70px] text-center">Serial</TableHead>
-                                     <TableHead className="w-[50px]"></TableHead>
+                                     <TableHead className="font-semibold w-20">Image</TableHead>
+                                    <TableHead className="font-semibold min-w-35">Variant</TableHead>
+                                    <TableHead className="font-semibold min-w-30">SKU</TableHead>
+                                     <TableHead className="font-semibold min-w-30">UPC</TableHead>
+                                     <TableHead className="font-semibold min-w-25">Cost</TableHead>
+                                     <TableHead className="font-semibold min-w-25">Expense</TableHead>
+                                     <TableHead className="font-semibold min-w-25">Price</TableHead>
+                                     <TableHead className="font-semibold min-w-25">Offer</TableHead>
+                                     <TableHead className="font-semibold min-w-22.5">Stock</TableHead>
+                                     <TableHead className="font-semibold min-w-17.5 text-center">Serial</TableHead>
+                                     <TableHead className="w-12.5"></TableHead>
                                    </TableRow>
                                  </TableHeader>
                                  <TableBody>
@@ -1846,8 +1940,8 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                                                   setIsImageSelectorOpen(true);
                                               }}
                                           >
-                                              {variant.image ? (
-                                                  <img src={variant.image} className="w-full h-full object-cover" />
+                                                {variant.image ? (
+                                                  <Image src={variant.image} alt={variant.name} fill sizes="40px" className="object-cover" />
                                               ) : (
                                                   <ImageIcon className="h-4 w-4 text-gray-400" />
                                               )}
@@ -1856,10 +1950,10 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                                         </TableCell>
                                         <TableCell className="font-medium text-purple-700 whitespace-nowrap">{variant.name}</TableCell>
                                         <TableCell>
-                                         <Input className="h-9 text-sm bg-white border-gray-200 min-w-[100px]" placeholder="SKU" value={variant.sku} onChange={(e) => { const v = [...variations]; v[idx].sku = e.target.value; setVariations(v); }} />
+                                         <Input className="h-9 text-sm bg-white border-gray-200 min-w-25" placeholder="SKU" value={variant.sku} onChange={(e) => { const v = [...variations]; v[idx].sku = e.target.value; setVariations(v); }} />
                                        </TableCell>
                                        <TableCell>
-                                         <Input className="h-9 text-sm bg-white border-gray-200 min-w-[100px]" placeholder="UPC" value={variant.upc} onChange={(e) => { const v = [...variations]; v[idx].upc = e.target.value; setVariations(v); }} />
+                                         <Input className="h-9 text-sm bg-white border-gray-200 min-w-25" placeholder="UPC" value={variant.upc} onChange={(e) => { const v = [...variations]; v[idx].upc = e.target.value; setVariations(v); }} />
                                        </TableCell>
                                        <TableCell>
                                          <div className="relative">
@@ -1962,7 +2056,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                                        <Plus className="h-3 w-3 mr-1" /> Add
                                      </Button>
                                    </div>
-                                   <div className="p-4 space-y-2 max-h-[250px] overflow-y-auto">
+                                   <div className="p-4 space-y-2 max-h-62.5 overflow-y-auto">
                                      {variant.serials.map((serial, sIdx) => {
                                        const isDuplicate = duplicateSerial && serial.trim() === duplicateSerial;
                                        return (
@@ -2009,7 +2103,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
 
             {/* Tab 5: Specifications */}
             <TabsContent forceMount value="specifications" className="m-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300 data-[state=inactive]:hidden">
-              <Card className="border-0 shadow-md ring-1 ring-gray-100 bg-white overflow-hidden rounded-2xl min-h-[500px]">
+              <Card className="border-0 shadow-md ring-1 ring-gray-100 bg-white overflow-hidden rounded-2xl min-h-125">
                 <CardHeader className="border-b border-gray-50 bg-gray-50/50 pb-4">
                   <div className="flex justify-between items-center">
                     <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
@@ -2160,10 +2254,10 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                         <Table>
                           <TableHeader className="bg-gray-50/80">
                             <TableRow>
-                              <TableHead className="w-[40px]"></TableHead>
+                              <TableHead className="w-10"></TableHead>
                               <TableHead className="w-1/3 pl-4">Specification Name</TableHead>
                               <TableHead className="w-1/2">Detail Value</TableHead>
-                              <TableHead className="w-[50px]"></TableHead>
+                              <TableHead className="w-12.5"></TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -2202,7 +2296,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                                           <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
                                         </Button>
                                       </PopoverTrigger>
-                                      <PopoverContent className="w-[280px] p-0" align="start">
+                                      <PopoverContent className="w-70 p-0" align="start">
                                         <Command>
                                           <CommandInput 
                                             placeholder="Search or type new..." 
@@ -2288,7 +2382,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
 
             {/* Tab 6: Media */}
             <TabsContent forceMount value="media" className="m-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300 data-[state=inactive]:hidden">
-              <Card className="border-0 shadow-md ring-1 ring-gray-100 bg-white overflow-hidden rounded-2xl min-h-[500px]">
+              <Card className="border-0 shadow-md ring-1 ring-gray-100 bg-white overflow-hidden rounded-2xl min-h-125">
                 <CardHeader className="border-b border-gray-50 bg-gray-50/50 pb-4">
                   <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     <ImageIcon className="h-5 w-5 text-pink-500" /> Media Gallery
@@ -2335,9 +2429,9 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                           </div>
 
                           {/* Image List */}
-                          {galleryImages.map((img, index) => (
+                            {galleryImages.map((img) => (
                               <div key={img.id} className={`relative aspect-square rounded-xl overflow-hidden border group ${img.uploadError ? 'ring-2 ring-red-400 border-red-300' : img.isThumbnail ? 'ring-2 ring-blue-500 border-blue-500' : 'border-gray-200'}`}>
-                                  <img src={img.url} className={`w-full h-full object-cover ${img.uploading ? 'opacity-40' : ''}`} />
+                                <Image src={img.url} alt="Gallery image" fill sizes="200px" className={`object-cover ${img.uploading ? 'opacity-40' : ''}`} />
 
                                   {/* Uploading Overlay */}
                                   {img.uploading && (
@@ -2433,7 +2527,7 @@ export default function ProductForm({ categories: initialCategories, brands: ini
                             className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
                             onClick={() => currentVariationIndex !== null && selectImageForVariation(currentVariationIndex, img.id)}
                         >
-                            <img src={img.url} className="w-full h-full object-cover" />
+                            <Image src={img.url} alt="Gallery image" fill sizes="240px" className="object-cover" />
                             {img.isThumbnail && (
                                 <div className="absolute top-1 right-1">
                                     <Star className="h-4 w-4 text-yellow-400 fill-yellow-400 drop-shadow-sm" />
@@ -2454,15 +2548,15 @@ export default function ProductForm({ categories: initialCategories, brands: ini
         {/* Product Preview Modal */}
         {isPreviewOpen && (() => {
           // Flatten category hierarchy to find name
-          const findCatName = (cats: any[], id: string): string | undefined => {
+          const findCatName = (cats: CategoryOption[], id: string): string | undefined => {
             for (const c of cats) {
               if (c.id === id || c.id?.toString() === id) return c.name;
               if (c.children?.length) { const r = findCatName(c.children, id); if (r) return r; }
               if (c.subcategories?.length) { const r = findCatName(c.subcategories, id); if (r) return r; }
             }
           };
-          const brandName  = brands.find((b: any) => b.id === watchedValues.brandId || b.id?.toString() === watchedValues.brandId)?.name;
-          const catName    = findCatName(categories as any[], watchedValues.categoryId);
+          const brandName  = brands.find((b) => b.id === watchedValues.brandId || b.id?.toString() === watchedValues.brandId)?.name;
+          const catName    = findCatName(categories, watchedValues.categoryId);
           return (
             <ProductPreviewModal
               open={isPreviewOpen}
