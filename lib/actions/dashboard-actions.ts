@@ -2,7 +2,19 @@
 
 import { prisma } from '@/lib/prisma';
 
+// Simple in-memory cache for dashboard stats (expires every 60 seconds)
+let cachedStats: any = null;
+let cacheTimestamp = 0;
+const CACHE_DURATION_MS = 60 * 1000; // 60 seconds
+
 export async function getDashboardStats() {
+  const now = Date.now();
+  
+  // Return cached stats if still valid
+  if (cachedStats && (now - cacheTimestamp < CACHE_DURATION_MS)) {
+    return cachedStats;
+  }
+
   try {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -198,7 +210,7 @@ export async function getDashboardStats() {
   const revenueGrowth =
     lastMonthRev === 0 ? 100 : Math.round(((thisMonthRev - lastMonthRev) / lastMonthRev) * 100);
 
-  return {
+  const result = {
     stats: {
       totalRevenue: totalRevenue._sum.grandTotal || 0,
       thisMonthRevenue: thisMonthRev,
@@ -241,6 +253,9 @@ export async function getDashboardStats() {
   };
   } catch (error: any) {
     console.error('getDashboardStats error:', error);
+    // Return cached stats even if error (graceful fallback)
+    if (cachedStats) return cachedStats;
+    
     return {
       stats: { totalRevenue: 0, thisMonthRevenue: 0, lastMonthRevenue: 0, revenueGrowth: 0, todayRevenue: 0, totalOrders: 0, thisMonthOrders: 0, pendingOrders: 0, todayOrders: 0, totalPOSRevenue: 0, totalPOSDue: 0, totalProducts: 0, lowStockProducts: 0, outOfStockProducts: 0, pendingReviews: 0, totalReviews: 0 },
       salesChartData: [],

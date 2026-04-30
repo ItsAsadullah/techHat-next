@@ -9,13 +9,13 @@ function makePrismaClient() {
     const url = new URL(databaseUrl)
 
     if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PHASE) {
-      url.searchParams.set('connection_limit', '5')
+      url.searchParams.set('connection_limit', '20')  // Increased from 5 for better concurrency
     } else {
-      url.searchParams.set('connection_limit', '3')
+      url.searchParams.set('connection_limit', '15')  // Increased from 3 for dev testing
     }
 
     if (!url.searchParams.has('pool_timeout')) {
-        url.searchParams.set('pool_timeout', '30');
+        url.searchParams.set('pool_timeout', '20');  // Reduced from 30 for faster timeout
     }
 
     if (!url.searchParams.has('pgbouncer')) {
