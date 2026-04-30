@@ -5,19 +5,34 @@ import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 
+// Helper to sanitize strings coming from forms (remove CR/LF and trim)
+function sanitizeString(input?: string | null) {
+  if (input === null || input === undefined) return input as any;
+  try {
+    return String(input).replace(/[\r\n]+/g, ' ').trim();
+  } catch (e) {
+    return String(input);
+  }
+}
+
 export async function createProduct(formData: FormData) {
   try {
-    const name = formData.get('name') as string;
+    const nameRaw = formData.get('name') as string;
     const categoryId = formData.get('categoryId') as string;
     const brandId = formData.get('brandId') as string;
     const productType = formData.get('productType') as string;
-    const description = formData.get('description') as string;
+    const descriptionRaw = formData.get('description') as string;
     const isActive = formData.get('isActive') === 'true';
     const isFlashSale = formData.get('isFlashSale') === 'true';
     const unit = formData.get('unit') as string;
     const warrantyMonths = parseInt(formData.get('warrantyMonths') as string) || 0;
     const videoUrl = formData.get('videoUrl') as string;
-    const sku = formData.get('sku') as string;
+    const skuRaw = formData.get('sku') as string;
+
+    // Sanitize free-text fields
+    const name = sanitizeString(nameRaw) || '';
+    const description = sanitizeString(descriptionRaw) || '';
+    const sku = sanitizeString(skuRaw) || '';
 
     // JSON Fields
     const rawSpecs = formData.get('specifications') as string;
@@ -37,6 +52,14 @@ export async function createProduct(formData: FormData) {
       .replace(/(^-|-$)+/g, '') + '-' + Date.now();
 
     // Compute product-level derived values from variations
+    // Sanitize variation fields
+    for (const v of variations) {
+      if (v.name) v.name = sanitizeString(v.name);
+      if (v.sku) v.sku = sanitizeString(v.sku);
+      if (v.upc) v.upc = sanitizeString(v.upc);
+      if (v.serials && Array.isArray(v.serials)) v.serials = v.serials.map((s: string) => s && sanitizeString(s));
+    }
+
     const firstVariation = variations[0] || {};
     const totalStock = variations.reduce((sum: number, v: any) => {
       if (v.hasSerial && v.serials) {
@@ -44,7 +67,7 @@ export async function createProduct(formData: FormData) {
       }
       return sum + (parseInt(v.stock) || 0);
     }, 0);
-    const productBarcode = firstVariation.upc || null;
+    const productBarcode = firstVariation.upc ? sanitizeString(firstVariation.upc) : null;
     // Upload all images in parallel instead of sequentially
     const uploadedImages = (await Promise.all(
         galleryMetadata.map(async (meta: any) => {
@@ -217,11 +240,11 @@ export async function createProduct(formData: FormData) {
             }
 
             const newVariant = await tx.variant.create({
-                data: {
-                    productId: newProduct.id,
-                    name: v.name || 'Default',
-                    sku: v.sku || undefined,
-                    upc: v.upc || undefined,
+                    data: {
+                      productId: newProduct.id,
+                      name: v.name || 'Default',
+                      sku: v.sku || undefined,
+                      upc: v.upc || undefined,
                     price: parseFloat(v.price) || 0,
                     costPrice: parseFloat(v.cost) || 0,
                     expense: parseFloat(v.expense) || 0,
@@ -373,17 +396,22 @@ export async function getProduct(id: string) {
 
 export async function updateProduct(id: string, formData: FormData) {
   try {
-    const name = formData.get('name') as string;
+    const nameRaw = formData.get('name') as string;
     const categoryId = formData.get('categoryId') as string;
     const brandId = formData.get('brandId') as string;
     const productType = formData.get('productType') as string;
-    const description = formData.get('description') as string;
+    const descriptionRaw = formData.get('description') as string;
     const isActive = formData.get('isActive') === 'true';
     const isFlashSale = formData.get('isFlashSale') === 'true';
     const unit = formData.get('unit') as string;
     const warrantyMonths = parseInt(formData.get('warrantyMonths') as string) || 0;
     const videoUrl = formData.get('videoUrl') as string;
-    const sku = formData.get('sku') as string;
+    const skuRaw = formData.get('sku') as string;
+
+    // Sanitize free-text fields
+    const name = sanitizeString(nameRaw) || '';
+    const description = sanitizeString(descriptionRaw) || '';
+    const sku = sanitizeString(skuRaw) || '';
 
     // JSON Fields
     const rawSpecs = formData.get('specifications') as string;

@@ -4,6 +4,16 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { PaymentMethod } from '@prisma/client';
 
+// Helper to sanitize scanner input (remove CR/LF and trim)
+function sanitizeInput(input?: string | null) {
+  if (input === null || input === undefined) return input as any;
+  try {
+    return String(input).replace(/[\r\n]+/g, '').trim();
+  } catch (e) {
+    return String(input);
+  }
+}
+
 // Internal helpers (plain async functions, NOT server actions) used within completeSale
 async function _upsertCustomerInternal(name: string, phone: string, tx?: any) {
   const client = tx || prisma;
@@ -54,11 +64,12 @@ export async function searchPOSProducts(query: string, categoryId?: string): Pro
     };
 
     if (query && query.trim().length > 0) {
+      const q = sanitizeInput(query);
       where.OR = [
-        { name: { contains: query, mode: 'insensitive' } },
-        { sku: { contains: query, mode: 'insensitive' } },
-        { barcode: { contains: query, mode: 'insensitive' } },
-        { variants: { some: { sku: { contains: query, mode: 'insensitive' } } } },
+        { name: { contains: q, mode: 'insensitive' } },
+        { sku: { contains: q, mode: 'insensitive' } },
+        { barcode: { contains: q, mode: 'insensitive' } },
+        { variants: { some: { sku: { contains: q, mode: 'insensitive' } } } },
       ];
     }
 
@@ -118,13 +129,14 @@ export async function searchPOSProducts(query: string, categoryId?: string): Pro
 
 export async function findProductByBarcode(barcode: string): Promise<POSProduct | null> {
   try {
+    const b = sanitizeInput(barcode);
     const product = await prisma.product.findFirst({
       where: {
         isActive: true,
         OR: [
-          { barcode },
-          { sku: barcode },
-          { variants: { some: { sku: barcode } } },
+          { barcode: b },
+          { sku: b },
+          { variants: { some: { sku: b } } },
         ],
       },
       select: {
