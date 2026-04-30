@@ -78,6 +78,7 @@ export function usePOSCart() {
         name: product.name,
         variantName: variant?.name,
         price: effectivePrice,
+        originalPrice: effectivePrice,
         quantity: 1,
         image: variant?.image || product.image,
         maxStock,
@@ -167,6 +168,26 @@ export function usePOSCart() {
     setCart((prev) => ({ ...prev, paidAmount: amount }));
   }, []);
 
+  const setItemPrice = useCallback((index: number, price: number) => {
+    setCart((prev) => {
+      const item = prev.items[index];
+      if (!item) return prev;
+      const newItems = [...prev.items];
+      newItems[index] = { ...item, price };
+      return { ...prev, items: newItems };
+    });
+  }, []);
+
+  const resetItemPrice = useCallback((index: number) => {
+    setCart((prev) => {
+      const item = prev.items[index];
+      if (!item) return prev;
+      const newItems = [...prev.items];
+      newItems[index] = { ...item, price: item.originalPrice };
+      return { ...prev, items: newItems };
+    });
+  }, []);
+
   const setGuarantorInfo = useCallback((name: string, phone: string, relation: string, address: string) => {
     setCart((prev) => ({ ...prev, guarantorName: name, guarantorPhone: phone, guarantorRelation: relation, guarantorAddress: address }));
   }, []);
@@ -198,6 +219,8 @@ export function usePOSCart() {
     setNote,
     setPaidAmount,
     setGuarantorInfo,
+    setItemPrice,
+    resetItemPrice,
     subtotal,
     discountAmount,
     taxAmount,

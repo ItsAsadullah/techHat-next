@@ -54,6 +54,8 @@ interface POSCartPanelProps {
   onSetNote: (note: string) => void;
   onSetPaidAmount: (amount: number | null) => void;
   onSetGuarantorInfo: (name: string, phone: string, relation: string, address: string) => void;
+  onSetItemPrice?: (index: number, price: number) => void;
+  onResetItemPrice?: (index: number) => void;
   onCompleteSale: () => void;
   isProcessing: boolean;
   customers: POSCustomerOption[];
@@ -89,6 +91,8 @@ export function POSCartPanel({
   onSetNote,
   onSetPaidAmount,
   onSetGuarantorInfo,
+  onSetItemPrice,
+  onResetItemPrice,
   onCompleteSale,
   isProcessing,
   customers,
@@ -105,6 +109,8 @@ export function POSCartPanel({
   const [guarantorPhone, setGuarantorPhone] = useState('');
   const [guarantorRelation, setGuarantorRelation] = useState('');
   const [guarantorAddress, setGuarantorAddress] = useState('');
+  const [editingPriceIndex, setEditingPriceIndex] = useState<number | null>(null);
+  const [priceInput, setPriceInput] = useState('');
   
   // State for delete confirmation
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
@@ -235,6 +241,15 @@ export function POSCartPanel({
                 key={`${item.productId}-${item.variantId || ''}`}
                 className="px-4 py-3 flex items-start gap-3 hover:bg-gray-50/50 transition-colors group"
               >
+                {/* Remove */}
+                <button
+                  onClick={() => setItemToDelete(index)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:text-white hover:bg-red-500 bg-red-50 transition-colors shrink-0 mt-1 active:scale-90"
+                  title="Remove Item"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+
                 {/* Image */}
                 <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
                   {item.image ? (
@@ -247,19 +262,80 @@ export function POSCartPanel({
                 </div>
 
                 {/* Details */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 truncate leading-tight">
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  <p className="text-sm font-bold text-gray-900 truncate leading-tight min-h-[1.1rem]">
                     {item.name}
                   </p>
                   {item.variantName && (
                     <p className="text-[11px] text-gray-500">{item.variantName}</p>
                   )}
-                  <p className="text-xs font-semibold text-blue-600 mt-0.5">
-                    ৳{item.price.toLocaleString()} × {item.quantity}
-                  </p>
 
-                  {/* Quantity Controls */}
-                  <div className="flex items-center gap-2 mt-1.5">
+                  {/* Price (editable) and quantity summary */}
+                  <div className="flex items-center gap-3 min-w-0 whitespace-nowrap flex-wrap sm:flex-nowrap">
+                    {editingPriceIndex === index ? (
+                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap min-w-0">
+                        <Input
+                          type="number"
+                          value={priceInput}
+                          onChange={(e) => setPriceInput(e.target.value)}
+                          className="h-8 w-24 text-sm shrink-0"
+                        />
+                        <button
+                          onClick={() => {
+                            const val = parseFloat(priceInput) || 0;
+                            if (val > 0 && typeof onSetItemPrice === 'function') {
+                              onSetItemPrice(index, val);
+                              setEditingPriceIndex(null);
+                            }
+                          }}
+                          className="px-2 py-1 bg-green-600 text-white rounded-lg text-xs font-semibold shrink-0"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (typeof onResetItemPrice === 'function') {
+                              onResetItemPrice(index);
+                              setPriceInput(String(item.originalPrice));
+                            }
+                          }}
+                          className="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-semibold shrink-0"
+                        >
+                          Reset
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingPriceIndex(null);
+                            setPriceInput('');
+                          }}
+                          className="px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-semibold shrink-0"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-xs font-semibold text-blue-600 shrink-0 leading-none">
+                          ৳{item.price.toLocaleString()}
+                        </span>
+                        <span className="text-xs text-gray-500 shrink-0 leading-none">× {item.quantity}</span>
+                        <button
+                          onClick={() => {
+                            setEditingPriceIndex(index);
+                            setPriceInput(String(item.price));
+                          }}
+                          className="text-xs text-gray-400 px-2 py-0.5 rounded hover:bg-gray-50 shrink-0 leading-none"
+                        >
+                          Edit
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Quantity Controls */}
+                <div className="flex items-center gap-2 shrink-0 self-start mt-1">
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => onUpdateQuantity(index, item.quantity - 1)}
                       className="w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors active:scale-90"
@@ -276,19 +352,12 @@ export function POSCartPanel({
                     >
                       <Plus className="h-3.5 w-3.5" />
                     </button>
-                    <button
-                      onClick={() => setItemToDelete(index)}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:text-white hover:bg-red-500 bg-red-50 transition-colors ml-auto active:scale-90"
-                      title="Remove Item"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
                   </div>
                 </div>
 
                 {/* Line Total */}
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-black text-gray-900">
+                <div className="text-right shrink-0 self-start mt-1 ml-auto">
+                  <p className="text-sm font-black text-gray-900 leading-none">
                     ৳{(item.price * item.quantity).toLocaleString()}
                   </p>
                 </div>
@@ -638,7 +707,7 @@ export function POSCartPanel({
                 cart.items.length === 0 ||
                 !canCompleteSale
               }
-              className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-black text-lg shadow-xl shadow-blue-200 transition-all disabled:opacity-50 disabled:shadow-none active:scale-[0.98]"
+              className="w-full h-14 bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-black text-lg shadow-xl shadow-blue-200 transition-all disabled:opacity-50 disabled:shadow-none active:scale-[0.98]"
             >
               {isProcessing ? (
                 <span className="flex items-center gap-2">

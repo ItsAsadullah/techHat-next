@@ -88,6 +88,8 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings }: 
     setNote,
     setPaidAmount,
     setGuarantorInfo,
+    setItemPrice,
+    resetItemPrice,
     subtotal,
     discountAmount,
     taxAmount,
@@ -509,6 +511,8 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings }: 
             onSetNote={setNote}
             onSetPaidAmount={setPaidAmount}
             onSetGuarantorInfo={setGuarantorInfo}
+            onSetItemPrice={setItemPrice}
+            onResetItemPrice={resetItemPrice}
             onCompleteSale={handleCompleteSale}
             isProcessing={isProcessing}
             customers={posCustomers}
