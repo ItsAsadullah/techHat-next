@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import Image from 'next/image';
 import type { Metadata } from 'next';
 import { getHomepageData } from '@/lib/actions/homepage-actions';
 import HeroBanner from '@/components/homepage/HeroBanner';
@@ -174,11 +175,15 @@ export default async function HomePage() {
 
                 {homepageData.heroGifUrl ? (
                   <div className="mt-4 rounded-xl overflow-hidden border border-gray-200 bg-white">
-                    <img
+                    <Image
                       src={homepageData.heroGifUrl}
                       alt="Promotional banner"
-                      className="w-full h-auto"
+                      width={800}
+                      height={300}
+                      unoptimized
+                      priority={false}
                       loading="lazy"
+                      className="w-full h-auto"
                     />
                   </div>
                 ) : null}

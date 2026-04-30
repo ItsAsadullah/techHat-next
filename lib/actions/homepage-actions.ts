@@ -183,7 +183,11 @@ const PRODUCT_SELECT = {
   createdAt: true,
   category: { select: { name: true, slug: true } },
   brand: { select: { name: true } },
-  productImages: { select: { url: true }, orderBy: { displayOrder: 'asc' } },
+  productImages: { 
+    select: { url: true }, 
+    orderBy: { displayOrder: 'asc' },
+    take: 1, // Only fetch thumbnail image
+  },
   _count: { select: { reviews: { where: { status: 'APPROVED' } }, orderItems: true } },
 } as const;
 

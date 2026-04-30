@@ -25,14 +25,30 @@ async function _getProductBySlug(slug: string) {
       brand: true,
       variants: {
         include: {
-          productImage: true,
-        }
+          productImage: {
+            select: { id: true, url: true }
+          }
+        },
+        take: 50,
       },
-      specs: true,
+      specs: {
+        take: 5, // Initially fetch only first 5 specs
+      },
       reviews: {
         where: { status: 'APPROVED' },
-        include: {
-          images: true,
+        select: {
+          id: true,
+          name: true,
+          rating: true,
+          reviewText: true,
+          status: true,
+          isVerified: true,
+          helpfulCount: true,
+          createdAt: true,
+          images: {
+            select: { id: true, imageUrl: true },
+            take: 2, // Limit review images to 2
+          },
           user: {
             select: {
               fullName: true,
@@ -45,9 +61,10 @@ async function _getProductBySlug(slug: string) {
           { helpfulCount: 'desc' },
           { createdAt: 'desc' },
         ],
-        take: 10,
+        take: 5, // Reduce from 10 to 5 for faster initial load
       },
       productImages: {
+        select: { id: true, url: true, isThumbnail: true, displayOrder: true },
         orderBy: { displayOrder: 'asc' }
       }
     }
@@ -70,12 +87,18 @@ async function _getRelatedProducts(categoryId: string, currentProductId: string)
       isActive: true,
       id: { not: currentProductId }
     },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      price: true,
+      offerPrice: true,
       productImages: {
+        select: { url: true },
         where: { isThumbnail: true },
         take: 1
       },
-      brand: true,
+      brand: { select: { name: true } },
     },
     take: 8,
     orderBy: { createdAt: 'desc' }
