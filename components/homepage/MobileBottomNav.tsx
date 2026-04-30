@@ -3,12 +3,15 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Menu, ShoppingCart, Search, User, X, ChevronRight, LayoutDashboard, LogOut, Package, UserCircle2 } from 'lucide-react';
+import { Home, Menu, ShoppingCart, Search, User as UserIcon, X, ChevronRight, LayoutDashboard, LogOut, Package, UserCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCartSafe } from '@/lib/context/cart-context';
 import { supabase } from '@/lib/supabase';
 import AuthModal from '@/components/AuthModal';
 import Image from 'next/image';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+
+const ADMIN_EMAILS = ['techhat.shop@gmail.com'];
 
 interface Category {
   id: string;
@@ -36,13 +39,15 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  const isTechHatAdminEmail = (email?: string | null) =>
+    !!email && ADMIN_EMAILS.includes(email.toLowerCase());
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -151,7 +156,7 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
     { id: 'menu' as ActiveTab, icon: Menu, label: 'Menu' },
     { id: 'cart' as ActiveTab, icon: ShoppingCart, label: 'Cart', count: cartCount, center: true },
     { id: 'search' as ActiveTab, icon: Search, label: 'Search' },
-    { id: 'account' as ActiveTab, icon: User, label: 'Account' },
+    { id: 'account' as ActiveTab, icon: UserIcon, label: 'Account' },
   ];
 
   return (
@@ -268,7 +273,7 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
                     <p className="text-sm font-semibold text-gray-800 truncate">{user.user_metadata?.full_name || user.email?.split('@')[0]}</p>
                     <p className="text-xs text-gray-400 truncate">{user.email}</p>
                   </div>
-                  {isAdmin ? (
+                  {isAdmin || isTechHatAdminEmail(user.email) ? (
                     <Link href="/admin/dashboard" onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-gray-50">
                       <LayoutDashboard className="w-4 h-4 text-indigo-500" /> Admin Panel
@@ -293,7 +298,7 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
               ) : (
                 <button onClick={() => { setMenuOpen(false); setShowAuthModal(true); }}
                   className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-gray-50 w-full">
-                  <User className="w-4 h-4 text-gray-500" /> Login / Register
+                  <UserIcon className="w-4 h-4 text-gray-500" /> Login / Register
                 </button>
               )}
             </div>
@@ -316,7 +321,7 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
               <p className="text-xs text-gray-400 truncate">{user.email}</p>
             </div>
             <div className="py-1">
-              {isAdmin ? (
+              {isAdmin || isTechHatAdminEmail(user.email) ? (
                 <Link href="/admin/dashboard" onClick={() => setAccountMenuOpen(false)}
                   className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
                   <LayoutDashboard className="w-4 h-4 text-indigo-500" /> Admin Panel

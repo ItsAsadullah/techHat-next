@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { User, Menu, LayoutDashboard, LogOut, ChevronDown, Package, UserCircle2 } from 'lucide-react';
+import { User as UserIcon, Menu, LayoutDashboard, LogOut, ChevronDown, Package, UserCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AuthModal from '@/components/AuthModal';
 import SearchBar from './SearchBar';
@@ -13,6 +13,9 @@ import { usePathname } from 'next/navigation';
 import CartHeaderButton from './CartHeaderButton';
 import WishlistHeaderButton from './WishlistHeaderButton';
 import MobileBottomNav from './MobileBottomNav';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+
+const ADMIN_EMAILS = ['techhat.shop@gmail.com'];
 
 interface Category {
   id: string;
@@ -36,7 +39,7 @@ export default function MainHeader({
   branding?: BrandingProps;
 }) {
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -44,7 +47,6 @@ export default function MainHeader({
   const categories = initialCategories || [];
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -69,6 +71,9 @@ export default function MainHeader({
     await supabase.auth.signOut();
     window.location.href = '/';
   };
+
+  const isTechHatAdminEmail = (email?: string | null) =>
+    !!email && ADMIN_EMAILS.includes(email.toLowerCase());
 
   return (
     <>
@@ -176,7 +181,7 @@ export default function MainHeader({
                           className="flex items-center gap-2 p-1.5 pr-3 hover:bg-gray-50 rounded-full border border-gray-200 transition-colors"
                         >
                           <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                            {(user.user_metadata?.full_name || user.email || '').slice(0, 2).toUpperCase() || <User className="w-3.5 h-3.5 text-white" />}
+                            {(user.user_metadata?.full_name || user.email || '').slice(0, 2).toUpperCase() || <UserIcon className="w-3.5 h-3.5 text-white" />}
                           </div>
                           <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
                         </button>
@@ -195,7 +200,7 @@ export default function MainHeader({
                                 <p className="text-xs text-gray-400 truncate mt-0.5">{user.email}</p>
                               </div>
                               <div className="py-1">
-                                {isAdmin ? (
+                                {isAdmin || isTechHatAdminEmail(user.email) ? (
                                   <Link href="/admin/dashboard" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setShowUserMenu(false)}>
                                     <LayoutDashboard className="w-4 h-4 text-indigo-500" /> Admin Panel
                                   </Link>
@@ -220,7 +225,7 @@ export default function MainHeader({
                     ) : (
                       <button onClick={() => setShowAuthModal(true)} className="flex items-center gap-2 p-1.5 pr-3 hover:bg-gray-50 rounded-full border border-gray-200 transition-colors">
                         <div className="w-7 h-7 bg-gray-100 rounded-full flex items-center justify-center">
-                          <User className="w-3.5 h-3.5 text-gray-600" />
+                          <UserIcon className="w-3.5 h-3.5 text-gray-600" />
                         </div>
                         <span className="text-sm font-medium text-gray-700">Login</span>
                       </button>
