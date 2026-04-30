@@ -22,9 +22,36 @@ function makePrismaClient() {
         url.searchParams.set('pgbouncer', 'true');
     }
 
-    return new PrismaClient({
+    const client = new PrismaClient({
       datasourceUrl: url.toString(),
     })
+
+    // Add query logging extension for performance debugging
+    if (process.env.NODE_ENV !== 'production' && process.env.ENABLE_QUERY_LOGGING) {
+      return client.$extends({
+        query: {
+          async $allOperations({ operation, model, args, query }) {
+            const start = performance.now();
+            const result = await query(args);
+            const duration = performance.now() - start;
+            
+            // Log slow queries (>100ms)
+            if (duration > 100) {
+              console.log(
+                `[SLOW_QUERY] ${model}.${operation} took ${duration.toFixed(2)}ms`
+              );
+              if (typeof args === 'object' && args !== null) {
+                console.log(`  where: ${JSON.stringify(args).substring(0, 100)}`);
+              }
+            }
+            
+            return result;
+          },
+        },
+      });
+    }
+
+    return client
   } catch (e) {
     return new PrismaClient({
         datasourceUrl: databaseUrl,

@@ -27,6 +27,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { GlobalScannerProvider, useGlobalScanner } from '@/components/admin/global-scanner-provider';
+import usePerformanceMonitor from '@/lib/hooks/use-performance-monitor';
 
 // ── Scanner Status Widget ──────────────────────────────────────────────────────
 function ScannerStatus() {
@@ -173,6 +174,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isPOS = pathname === '/admin/pos';
   const isLoginPage = pathname === '/admin/login';
+
+  // Performance monitoring (enable via NEXT_PUBLIC_ENABLE_PERF_MONITORING=true)
+  usePerformanceMonitor();
 
   // Close drawer on route change
   useEffect(() => { setDrawerOpen(false); }, [pathname]);
