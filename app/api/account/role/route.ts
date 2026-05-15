@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     if (token) {
       const { data, error } = await supabaseAdmin.auth.getUser(token);
-      if (!error && data.user) user = data.user as typeof user;
+      if (!error && data.user) user = data.user as any;
     }
 
     // --- Fallback: cookie-based session ---
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         }
       );
       const { data, error } = await supabase.auth.getUser();
-      if (!error && data.user) user = data.user as typeof user;
+      if (!error && data.user) user = data.user as any;
     }
 
     if (!user) {
