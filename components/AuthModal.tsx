@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
+const ADMIN_EMAILS = ['techhat.shop@gmail.com'];
+
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -115,7 +117,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
         });
         const roleData = await roleRes.json();
-        if (roleData.isAdmin) {
+        if (roleData.isAdmin || ADMIN_EMAILS.includes(email.toLowerCase())) {
           window.location.href = '/admin/dashboard';
           return;
         }

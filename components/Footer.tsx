@@ -2,8 +2,10 @@
 
 import { Facebook, Twitter, Instagram, Youtube, Mail, Phone, MapPin } from 'lucide-react';
 import Link from 'next/link';
+import { useStore } from '@/lib/context/store-context';
 
 export default function Footer() {
+  const { phone, email, address, storeName } = useStore();
   return (
     <footer className="bg-gray-50 border-t border-gray-100 pt-16 pb-8">
       <div className="container mx-auto px-4 md:px-6">
@@ -60,15 +62,15 @@ export default function Footer() {
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-blue-600 shrink-0" />
-                <span className="text-sm text-gray-500">Level 4, Tech Plaza, Dhanmondi 27, Dhaka-1209, Bangladesh</span>
+                <span className="text-sm text-gray-500">{address || 'Level 4, Tech Plaza, Dhanmondi 27, Dhaka-1209, Bangladesh'}</span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="w-5 h-5 text-blue-600 shrink-0" />
-                <span className="text-sm text-gray-500">+880 1712 345 678</span>
+                <span className="text-sm text-gray-500">{phone || '+880 1712 345 678'}</span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="w-5 h-5 text-blue-600 shrink-0" />
-                <span className="text-sm text-gray-500">support@techhat.com</span>
+                <span className="text-sm text-gray-500">{email || 'support@techhat.com'}</span>
               </li>
             </ul>
           </div>

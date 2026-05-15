@@ -7,6 +7,8 @@ import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Providers } from '@/components/Providers';
 import { BrandingProvider } from '@/lib/context/branding-context';
+import { StoreProvider } from '@/lib/context/store-context';
+import { getStoreSettings } from '@/lib/actions/invoice-settings-actions';
 import { getBrandingSettings, getAnalyticsSettings } from '@/lib/actions/invoice-settings-actions';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import MetaPixel from '@/components/MetaPixel';
@@ -67,6 +69,14 @@ export default async function RootLayout({
   try { branding = await getBrandingSettings(); } catch {}
   const logoUrl = publicImageUrl(branding.siteLogo);
 
+  let storeSettings = {
+    storeName: 'TechHat', tagline: '', phone: '', altPhone: '',
+    email: '', website: '', address: '', city: '', country: '',
+    currency: 'BDT', currencySymbol: '৳', timezone: '',
+    whatsappNumber: '', callNumber: ''
+  };
+  try { storeSettings = await getStoreSettings(); } catch {}
+
   // Analytics tracking IDs from admin settings (DB-driven)
   let analytics = { metaPixelId: '', googleAnalyticsId: '', googleTagManagerId: '', tiktokPixelId: '' };
   try { analytics = await getAnalyticsSettings(); } catch {}
@@ -103,18 +113,20 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <Suspense fallback={<Loading />}>
-            <BrandingProvider value={branding}>
-              <Providers>
-                <Suspense fallback={<div className="h-16 bg-white border-b border-gray-100 animate-pulse" />}>
-                  <NavbarWrapper />
-                </Suspense>
-                <main className="min-h-screen bg-background text-foreground pb-16 lg:pb-0">
-                  {children}
-                </main>
-                <Toaster position="top-right" richColors offset={100} />
-                <SpeedInsights />
-              </Providers>
-            </BrandingProvider>
+            <StoreProvider value={storeSettings}>
+              <BrandingProvider value={branding}>
+                <Providers>
+                  <Suspense fallback={<div className="h-16 bg-white border-b border-gray-100 animate-pulse" />}>
+                    <NavbarWrapper />
+                  </Suspense>
+                  <main className="min-h-screen bg-background text-foreground pb-16 lg:pb-0">
+                    {children}
+                  </main>
+                  <Toaster position="top-right" richColors offset={100} />
+                  <SpeedInsights />
+                </Providers>
+              </BrandingProvider>
+            </StoreProvider>
           </Suspense>
         </ThemeProvider>
       </body>

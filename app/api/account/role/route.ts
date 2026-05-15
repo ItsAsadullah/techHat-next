@@ -10,6 +10,7 @@ const supabaseAdmin = createClient(
 
 /** Prisma Role enum values that grant admin access */
 const ADMIN_ROLES = ['SUPER_ADMIN', 'STAFF'];
+const ADMIN_EMAILS = ['techhat.shop@gmail.com'];
 
 /**
  * GET /api/account/role
@@ -26,7 +27,7 @@ const ADMIN_ROLES = ['SUPER_ADMIN', 'STAFF'];
  */
 export async function GET(request: NextRequest) {
   try {
-    let user: any = null;
+    let user: { email?: string | null; app_metadata?: { app_role?: string } } | null = null;
 
     // --- Try Bearer token first (works right after login) ---
     const authHeader = request.headers.get('authorization');
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     if (token) {
       const { data, error } = await supabaseAdmin.auth.getUser(token);
-      if (!error && data.user) user = data.user;
+      if (!error && data.user) user = data.user as typeof user;
     }
 
     // --- Fallback: cookie-based session ---
@@ -51,11 +52,16 @@ export async function GET(request: NextRequest) {
         }
       );
       const { data, error } = await supabase.auth.getUser();
-      if (!error && data.user) user = data.user;
+      if (!error && data.user) user = data.user as typeof user;
     }
 
     if (!user) {
       return NextResponse.json({ role: 'customer', isAdmin: false });
+    }
+
+    // Explicit email override for the TechHat admin mailbox.
+    if (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) {
+      return NextResponse.json({ role: 'super_admin', isAdmin: true });
     }
 
     // 1. JWT claim (fastest — set by custom_access_token_hook if enabled)
@@ -67,10 +73,11 @@ export async function GET(request: NextRequest) {
     // 2. Prisma User table — the PRIMARY role store for this project
     if (user.email) {
       try {
-        const dbUser = await (prisma as any).user.findFirst({
+        const dbUser = await prisma.user.findFirst({
           where: { email: user.email },
           select: { role: true, fullName: true },
         });
+        
         if (dbUser && ADMIN_ROLES.includes(dbUser.role)) {
           return NextResponse.json({
             role: dbUser.role === 'SUPER_ADMIN' ? 'super_admin' : 'staff',
@@ -90,7 +97,7 @@ export async function GET(request: NextRequest) {
     // 3. Legacy Staff table fallback
     if (user.email) {
       try {
-        const staff = await (prisma as any).staff.findFirst({
+        const staff = await prisma.staff.findFirst({
           where: { email: user.email, isActive: true },
           select: { role: true },
         });

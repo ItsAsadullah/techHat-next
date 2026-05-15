@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
+import type { User } from '@supabase/supabase-js';
 import {
   LayoutDashboard,
   Package,
@@ -18,8 +19,9 @@ import {
   X,
   ChevronRight,
   Ticket,
-  Settings,
 } from 'lucide-react';
+
+const ADMIN_EMAILS = ['techhat.shop@gmail.com'];
 
 const navItems = [
   { href: '/account', label: 'Overview', icon: LayoutDashboard, exact: true },
@@ -35,7 +37,7 @@ const navItems = [
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -44,6 +46,10 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.replace('/?auth=login');
+        return;
+      }
+      if (session.user.email && ADMIN_EMAILS.includes(session.user.email.toLowerCase())) {
+        router.replace('/admin/dashboard');
         return;
       }
       setUser(session.user);
@@ -55,6 +61,10 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
       if (!session) {
         router.replace('/?auth=login');
       } else {
+        if (session.user.email && ADMIN_EMAILS.includes(session.user.email.toLowerCase())) {
+          router.replace('/admin/dashboard');
+          return;
+        }
         setUser(session.user);
       }
     });

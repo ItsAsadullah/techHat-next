@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useBranding } from '@/lib/context/branding-context';
+import { useStore } from '@/lib/context/store-context';
 import {
   Facebook,
   Twitter,
@@ -69,6 +70,7 @@ const paymentMethods = ['Visa', 'Mastercard', 'bKash', 'Nagad', 'Rocket', 'COD']
 
 export default function EnterpriseFooter() {
   const { siteLogo } = useBranding();
+  const { phone, email, address, storeName } = useStore();
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -113,17 +115,17 @@ export default function EnterpriseFooter() {
 
             {/* Contact Info */}
             <div className="space-y-2.5">
-              <a href="tel:+8801700000000" className="flex items-center gap-2.5 text-sm hover:text-white transition-colors">
+              <a href={`tel:${(phone || '+880 1700-000000').replace(/\D/g, '')}`} className="flex items-center gap-2.5 text-sm hover:text-white transition-colors">
                 <Phone className="w-4 h-4 text-blue-500" />
-                <span>+880 1700-000000</span>
+                <span>{phone || '+880 1700-000000'}</span>
               </a>
-              <a href="mailto:support@techhat.com" className="flex items-center gap-2.5 text-sm hover:text-white transition-colors">
+              <a href={`mailto:${email || 'support@techhat.com'}`} className="flex items-center gap-2.5 text-sm hover:text-white transition-colors">
                 <Mail className="w-4 h-4 text-blue-500" />
-                <span>support@techhat.com</span>
+                <span>{email || 'support@techhat.com'}</span>
               </a>
               <div className="flex items-start gap-2.5 text-sm">
                 <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-                <span>House #12, Road #5, Dhanmondi, Dhaka-1205, Bangladesh</span>
+                <span>{address || 'House #12, Road #5, Dhanmondi, Dhaka-1205, Bangladesh'}</span>
               </div>
             </div>
 
