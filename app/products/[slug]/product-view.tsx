@@ -42,12 +42,12 @@ import {
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProductReviewSection from '@/components/products/product-review-section';
-import CheckoutModal from '@/components/products/CheckoutModal';
 import { getDivisions, getDistricts, getUpazilas, getUnions } from '@/lib/location-data';
 import { useCart } from '@/lib/context/cart-context';
 import { useWishlistSafe } from '@/lib/context/wishlist-context';
 import { toast } from 'sonner';
 import { pixelViewContent, pixelAddToCart } from '@/lib/pixel';
+import { useRouter } from 'next/navigation';
 
 // Types
 interface ProductImage {
@@ -289,6 +289,7 @@ function getYouTubeId(url: string) {
 }
 
 export default function ProductView({ product, relatedProducts, whatsappNumber, callNumber }: Props) {
+  const router = useRouter();
   const { addToCart } = useCart();
   const wishlist = useWishlistSafe();
   const addToCartBtnRef = useRef<HTMLButtonElement>(null);
@@ -319,7 +320,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
   const [isCustomUnion, setIsCustomUnion] = useState<boolean>(false);
   const [customUnionInput, setCustomUnionInput] = useState<string>(''); // For manual union entry
   const [customAddress, setCustomAddress] = useState<string>(''); // For village/para/mahalla
-  const [showCheckout, setShowCheckout] = useState(false);
+
   const imageRef = useRef<HTMLDivElement>(null);
   
   // Refs for scroll sections
@@ -470,6 +471,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
         brand: product.brand?.name ?? null,
         stock: currentStock,
         warrantyMonths: product.warrantyMonths,
+        quantity: quantity,
       },
       sourceEl ?? undefined
     );
@@ -481,6 +483,12 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
     });
     toast.success(`${product.name.slice(0, 30)}... added to cart`);
   }, [inStock, selectedVariant, product, currentPrice, currentOfferPrice, displayImage, currentStock, quantity, addToCart]);
+
+  const handleBuyNow = useCallback(() => {
+    handleAddToCart();
+    router.push('/checkout');
+  }, [handleAddToCart, router]);
+
 
   const handleShare = (platform: string) => {
     const url = window.location.href;
@@ -1070,7 +1078,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                 </button>
                 <button 
                   disabled={!inStock}
-                  onClick={() => setShowCheckout(true)}
+                  onClick={() => handleBuyNow()}
                   className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all shadow-lg hover:shadow-xl uppercase tracking-wide"
                 >
                   <Zap className="w-5 h-5" />
@@ -1699,7 +1707,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                           </button>
                           <button 
                             disabled={!inStock}
-                            onClick={() => setShowCheckout(true)}
+                            onClick={() => handleBuyNow()}
                             className="w-full h-11 bg-gradient-to-r from-gray-900 to-gray-800 hover:from-black hover:to-gray-900 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl disabled:shadow-none"
                           >
                             <Zap className="w-4 h-4" />
@@ -1991,20 +1999,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
         )}
       </AnimatePresence>
 
-      {/* Checkout Modal */}
-      <CheckoutModal
-        isOpen={showCheckout}
-        onClose={() => setShowCheckout(false)}
-        items={[{
-          productId: product.id,
-          variantId: selectedVariant?.id || null,
-          productName: product.name + (selectedVariant ? ` (${selectedVariant.name})` : ''),
-          variantName: selectedVariant?.name || null,
-          quantity,
-          unitPrice: displayPrice,
-          image: selectedVariant?.image || product.images?.[0]?.url || null,
-        }]}
-      />
+
     </div>
   );
 }

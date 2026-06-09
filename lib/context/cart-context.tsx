@@ -24,7 +24,7 @@ function cartReducer(state: CartState, action: Action): CartState {
       const items = existing
         ? state.items.map((i) =>
             i.id === action.item.id
-              ? { ...i, quantity: Math.min(i.quantity + 1, i.stock) }
+              ? { ...i, quantity: Math.min(i.quantity + action.item.quantity, i.stock) }
               : i
           )
         : [...state.items, action.item];
@@ -91,8 +91,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [state.items]);
 
   const addToCart = useCallback(
-    (item: Omit<CartItem, 'quantity'>, sourceEl?: HTMLElement | null) => {
-      dispatch({ type: 'ADD', item: { ...item, quantity: 1 } });
+    (item: Omit<CartItem, 'quantity'> & { quantity?: number }, sourceEl?: HTMLElement | null) => {
+      dispatch({ type: 'ADD', item: { ...item, quantity: item.quantity ?? 1 } });
 
       // Fly animation
       if (sourceEl && cartIconRef.current) {
