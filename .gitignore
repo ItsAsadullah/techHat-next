@@ -52,3 +52,5 @@ Resend api.txt
 tmpclaude-*
 dev.log
 *.txt
+
+supabase/.temp
