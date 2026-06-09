@@ -83,8 +83,8 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
     else setActiveTab(null);
   }
 
-  // Hide on admin/scanner
-  if (pathname?.startsWith('/admin') || pathname?.startsWith('/scanner')) return null;
+  // Hide on admin/scanner/checkout
+  if (pathname?.startsWith('/admin') || pathname?.startsWith('/scanner') || pathname?.startsWith('/checkout')) return null;
 
   const cartCount = mounted ? (cart?.count ?? 0) : 0;
 

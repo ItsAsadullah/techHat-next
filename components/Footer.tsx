@@ -66,7 +66,9 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="w-5 h-5 text-blue-600 shrink-0" />
-                <span className="text-sm text-gray-500">{phone || '+880 1712 345 678'}</span>
+                <a href={`tel:${(phone || '+880 1712 345 678').replace(/\\D/g, '')}`} className="text-sm text-gray-500 hover:text-blue-600 transition-colors">
+                  {phone || '+880 1712 345 678'}
+                </a>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="w-5 h-5 text-blue-600 shrink-0" />

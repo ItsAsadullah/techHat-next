@@ -75,9 +75,11 @@ export default function MainHeader({
   const isTechHatAdminEmail = (email?: string | null) =>
     !!email && ADMIN_EMAILS.includes(email.toLowerCase());
 
+  const isCheckout = pathname?.startsWith('/checkout');
+
   return (
     <>
-      <header className="sticky top-0 z-50 bg-white shadow-sm">
+      <header className={`${isCheckout ? 'relative' : 'sticky'} top-0 z-50 bg-white shadow-sm`}>
         {/* Top Utility Bar - desktop only */}
         <div className="hidden lg:block">
           <TopUtilityBar
@@ -127,10 +129,12 @@ export default function MainHeader({
             <WishlistHeaderButton className="flex" />
           </div>
 
-          {/* Search bar — always visible on mobile */}
-          <div className="px-3 pb-2.5">
-            <SearchBar />
-          </div>
+          {/* Search bar — always visible on mobile (except checkout) */}
+          {!pathname?.startsWith('/checkout') && (
+            <div className="px-3 pb-2.5">
+              <SearchBar />
+            </div>
+          )}
         </div>
 
         {/* ── DESKTOP HEADER ── */}
@@ -163,7 +167,7 @@ export default function MainHeader({
 
               {/* Search Bar */}
               <div className="flex flex-1 justify-center">
-                <SearchBar />
+                {!pathname?.startsWith('/checkout') && <SearchBar />}
               </div>
 
               {/* Action Icons */}

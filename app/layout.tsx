@@ -13,6 +13,7 @@ import { getBrandingSettings, getAnalyticsSettings } from '@/lib/actions/invoice
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import MetaPixel from '@/components/MetaPixel';
 import NextTopLoader from 'nextjs-toploader';
+import { BengaliNumberConverter } from '@/components/BengaliNumberConverter';
 
 export const revalidate = 600;
 
@@ -100,6 +101,9 @@ export default async function RootLayout({
           googleTagManagerId={analytics.googleTagManagerId || undefined}
           tiktokPixelId={analytics.tiktokPixelId || undefined}
         />
+        
+        {/* Globally convert Bengali numbers to English numbers */}
+        <BengaliNumberConverter />
 
         {/* JSON-LD for Google rich results / logo */}
         <script

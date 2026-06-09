@@ -520,8 +520,8 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
   }, [product]);
 
   return (
-    <div className="bg-white">
-      {/* Breadcrumb */}
+    <div className="bg-white pb-24 md:pb-0">
+      {/* Sentinel for sticky bottom bar (optional) */}
       <div className="bg-gray-50 border-b border-gray-100">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <nav className="flex items-center gap-2 text-sm text-gray-500">
@@ -1999,6 +1999,33 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
         )}
       </AnimatePresence>
 
+      {/* Mobile Sticky Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 p-3 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] md:hidden flex gap-3 pb-safe">
+        <button 
+          disabled={!inStock}
+          onClick={(e) => {
+            const btn = e.currentTarget;
+            if (addToCartBtnRef.current) {
+              // Copy classes to animate
+              addToCartBtnRef.current.classList.add('scale-95');
+              setTimeout(() => addToCartBtnRef.current?.classList.remove('scale-95'), 150);
+            }
+            handleAddToCart(btn);
+          }}
+          className="flex-1 h-12 bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:bg-gray-100 disabled:text-gray-400 font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
+        >
+          <ShoppingCart className="w-5 h-5" />
+          Add to Cart
+        </button>
+        <button 
+          disabled={!inStock}
+          onClick={() => handleBuyNow()}
+          className="flex-[1.5] h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-300 disabled:to-gray-400 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"
+        >
+          <Zap className="w-5 h-5" />
+          Buy Now
+        </button>
+      </div>
 
     </div>
   );

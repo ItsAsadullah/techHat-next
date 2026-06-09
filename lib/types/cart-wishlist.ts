@@ -21,7 +21,7 @@ export interface CartState {
 }
 
 export interface CartContextType extends CartState {
-  addToCart: (item: Omit<CartItem, 'quantity'>, sourceEl?: HTMLElement | null) => void;
+  addToCart: (item: Omit<CartItem, 'quantity'> & { quantity?: number }, sourceEl?: HTMLElement | null) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;

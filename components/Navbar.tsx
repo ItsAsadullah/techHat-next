@@ -172,19 +172,21 @@ export default function Navbar({ initialCategories }: { initialCategories?: Cate
           {/* Actions */}
           <div className="hidden md:flex items-center gap-3">
             {/* Search */}
-            <form onSubmit={handleSearch} className="relative group">
-              <input
-                id="navbar-search"
-                name="q"
-                type="search"
-                autoComplete="on"
-                placeholder="Search products..."
-                className="w-48 pl-10 pr-4 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:w-64 transition-all duration-300"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            </form>
+            {!pathname?.startsWith('/checkout') && (
+              <form onSubmit={handleSearch} className="relative group">
+                <input
+                  id="navbar-search"
+                  name="q"
+                  type="search"
+                  autoComplete="on"
+                  placeholder="Search products..."
+                  className="w-48 pl-10 pr-4 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:w-64 transition-all duration-300"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              </form>
+            )}
 
             {/* Wishlist */}
             <button
@@ -290,19 +292,21 @@ export default function Navbar({ initialCategories }: { initialCategories?: Cate
           >
             <div className="container mx-auto px-4 py-4 flex flex-col gap-4">
               <div className="relative">
-                <form onSubmit={handleSearch}>
-                <input
-                  id="navbar-mobile-search"
-                  name="q"
-                  type="search"
-                  autoComplete="on"
-                  placeholder="Search products..."
-                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                </form>
+                {!pathname?.startsWith('/checkout') && (
+                  <form onSubmit={handleSearch}>
+                    <input
+                      id="navbar-mobile-search"
+                      name="q"
+                      type="search"
+                      autoComplete="on"
+                      placeholder="Search products..."
+                      className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                    <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  </form>
+                )}
               </div>
               
               <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto">
