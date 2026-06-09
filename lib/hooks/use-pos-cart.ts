@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { CartItem, POSProduct } from '@/lib/actions/pos-actions';
 
 export interface POSCartState {
@@ -192,16 +192,36 @@ export function usePOSCart() {
     setCart((prev) => ({ ...prev, guarantorName: name, guarantorPhone: phone, guarantorRelation: relation, guarantorAddress: address }));
   }, []);
 
-  // Computed values
-  const subtotal = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discountAmount =
-    cart.discountType === 'percent'
-      ? (subtotal * cart.discount) / 100
-      : cart.discount;
-  const taxAmount = (subtotal - discountAmount) * (cart.tax / 100);
-  const grandTotal = subtotal - discountAmount + taxAmount;
-  const change = Math.max(0, cart.amountReceived - grandTotal);
-  const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+  // PERF: Memoize computed values so they only recalculate when cart state
+  // actually changes, preventing unnecessary re-renders in child components
+  // that receive these as props (POSCartPanel, POSClient summary display).
+  const subtotal = useMemo(
+    () => cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [cart.items]
+  );
+  const discountAmount = useMemo(
+    () =>
+      cart.discountType === 'percent'
+        ? (subtotal * cart.discount) / 100
+        : cart.discount,
+    [subtotal, cart.discount, cart.discountType]
+  );
+  const taxAmount = useMemo(
+    () => (subtotal - discountAmount) * (cart.tax / 100),
+    [subtotal, discountAmount, cart.tax]
+  );
+  const grandTotal = useMemo(
+    () => subtotal - discountAmount + taxAmount,
+    [subtotal, discountAmount, taxAmount]
+  );
+  const change = useMemo(
+    () => Math.max(0, cart.amountReceived - grandTotal),
+    [cart.amountReceived, grandTotal]
+  );
+  const totalItems = useMemo(
+    () => cart.items.reduce((sum, item) => sum + item.quantity, 0),
+    [cart.items]
+  );
 
   return {
     cart,

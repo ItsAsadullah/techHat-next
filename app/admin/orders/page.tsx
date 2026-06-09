@@ -34,6 +34,24 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  getOrders, 
+  getOrderStats, 
+  updateOrderStatus, 
+  deleteOrder 
+} from '@/lib/actions/order-actions';
+import { useDebouncedCallback } from 'use-debounce';
+import { memo } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ═══════════════ Types ═══════════════
 
@@ -185,6 +203,12 @@ export default function OrdersPage() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<StatusTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const debouncedSearch = useDebouncedCallback((value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  }, 300);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
@@ -195,11 +219,20 @@ export default function OrdersPage() {
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [quickPreview, setQuickPreview] = useState<Order | null>(null);
 
+  // Dialog State
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogConfig, setDialogConfig] = useState<{
+    title: string;
+    description: string;
+    actionLabel: string;
+    isDestructive: boolean;
+    onConfirm: () => void;
+  } | null>(null);
+
   // Fetch orders
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const { getOrders } = await import('@/lib/actions/order-actions');
       const result = await getOrders({
         page: currentPage,
         limit: 20,
@@ -225,7 +258,6 @@ export default function OrdersPage() {
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      const { getOrderStats } = await import('@/lib/actions/order-actions');
       const result = await getOrderStats();
       if (result.success && result.stats) {
         setStats(result.stats);
@@ -245,16 +277,39 @@ export default function OrdersPage() {
     fetchStats();
   }, [fetchStats]);
 
-  // Reset page on tab/search change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab, searchQuery]);
-
   // Handlers
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
+    if (newStatus === 'CANCELLED') {
+      setDialogConfig({
+        title: 'Cancel Order?',
+        description: 'আপনি কি এই অর্ডার ক্যান্সেল করতে চান? The items will be returned to stock.',
+        actionLabel: 'Cancel Order',
+        isDestructive: true,
+        onConfirm: async () => {
+          setActionLoading(orderId);
+          try {
+            const result = await updateOrderStatus(orderId, 'CANCELLED');
+            if (result.success) {
+              fetchOrders();
+              fetchStats();
+            } else {
+              alert(result.error || 'Failed to cancel order');
+            }
+          } catch (err) {
+            console.error(err);
+            alert('Unexpected error while cancelling');
+          } finally {
+            setActionLoading(null);
+            setDialogOpen(false);
+          }
+        }
+      });
+      setDialogOpen(true);
+      return;
+    }
+
     setActionLoading(orderId);
     try {
-      const { updateOrderStatus } = await import('@/lib/actions/order-actions');
       const result = await updateOrderStatus(orderId, newStatus as any);
       if (result.success) {
         fetchOrders();
@@ -267,38 +322,32 @@ export default function OrdersPage() {
     }
   };
 
-  const handleCancelOrder = async (orderId: string) => {
-    if (!confirm('আপনি কি এই অর্ডার ক্যান্সেল করতে চান?')) return;
-    setActionLoading(orderId);
-    try {
-      const { cancelOrder } = await import('@/lib/actions/order-actions');
-      const result = await cancelOrder(orderId);
-      if (result.success) {
-        fetchOrders();
-        fetchStats();
+  const handleDeleteOrder = (orderId: string) => {
+    setDialogConfig({
+      title: 'Delete Order?',
+      description: 'এই অর্ডর ডিলিট করলে ফেরত আনা যাবে না। আপনি কি নিশ্চিত?',
+      actionLabel: 'Delete',
+      isDestructive: true,
+      onConfirm: async () => {
+        setActionLoading(orderId);
+        try {
+          const result = await deleteOrder(orderId);
+          if (result.success) {
+            fetchOrders();
+            fetchStats();
+          } else {
+            alert(result.error || 'Failed to delete order');
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Unexpected error while deleting');
+        } finally {
+          setActionLoading(null);
+          setDialogOpen(false);
+        }
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleDeleteOrder = async (orderId: string) => {
-    if (!confirm('এই অর্ডার ডিলিট করলে ফেরত আনা যাবে না। নিশ্চিত?')) return;
-    setActionLoading(orderId);
-    try {
-      const { deleteOrder } = await import('@/lib/actions/order-actions');
-      const result = await deleteOrder(orderId);
-      if (result.success) {
-        fetchOrders();
-        fetchStats();
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setActionLoading(null);
-    }
+    });
+    setDialogOpen(true);
   };
 
   const toggleSelectOrder = (id: string) => {
@@ -323,7 +372,7 @@ export default function OrdersPage() {
       PENDING: ['CONFIRMED', 'CANCELLED'],
       CONFIRMED: ['PROCESSING', 'CANCELLED'],
       PROCESSING: ['SHIPPED', 'CANCELLED'],
-      SHIPPED: ['DELIVERED'],
+      SHIPPED: ['DELIVERED', 'CANCELLED'],
       DELIVERED: [],
       CANCELLED: [],
       RETURNED: [],
@@ -387,7 +436,7 @@ export default function OrdersPage() {
             {tabs.map(tab => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => { setActiveTab(tab.key); setCurrentPage(1); }}
                 className={cn(
                   "px-5 py-3.5 text-sm font-semibold border-b-2 transition-all whitespace-nowrap",
                   activeTab === tab.key
@@ -416,13 +465,19 @@ export default function OrdersPage() {
               <input
                 type="text"
                 placeholder="Search by order number, customer name, phone..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                defaultValue={searchQuery}
+                onChange={(e) => {
+                    const val = e.target.value;
+                    debouncedSearch(val);
+                }}
                 className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => {
+                    setSearchQuery('');
+                    // For controlled reset, we'd need a ref, but keeping simple for now
+                  }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   <X className="w-4 h-4" />
@@ -458,7 +513,7 @@ export default function OrdersPage() {
                     <input
                       type="date"
                       value={dateFrom}
-                      onChange={(e) => setDateFrom(e.target.value)}
+                      onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
                       className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="From"
                     />
@@ -466,14 +521,14 @@ export default function OrdersPage() {
                     <input
                       type="date"
                       value={dateTo}
-                      onChange={(e) => setDateTo(e.target.value)}
+                      onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
                       className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="To"
                     />
                   </div>
                   {(dateFrom || dateTo) && (
                     <button
-                      onClick={() => { setDateFrom(''); setDateTo(''); }}
+                      onClick={() => { setDateFrom(''); setDateTo(''); setCurrentPage(1); }}
                       className="text-xs text-red-600 hover:text-red-700 font-medium"
                     >
                       Clear dates
@@ -520,170 +575,20 @@ export default function OrdersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {orders.map((order) => {
-                  const nextStatuses = getNextStatuses(order.status);
-                  const isSelected = selectedOrders.has(order.id);
-                  const isLoading = actionLoading === order.id;
-
-                  return (
-                    <tr 
-                      key={order.id} 
-                      className={cn(
-                        "hover:bg-blue-50/30 transition-colors group",
-                        isSelected && "bg-blue-50/50"
-                      )}
-                    >
-                      {/* Checkbox */}
-                      <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelectOrder(order.id)}
-                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                      </td>
-
-                      {/* Order Number */}
-                      <td className="px-4 py-3">
-                        <Link 
-                          href={`/admin/orders/${order.id}`}
-                          className="text-sm font-bold text-blue-600 hover:text-blue-800 hover:underline"
-                        >
-                          {order.orderNumber}
-                        </Link>
-                      </td>
-
-                      {/* Customer */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center shrink-0">
-                            <User className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-900 truncate max-w-[160px]">
-                              {order.customerName || order.user?.fullName || 'Unknown'}
-                            </p>
-                            <p className="text-xs text-gray-500 truncate max-w-[160px]">
-                              {order.customerPhone || order.user?.phone || ''}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Items */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex -space-x-2">
-                            {order.items.slice(0, 3).map((item, idx) => {
-                              const imgUrl = item.variant?.image || item.product?.productImages?.[0]?.url;
-                              return (
-                                <div key={item.id} className="w-8 h-8 rounded-lg border-2 border-white bg-gray-100 overflow-hidden relative" style={{ zIndex: 3 - idx }}>
-                                  {imgUrl ? (
-                                    <Image src={imgUrl} alt="" fill className="object-cover" sizes="32px" />
-                                  ) : (
-                                    <Package className="w-4 h-4 text-gray-400 m-auto mt-1.5" />
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <span className="text-xs text-gray-500 font-medium">
-                            {order.items.length} item{order.items.length > 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Total */}
-                      <td className="px-4 py-3">
-                        <span className="text-sm font-bold text-gray-900">{formatPrice(order.grandTotal)}</span>
-                      </td>
-
-                      {/* Payment */}
-                      <td className="px-4 py-3">
-                        <div className="space-y-1">
-                          <StatusBadge status={order.paymentStatus} type="payment" />
-                          <p className="text-[10px] text-gray-400 font-medium">
-                            {PAYMENT_METHOD_LABELS[order.paymentMethod] || order.paymentMethod}
-                          </p>
-                        </div>
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-4 py-3">
-                        <StatusBadge status={order.status} type="order" />
-                      </td>
-
-                      {/* Date */}
-                      <td className="px-4 py-3">
-                        <span className="text-xs text-gray-500 font-medium">{formatDateShort(order.createdAt)}</span>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          {isLoading ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                          ) : (
-                            <>
-                              {/* Quick status actions */}
-                              {nextStatuses.length > 0 && (
-                                <div className="flex items-center gap-1">
-                                  {nextStatuses.map(ns => {
-                                    const nsConfig = ORDER_STATUS_CONFIG[ns];
-                                    if (!nsConfig) return null;
-                                    return (
-                                      <button
-                                        key={ns}
-                                        onClick={() => handleStatusUpdate(order.id, ns)}
-                                        title={`Mark as ${nsConfig.label}`}
-                                        className={cn(
-                                          "w-7 h-7 rounded-lg flex items-center justify-center transition-colors border",
-                                          nsConfig.bgColor, nsConfig.color, nsConfig.borderColor,
-                                          "hover:opacity-80"
-                                        )}
-                                      >
-                                        <nsConfig.icon className="w-3.5 h-3.5" />
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              )}
-
-                              {/* View */}
-                              <Link
-                                href={`/admin/orders/${order.id}`}
-                                className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                                title="View Details"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Link>
-
-                              {/* Quick Preview */}
-                              <button
-                                onClick={() => setQuickPreview(quickPreview?.id === order.id ? null : order)}
-                                className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
-                                title="Quick Preview"
-                              >
-                                <MoreHorizontal className="w-4 h-4" />
-                              </button>
-
-                              {/* Delete - only for cancelled */}
-                              {order.status === 'CANCELLED' && (
-                                <button
-                                  onClick={() => handleDeleteOrder(order.id)}
-                                  className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                                  title="Delete Order"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {orders.map((order) => (
+                  <OrderRow
+                    key={order.id}
+                    order={order}
+                    isSelected={selectedOrders.has(order.id)}
+                    isLoading={actionLoading === order.id}
+                    nextStatuses={getNextStatuses(order.status)}
+                    onToggleSelect={toggleSelectOrder}
+                    onStatusUpdate={handleStatusUpdate}
+                    onSetQuickPreview={setQuickPreview}
+                    onDeleteOrder={handleDeleteOrder}
+                    quickPreviewId={quickPreview?.id}
+                  />
+                ))}
               </tbody>
             </table>
           )}
@@ -906,6 +811,209 @@ export default function OrdersPage() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{dialogConfig?.title}</AlertDialogTitle>
+            <AlertDialogDescription>{dialogConfig?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => dialogConfig?.onConfirm()}
+              className={dialogConfig?.isDestructive ? 'bg-red-600 hover:bg-red-700 focus:ring-red-600' : ''}
+            >
+              {dialogConfig?.actionLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
+// ═══════════════ Memoized Components ═══════════════
+
+interface OrderRowProps {
+  order: Order;
+  isSelected: boolean;
+  isLoading: boolean;
+  nextStatuses: string[];
+  onToggleSelect: (id: string) => void;
+  onStatusUpdate: (id: string, status: string) => void;
+  onSetQuickPreview: (order: Order | null) => void;
+  onDeleteOrder: (id: string) => void;
+  quickPreviewId?: string;
+}
+
+const OrderRow = memo(function OrderRow({
+  order,
+  isSelected,
+  isLoading,
+  nextStatuses,
+  onToggleSelect,
+  onStatusUpdate,
+  onSetQuickPreview,
+  onDeleteOrder,
+  quickPreviewId
+}: OrderRowProps) {
+  return (
+    <tr 
+      className={cn(
+        "hover:bg-blue-50/30 transition-colors group",
+        isSelected && "bg-blue-50/50"
+      )}
+    >
+      {/* Checkbox */}
+      <td className="px-4 py-3">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => onToggleSelect(order.id)}
+          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+      </td>
+
+      {/* Order Number */}
+      <td className="px-4 py-3">
+        <Link 
+          href={`/admin/orders/${order.id}`}
+          className="text-sm font-bold text-blue-600 hover:text-blue-800 hover:underline"
+        >
+          {order.orderNumber}
+        </Link>
+      </td>
+
+      {/* Customer */}
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center shrink-0">
+            <User className="w-4 h-4 text-blue-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900 truncate max-w-[160px]">
+              {order.customerName || order.user?.fullName || 'Unknown'}
+            </p>
+            <p className="text-xs text-gray-500 truncate max-w-[160px]">
+              {order.customerPhone || order.user?.phone || ''}
+            </p>
+          </div>
+        </div>
+      </td>
+
+      {/* Items */}
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <div className="flex -space-x-2">
+            {order.items.slice(0, 3).map((item, idx) => {
+              const imgUrl = item.variant?.image || item.product?.productImages?.[0]?.url;
+              return (
+                <div key={item.id} className="w-8 h-8 rounded-lg border-2 border-white bg-gray-100 overflow-hidden relative" style={{ zIndex: 3 - idx }}>
+                  {imgUrl ? (
+                    <Image src={imgUrl} alt="" fill className="object-cover" sizes="32px" />
+                  ) : (
+                    <Package className="w-4 h-4 text-gray-400 m-auto mt-1.5" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <span className="text-xs text-gray-500 font-medium">
+            {order.items.length} item{order.items.length > 1 ? 's' : ''}
+          </span>
+        </div>
+      </td>
+
+      {/* Total */}
+      <td className="px-4 py-3">
+        <span className="text-sm font-bold text-gray-900">{formatPrice(order.grandTotal)}</span>
+      </td>
+
+      {/* Payment */}
+      <td className="px-4 py-3">
+        <div className="space-y-1">
+          <StatusBadge status={order.paymentStatus} type="payment" />
+          <p className="text-[10px] text-gray-400 font-medium">
+            {PAYMENT_METHOD_LABELS[order.paymentMethod] || order.paymentMethod}
+          </p>
+        </div>
+      </td>
+
+      {/* Status */}
+      <td className="px-4 py-3">
+        <StatusBadge status={order.status} type="order" />
+      </td>
+
+      {/* Date */}
+      <td className="px-4 py-3">
+        <span className="text-xs text-gray-500 font-medium">{formatDateShort(order.createdAt)}</span>
+      </td>
+
+      {/* Actions */}
+      <td className="px-4 py-3">
+        <div className="flex items-center justify-end gap-1">
+          {isLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+          ) : (
+            <>
+              {/* Quick status actions */}
+              {nextStatuses.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {nextStatuses.map(ns => {
+                    const nsConfig = ORDER_STATUS_CONFIG[ns];
+                    if (!nsConfig) return null;
+                    return (
+                      <button
+                        key={ns}
+                        onClick={() => onStatusUpdate(order.id, ns)}
+                        title={`Mark as ${nsConfig.label}`}
+                        className={cn(
+                          "w-7 h-7 rounded-lg flex items-center justify-center transition-colors border",
+                          nsConfig.bgColor, nsConfig.color, nsConfig.borderColor,
+                          "hover:opacity-80"
+                        )}
+                      >
+                        <nsConfig.icon className="w-3.5 h-3.5" />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* View */}
+              <Link
+                href={`/admin/orders/${order.id}`}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                title="View Details"
+              >
+                <Eye className="w-4 h-4" />
+              </Link>
+
+              {/* Quick Preview */}
+              <button
+                onClick={() => onSetQuickPreview(quickPreviewId === order.id ? null : order)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                title="Quick Preview"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+
+              {/* Delete - only for cancelled */}
+              {order.status === 'CANCELLED' && (
+                <button
+                  onClick={() => onDeleteOrder(order.id)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                  title="Delete Order"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+});

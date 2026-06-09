@@ -342,20 +342,8 @@ export default function CheckoutPage() {
     setPlacing(true);
 
     try {
-      // Stock revalidation
-      const stockRes = await fetch('/api/orders/validate-stock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: cart.map((i: CartItem) => ({ productId: i.id, quantity: i.quantity })) }),
-      });
-      if (stockRes.ok) {
-        const stockData = await stockRes.json();
-        if (stockData.outOfStock?.length > 0) {
-          setStockError(stockData.outOfStock.map((p: any) => p.name));
-          setPlacing(false);
-          return;
-        }
-      }
+      // Stock validation is already handled atomically by /api/orders.
+      // We skip the redundant /api/orders/validate-stock call to save 1-2 seconds of latency.
 
       const res = await fetch('/api/orders', {
         method: 'POST',
@@ -401,7 +389,11 @@ export default function CheckoutPage() {
           paymentMethod: paymentMethod,
         });
       } else {
-        setOrderError(data.error || 'Could not place order. Please try again.');
+        if (data.stockErrors && data.stockErrors.length > 0) {
+          setStockError(data.stockErrors);
+        } else {
+          setOrderError(data.error || 'Could not place order. Please try again.');
+        }
       }
     } catch {
       setOrderError('Server connection error. Please try again.');

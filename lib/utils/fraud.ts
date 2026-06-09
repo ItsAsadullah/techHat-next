@@ -129,7 +129,7 @@ export async function detectOrderFraud(params: {
         AND is_pos = false
     `;
 
-    if (parseInt(phoneCount[0]?.cnt ?? '0') >= 3) {
+    if (parseInt(phoneCount[0]?.cnt ?? '0') >= 10) {
       return { isSuspicious: true, reason: 'Multiple orders from same phone within 30 minutes' };
     }
 
@@ -141,7 +141,7 @@ export async function detectOrderFraud(params: {
           AND created_at > ${window}
           AND is_pos = false
       `;
-      if (parseInt(emailCount[0]?.cnt ?? '0') >= 3) {
+      if (parseInt(emailCount[0]?.cnt ?? '0') >= 10) {
         return { isSuspicious: true, reason: 'Multiple orders from same email within 30 minutes' };
       }
     }

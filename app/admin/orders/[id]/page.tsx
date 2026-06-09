@@ -37,6 +37,16 @@ import {
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ═══════════════ Types ═══════════════
 
@@ -259,6 +269,16 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const [savingNote, setSavingNote] = useState(false);
   const [allowedTransitions, setAllowedTransitions] = useState<string[]>([]);
 
+  // Dialog State
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogConfig, setDialogConfig] = useState<{
+    title: string;
+    description: string;
+    actionLabel: string;
+    isDestructive: boolean;
+    onConfirm: () => void;
+  } | null>(null);
+
   const fetchOrder = useCallback(async () => {
     setLoading(true);
     try {
@@ -314,32 +334,50 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  const handleCancel = async () => {
-    if (!confirm('Cancel this order? Stock will be restored.')) return;
-    setActionLoading(true);
-    try {
-      const { cancelOrder } = await import('@/lib/actions/order-actions');
-      await cancelOrder(id);
-      fetchOrder();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setActionLoading(false);
-    }
+  const handleCancel = () => {
+    setDialogConfig({
+      title: 'Cancel Order?',
+      description: 'Are you sure you want to cancel this order? Stock will be restored.',
+      actionLabel: 'Cancel Order',
+      isDestructive: true,
+      onConfirm: async () => {
+        setActionLoading(true);
+        try {
+          const { cancelOrder } = await import('@/lib/actions/order-actions');
+          await cancelOrder(id);
+          fetchOrder();
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setActionLoading(false);
+          setDialogOpen(false);
+        }
+      }
+    });
+    setDialogOpen(true);
   };
 
-  const handleDelete = async () => {
-    if (!confirm('Permanently delete this order?')) return;
-    setActionLoading(true);
-    try {
-      const { deleteOrder } = await import('@/lib/actions/order-actions');
-      await deleteOrder(id);
-      router.push('/admin/orders');
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setActionLoading(false);
-    }
+  const handleDelete = () => {
+    setDialogConfig({
+      title: 'Delete Order?',
+      description: 'Are you sure you want to permanently delete this order? This action cannot be undone.',
+      actionLabel: 'Delete',
+      isDestructive: true,
+      onConfirm: async () => {
+        setActionLoading(true);
+        try {
+          const { deleteOrder } = await import('@/lib/actions/order-actions');
+          await deleteOrder(id);
+          router.push('/admin/orders');
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setActionLoading(false);
+          setDialogOpen(false);
+        }
+      }
+    });
+    setDialogOpen(true);
   };
 
   const copyOrderNumber = () => {
@@ -870,6 +908,25 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{dialogConfig?.title}</AlertDialogTitle>
+            <AlertDialogDescription>{dialogConfig?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => dialogConfig?.onConfirm()}
+              className={dialogConfig?.isDestructive ? 'bg-red-600 hover:bg-red-700 focus:ring-red-600' : ''}
+            >
+              {dialogConfig?.actionLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

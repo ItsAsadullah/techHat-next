@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_cache } from 'next/cache';
 import { StockAction } from '@prisma/client';
 
 export type ProductFilterParams = {
@@ -389,7 +389,8 @@ export async function bulkUpdateStatus(ids: string[], isActive: boolean) {
     }
 }
 
-export async function getInventoryStats() {
+const getInventoryStatsCached = unstable_cache(
+  async () => {
     // Single aggregation query — avoids loading all products into JS memory
     const [[agg], totalProducts, outOfStock] = await Promise.all([
         prisma.$queryRaw<[{ low_stock: bigint; total_value: number }]>`
@@ -408,4 +409,16 @@ export async function getInventoryStats() {
         outOfStock,
         totalValue: Number(agg.total_value),
     };
+  },
+  ['inventory-stats'],
+  { revalidate: 300, tags: ['inventory'] }
+);
+
+export async function getInventoryStats() {
+  try {
+    return await getInventoryStatsCached();
+  } catch (error) {
+    console.error('getInventoryStats error:', error);
+    return { totalProducts: 0, lowStock: 0, outOfStock: 0, totalValue: 0 };
+  }
 }

@@ -1,14 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, BarChart, Bar, Legend,
-} from 'recharts';
+import { useState, useEffect, memo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import {
   TrendingUp, TrendingDown, DollarSign, ShoppingCart, Package, AlertTriangle,
   ArrowUpRight, ArrowDownRight, Star, Clock, Zap, Users, CreditCard, Smartphone,
 } from 'lucide-react';
+
+// PERF: Lazy-load recharts — it's ~60KB and only needed for the chart section.
+// This significantly reduces initial dashboard JS bundle and time-to-interactive.
+const LazyAreaChart = dynamic(() => import('recharts').then(m => ({ default: m.AreaChart })), { ssr: false });
+const LazyArea = dynamic(() => import('recharts').then(m => ({ default: m.Area })), { ssr: false });
+const LazyXAxis = dynamic(() => import('recharts').then(m => ({ default: m.XAxis })), { ssr: false });
+const LazyYAxis = dynamic(() => import('recharts').then(m => ({ default: m.YAxis })), { ssr: false });
+const LazyCartesianGrid = dynamic(() => import('recharts').then(m => ({ default: m.CartesianGrid })), { ssr: false });
+const LazyTooltip = dynamic(() => import('recharts').then(m => ({ default: m.Tooltip })), { ssr: false });
+const LazyResponsiveContainer = dynamic(() => import('recharts').then(m => ({ default: m.ResponsiveContainer })), { ssr: false });
+const LazyPieChart = dynamic(() => import('recharts').then(m => ({ default: m.PieChart })), { ssr: false });
+const LazyPie = dynamic(() => import('recharts').then(m => ({ default: m.Pie })), { ssr: false });
+const LazyCell = dynamic(() => import('recharts').then(m => ({ default: m.Cell })), { ssr: false });
 
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#ef4444'];
 
@@ -18,7 +28,10 @@ function fmt(n: number) {
   return `৳${n.toLocaleString()}`;
 }
 
-function StatCard({
+// PERF: React.memo wrapper — StatCard is a pure presentational component
+// that receives static props. Prevents unnecessary re-renders when
+// dashboard parent state changes (e.g., mounted toggle).
+const StatCard = memo(function StatCard({
   title, value, sub, Icon, gradient, growth, growthLabel,
 }: {
   title: string; value: string; sub?: string; Icon: any;
@@ -47,7 +60,7 @@ function StatCard({
       </div>
     </div>
   );
-}
+});
 
 export function DashboardClient({ stats, salesChartData, categorySales, topProducts, recentOrders }: {
   stats: any;
@@ -149,24 +162,24 @@ export function DashboardClient({ stats, salesChartData, categorySales, topProdu
             </div>
           </div>
           <div className="h-64" style={{ minHeight: 0 }}>
-            {mounted && <ResponsiveContainer width="100%" height={256}>
-              <AreaChart data={salesChartData}>
+            {mounted && <LazyResponsiveContainer width="100%" height={256}>
+              <LazyAreaChart data={salesChartData}>
                 <defs>
                   <linearGradient id="gSales" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.25} />
                     <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e7ff" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 11 }} dy={8} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 11 }} tickFormatter={(v) => fmt(v)} />
-                <Tooltip
+                <LazyCartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e7ff" />
+                <LazyXAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 11 }} dy={8} />
+                <LazyYAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 11 }} tickFormatter={(v) => fmt(v)} />
+                <LazyTooltip
                   formatter={(v: any) => [`৳${Number(v).toLocaleString()}`, 'Sales']}
                   contentStyle={{ borderRadius: 12, border: '1px solid #e0e7ff', fontSize: 12 }}
                 />
-                <Area type="monotone" dataKey="sales" stroke="#8b5cf6" strokeWidth={3} fill="url(#gSales)" />
-              </AreaChart>
-            </ResponsiveContainer>}
+                <LazyArea type="monotone" dataKey="sales" stroke="#8b5cf6" strokeWidth={3} fill="url(#gSales)" />
+              </LazyAreaChart>
+            </LazyResponsiveContainer>}
           </div>
         </div>
 
@@ -176,14 +189,14 @@ export function DashboardClient({ stats, salesChartData, categorySales, topProdu
           {categorySales.length > 0 ? (
             <>
               <div className="h-44 flex items-center justify-center" style={{ minHeight: 0 }}>
-                {mounted && <ResponsiveContainer width="100%" height={176}>
-                  <PieChart>
-                    <Pie data={categorySales} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={4} dataKey="value">
-                      {categorySales.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip formatter={(v: any) => [`৳${Number(v).toLocaleString()}`, '']} contentStyle={{ borderRadius: 10, fontSize: 12 }} />
-                  </PieChart>
-                </ResponsiveContainer>}
+                {mounted && <LazyResponsiveContainer width="100%" height={176}>
+                  <LazyPieChart>
+                    <LazyPie data={categorySales} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={4} dataKey="value">
+                      {categorySales.map((_, i) => <LazyCell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </LazyPie>
+                    <LazyTooltip formatter={(v: any) => [`৳${Number(v).toLocaleString()}`, '']} contentStyle={{ borderRadius: 10, fontSize: 12 }} />
+                  </LazyPieChart>
+                </LazyResponsiveContainer>}
               </div>
               <div className="grid grid-cols-2 gap-2 mt-3">
                 {categorySales.map((c, i) => (

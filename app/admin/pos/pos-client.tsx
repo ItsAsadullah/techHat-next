@@ -4,11 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { usePOSCart } from '@/lib/hooks/use-pos-cart';
 import { POSProductGrid } from '@/components/admin/pos/pos-product-grid';
 import { POSCartPanel } from '@/components/admin/pos/pos-cart-panel';
-import { POSReceipt } from '@/components/admin/pos/pos-receipt';
 import { POSDailySummary } from '@/components/admin/pos/pos-daily-summary';
-import { MixedPaymentModal } from '@/components/admin/pos/mixed-payment-modal';
-import { PaymentDetailsModal } from '@/components/admin/pos/payment-details-modal';
-import { VariantPickerModal } from '@/components/admin/pos/variant-picker-modal';
 import { ClearCartDialog } from '@/components/admin/pos/clear-cart-dialog';
 import { completeSale, type POSProduct, type CompleteSaleInput } from '@/lib/actions/pos-actions';
 import { getPOSCustomerList } from '@/lib/actions/ledger-actions';
@@ -17,6 +13,15 @@ import type { InvoiceSettings } from '@/lib/actions/invoice-settings-actions';
 import { toast } from 'sonner';
 import { Maximize, Minimize, Keyboard, BarChart2, Users, CreditCard, Grid3X3, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import dynamic from 'next/dynamic';
+
+// PERF: Lazy-load modal components — these are heavy (~40KB combined) and only
+// rendered when explicitly triggered by user action. Loading them eagerly wastes
+// bandwidth and slows initial POS page paint.
+const POSReceipt = dynamic(() => import('@/components/admin/pos/pos-receipt').then(m => ({ default: m.POSReceipt })), { ssr: false });
+const MixedPaymentModal = dynamic(() => import('@/components/admin/pos/mixed-payment-modal').then(m => ({ default: m.MixedPaymentModal })), { ssr: false });
+const PaymentDetailsModal = dynamic(() => import('@/components/admin/pos/payment-details-modal').then(m => ({ default: m.PaymentDetailsModal })), { ssr: false });
+const VariantPickerModal = dynamic(() => import('@/components/admin/pos/variant-picker-modal').then(m => ({ default: m.VariantPickerModal })), { ssr: false });
 
 interface POSClientProps {
   categories: { id: string; name: string }[];
@@ -26,9 +31,10 @@ interface POSClientProps {
     totalItems: number;
   };
   invoiceSettings: InvoiceSettings;
+  initialProducts: POSProduct[];
 }
 
-export function POSClient({ categories, initialDailySummary, invoiceSettings }: POSClientProps) {
+export function POSClient({ categories, initialDailySummary, invoiceSettings, initialProducts }: POSClientProps) {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -481,6 +487,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings }: 
             categories={categories}
             onProductSelect={handleProductSelect}
             searchInputRef={searchInputRef}
+            initialProducts={initialProducts}
           />
         </div>
 

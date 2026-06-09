@@ -3,13 +3,15 @@ import Image from 'next/image';
 import type { Metadata } from 'next';
 import { getHomepageData } from '@/lib/actions/homepage-actions';
 import HeroBanner from '@/components/homepage/HeroBanner';
-import EnterpriseFooter from '@/components/homepage/EnterpriseFooter';
-import WhyChooseUs from '@/components/homepage/WhyChooseUs';
-import NewsletterSection from '@/components/homepage/NewsletterSection';
-import PromoBanner from '@/components/homepage/PromoBanner';
-import CampaignBanner from '@/components/homepage/CampaignBanner';
-import RecentlyViewed from '@/components/homepage/RecentlyViewed';
-import RecommendedSection from '@/components/homepage/RecommendedSection';
+import dynamic from 'next/dynamic';
+
+const EnterpriseFooter = dynamic(() => import('@/components/homepage/EnterpriseFooter'));
+const WhyChooseUs = dynamic(() => import('@/components/homepage/WhyChooseUs'));
+const NewsletterSection = dynamic(() => import('@/components/homepage/NewsletterSection'));
+const PromoBanner = dynamic(() => import('@/components/homepage/PromoBanner'));
+const CampaignBanner = dynamic(() => import('@/components/homepage/CampaignBanner'));
+const RecentlyViewed = dynamic(() => import('@/components/homepage/RecentlyViewed'));
+const RecommendedSection = dynamic(() => import('@/components/homepage/RecommendedSection'));
 import {
   FlashSaleWrapper,
   BestSellersWrapper,

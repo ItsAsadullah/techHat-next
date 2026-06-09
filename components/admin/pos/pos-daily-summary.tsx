@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { DollarSign, ShoppingCart, Package, Clock } from 'lucide-react';
 
 interface DailySummaryProps {
@@ -8,7 +9,10 @@ interface DailySummaryProps {
   totalItems: number;
 }
 
-export function POSDailySummary({ totalSales, totalOrders, totalItems }: DailySummaryProps) {
+// PERF: React.memo prevents this component from re-rendering when parent
+// state changes (search, category filter, etc.). It only needs to update
+// after a sale is completed, when the summary numbers change.
+export const POSDailySummary = memo(function POSDailySummary({ totalSales, totalOrders, totalItems }: DailySummaryProps) {
   return (
     <div className="flex items-center gap-6 px-4 py-2 bg-gray-50/80 border-b border-gray-100">
       <div className="flex items-center gap-2">
@@ -36,4 +40,4 @@ export function POSDailySummary({ totalSales, totalOrders, totalItems }: DailySu
       </div>
     </div>
   );
-}
+});

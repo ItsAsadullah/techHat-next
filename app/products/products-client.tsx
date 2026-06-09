@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useCallback, useTransition } from 'react';
+import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   SlidersHorizontal, X, ChevronLeft, ChevronRight, Package,
   TrendingUp, Clock, ArrowUpDown, Tag, CheckSquare,
 } from 'lucide-react';
 import ProductGrid from '@/components/category-page/ProductGrid';
+import { getAllProductsPageData } from '@/lib/actions/products-page-actions';
 import type { CategoryProduct } from '@/lib/types/category-page';
 import type { AllProductsFilters } from '@/lib/actions/products-page-actions';
 import { cn } from '@/lib/utils';
@@ -34,6 +35,43 @@ export default function ProductsPageClient({ products, totalCount, totalPages, p
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
   const [showFilters, setShowFilters] = useState(false);
+
+  const [loadedProducts, setLoadedProducts] = useState<CategoryProduct[]>(products);
+  const [currentPage, setCurrentPage] = useState(page);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const loaderRef = useRef<HTMLDivElement>(null);
+
+  // Sync state when URL (props) change
+  useEffect(() => {
+    setLoadedProducts(products);
+    setCurrentPage(page);
+  }, [products, page]);
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || currentPage >= totalPages || isPending) return;
+    setIsLoadingMore(true);
+    try {
+      const nextFilters = { ...filters, page: currentPage + 1 };
+      const data = await getAllProductsPageData(nextFilters);
+      setLoadedProducts(prev => [...prev, ...data.products]);
+      setCurrentPage(prev => prev + 1);
+    } catch (err) {
+      console.error('Failed to load more products', err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [currentPage, totalPages, isLoadingMore, isPending, filters]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        loadMore();
+      }
+    }, { rootMargin: '400px' });
+    
+    if (loaderRef.current) observer.observe(loaderRef.current);
+    return () => observer.disconnect();
+  }, [loadMore]);
 
   const navigate = useCallback((newFilters: Partial<AllProductsFilters>) => {
     const merged = { ...filters, ...newFilters };
@@ -247,56 +285,22 @@ export default function ProductsPageClient({ products, totalCount, totalPages, p
             <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
-          <ProductGrid products={products} />
+          <>
+            <ProductGrid products={loadedProducts} />
+            
+            {/* Infinite Scroll Loader */}
+            {currentPage < totalPages && (
+              <div ref={loaderRef} className="flex justify-center py-12">
+                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+            
+            {/* Summary */}
+            <p className="text-center text-xs text-gray-400 mt-6 pb-6">
+              Showing {loadedProducts.length} of {totalCount.toLocaleString()} products
+            </p>
+          </>
         )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-8 flex-wrap">
-            <button
-              onClick={() => navigate({ page: page - 1 })}
-              disabled={page <= 1}
-              className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-
-            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-              let p: number;
-              if (totalPages <= 7) { p = i + 1; }
-              else if (page <= 4) { p = i + 1; }
-              else if (page >= totalPages - 3) { p = totalPages - 6 + i; }
-              else { p = page - 3 + i; }
-              return (
-                <button
-                  key={p}
-                  onClick={() => navigate({ page: p })}
-                  className={cn(
-                    'w-9 h-9 flex items-center justify-center rounded-lg text-sm font-semibold border transition-colors',
-                    p === page
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                  )}
-                >
-                  {p}
-                </button>
-              );
-            })}
-
-            <button
-              onClick={() => navigate({ page: page + 1 })}
-              disabled={page >= totalPages}
-              className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
-        {/* Summary */}
-        <p className="text-center text-xs text-gray-400 mt-3">
-          Showing {((page - 1) * 24) + 1}–{Math.min(page * 24, totalCount)} of {totalCount.toLocaleString()} products
-        </p>
       </div>
     </div>
   );

@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Package, PackagePlus, PackageMinus, Archive, Trash2, CheckSquare } from "lucide-react";
 import { BulkActionModal, BulkActionType } from "./bulk-action-modal";
@@ -55,9 +55,13 @@ export function UnifiedProductTable<TData, TValue>({
   const rawLimit = Number(searchParams.get("limit"));
   const pageSize = ALLOWED_LIMITS.includes(rawLimit) ? rawLimit : 20;
 
+  // PERF: Memoize columns so useReactTable doesn't re-calculate table structure
+  // on every render (which happens when row selection changes or bulk actions open)
+  const memoizedColumns = useMemo(() => columns, [columns]);
+
   const table = useReactTable({
     data,
-    columns,
+    columns: memoizedColumns,
     pageCount,
     state: {
       rowSelection,
@@ -80,6 +84,13 @@ export function UnifiedProductTable<TData, TValue>({
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", newPage.toString());
+    router.push(`?${params.toString()}`);
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("limit", newLimit.toString());
+    params.set("page", "1"); // Reset to page 1 when changing limit
     router.push(`?${params.toString()}`);
   };
 
@@ -225,6 +236,20 @@ export function UnifiedProductTable<TData, TValue>({
             <p className="text-sm font-medium">
               Page {page} of {pageCount}
             </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium mr-2">Rows per page:</span>
+            <select
+              className="h-8 w-[70px] rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              value={pageSize}
+              onChange={(e) => handleLimitChange(Number(e.target.value))}
+            >
+              {ALLOWED_LIMITS.map((limit) => (
+                <option key={limit} value={limit}>
+                  {limit}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="flex items-center space-x-2">
             <Button

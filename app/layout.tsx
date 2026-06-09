@@ -12,7 +12,7 @@ import { getStoreSettings } from '@/lib/actions/invoice-settings-actions';
 import { getBrandingSettings, getAnalyticsSettings } from '@/lib/actions/invoice-settings-actions';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import MetaPixel from '@/components/MetaPixel';
-import Loading from './loading';
+import NextTopLoader from 'nextjs-toploader';
 
 export const revalidate = 600;
 
@@ -112,7 +112,8 @@ export default async function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <Suspense fallback={<Loading />}>
+          <NextTopLoader color="#2563eb" showSpinner={false} />
+          <Suspense fallback={null}>
             <StoreProvider value={storeSettings}>
               <BrandingProvider value={branding}>
                 <Providers>

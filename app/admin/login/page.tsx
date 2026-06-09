@@ -174,7 +174,7 @@ export default function AdminLogin() {
             <span className="w-2 h-2 rounded-full bg-red-500 blink inline-block" />
             REC ● LIVE MONITORING
           </div>
-          <div className="text-green-400/60 text-[10px] tracking-widest">
+          <div className="text-green-400/60 text-[10px] tracking-widest" suppressHydrationWarning>
             CAM_ID: SRV-{Math.floor(Math.random()*9000+1000)}
           </div>
         </div>
@@ -193,7 +193,7 @@ export default function AdminLogin() {
             <div className="text-green-400 text-[11px] tracking-[0.3em] uppercase">
               <GlitchText text="SECURE_TERMINAL v4.2.1" />
             </div>
-            <div className="text-red-400/70 text-[10px]">
+            <div className="text-red-400/70 text-[10px]" suppressHydrationWarning>
               {new Date().toLocaleTimeString('en-US', { hour12: false })}
             </div>
           </div>

@@ -4,18 +4,7 @@ import { checkIpRateLimit, detectOrderFraud, getClientIp } from '@/lib/utils/fra
 
 export async function POST(request: NextRequest) {
   try {
-    // ── 1. Extract real client IP (Cloudflare-aware, proxy-count-aware) ──
     const ip = getClientIp(request);
-
-    // ── 2. IP-based rate limit: 10 orders / IP / hour ──
-    const rateCheck = await checkIpRateLimit(ip, 'order_create', { windowMinutes: 60, maxRequests: 10 });
-    if (!rateCheck.allowed) {
-      return NextResponse.json(
-        { success: false, error: 'Too many orders from this IP. Please try again later.' },
-        { status: 429 }
-      );
-    }
-
     const body: PlaceOrderInput = await request.json();
 
     // ── 3. Basic required field validation before hitting DB ──
@@ -26,12 +15,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── 4. Behavioural fraud detection (velocity by phone / email) ──
-    const fraudCheck = await detectOrderFraud({
-      ip,
-      phone: body.customerPhone,
-      email: body.customerEmail,
-    });
+    // ── 2 & 4. Concurrently run rate limit and fraud check to save network latency ──
+    const [rateCheck, fraudCheck] = await Promise.all([
+      checkIpRateLimit(ip, 'order_create', { windowMinutes: 60, maxRequests: 50 }),
+      detectOrderFraud({
+        ip,
+        phone: body.customerPhone,
+        email: body.customerEmail,
+      })
+    ]);
+
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Too many orders from this IP. Please try again later.' },
+        { status: 429 }
+      );
+    }
+
     if (fraudCheck.isSuspicious) {
       console.warn('[fraud] Suspicious order blocked:', { ip, phone: body.customerPhone, reason: fraudCheck.reason });
       return NextResponse.json(
@@ -43,8 +43,9 @@ export async function POST(request: NextRequest) {
     // ── 5. Inject IP for logging / fraud tracking ──
     body.ipAddress = ip;
 
-    // ── 6. placeOrder: server-side price, stock, coupon validation ──
+    console.time('placeOrder action');
     const result = await placeOrder(body);
+    console.timeEnd('placeOrder action');
 
     if (result.success) {
       return NextResponse.json(result, { status: 201 });

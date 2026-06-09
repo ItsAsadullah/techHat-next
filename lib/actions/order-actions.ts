@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_cache, revalidateTag } from 'next/cache';
 import { randomUUID } from 'crypto';
 import {
   ORDER_STATUS_TRANSITIONS,
@@ -13,6 +13,7 @@ import {
   getAllowedTransitions,
 } from '@/lib/utils/order-helpers';
 import { getShippingSettings } from '@/lib/actions/invoice-settings-actions';
+import { requireAdmin } from '@/lib/auth/require-role';
 
 // ─── String-typed enums (Prisma client may lag behind schema changes) ─────────
 type OrderStatus =
@@ -190,7 +191,8 @@ export async function placeOrder(input: PlaceOrderInput) {
     const productIds = input.items.map((i) => i.productId);
     const variantIds = input.items.filter((i) => i.variantId).map((i) => i.variantId!);
 
-    const [products, variants] = await Promise.all([
+    console.time('fetch DB data');
+    const [products, variants, shippingSettings, orderNumber] = await Promise.all([
       db.product.findMany({
         where: { id: { in: productIds }, isActive: true },
         select: { id: true, name: true, price: true, offerPrice: true, stock: true, isActive: true },
@@ -201,7 +203,10 @@ export async function placeOrder(input: PlaceOrderInput) {
             select: { id: true, price: true, offerPrice: true, stock: true },
           })
         : Promise.resolve([]),
+      getShippingSettings(),
+      generateOrderNumberSequential(),
     ]);
+    console.timeEnd('fetch DB data');
 
     const productMap = new Map<string, any>(products.map((p: any) => [p.id, p]));
     const variantMap = new Map<string, any>(variants.map((v: any) => [v.id, v]));
@@ -241,11 +246,8 @@ export async function placeOrder(input: PlaceOrderInput) {
 
     // 4. Server-side totals
     const subTotal = validatedItems.reduce((s, i) => s + i.total, 0);
-    // Read shipping rates from DB (falls back to hardcoded 60/120 if not set)
-    const shippingSettings = await getShippingSettings();
     const isDhaka = ['Dhaka', 'dhaka'].includes(input.division);
     let shippingCost = isDhaka ? shippingSettings.shippingDhaka : shippingSettings.shippingOutsideDhaka;
-    // Free delivery override
     if (shippingSettings.freeDeliveryThreshold > 0 && subTotal >= shippingSettings.freeDeliveryThreshold) {
       shippingCost = 0;
     }
@@ -260,66 +262,69 @@ export async function placeOrder(input: PlaceOrderInput) {
 
     const grandTotal = Math.max(0, subTotal - couponDiscount + shippingCost);
     const estimatedDelivery = calculateEstimatedDelivery(input.division);
-    const orderNumber = await generateOrderNumberSequential();
     const trackingToken = randomUUID();
+    const orderId = randomUUID(); // Pre-generate UUID to use in array transaction
     const initialPaymentStatus: PaymentStatus = input.paymentMethod === 'CASH' ? 'UNPAID' : 'PENDING';
 
-    // 6. Atomic transaction: lock stock → create order → log event
-    const order = await db.$transaction(async (tx: any) => {
-      for (const item of validatedItems) {
-        if (item.variantId) {
-          const v = await tx.variant.findUnique({ where: { id: item.variantId }, select: { stock: true } });
-          if (!v || v.stock < item.quantity) throw new Error(`Insufficient stock: ${item.productName}`);
-          await tx.variant.update({ where: { id: item.variantId }, data: { stock: { decrement: item.quantity } } });
-        } else {
-          const p = await tx.product.findUnique({ where: { id: item.productId }, select: { stock: true } });
-          if (!p || p.stock < item.quantity) throw new Error(`Insufficient stock: ${item.productName}`);
-          await tx.product.update({ where: { id: item.productId }, data: { stock: { decrement: item.quantity }, soldCount: { increment: item.quantity } } });
-        }
+    // 6. Array-based transaction (1 network trip)
+    console.time('transaction');
+    const txOperations: any[] = [];
+    
+    for (const item of validatedItems) {
+      if (item.variantId) {
+        txOperations.push(db.variant.update({ where: { id: item.variantId }, data: { stock: { decrement: item.quantity } } }));
+      } else {
+        txOperations.push(db.product.update({ where: { id: item.productId }, data: { stock: { decrement: item.quantity }, soldCount: { increment: item.quantity } } }));
       }
+    }
 
-      const newOrder = await tx.order.create({
-        data: {
-          orderNumber, trackingToken,
-          userId: input.userId || null,
-          customerName: input.customerName.trim(),
-          customerPhone: input.customerPhone.replace(/\s/g, ''),
-          customerEmail: input.customerEmail?.trim() || null,
-          shippingAddress: input.shippingAddress.trim(),
-          division: input.division, district: input.district, upazila: input.upazila || null,
-          orderNote: input.orderNote?.trim() || null,
-          subTotal, totalAmount: subTotal, discount: couponDiscount,
-          couponCode: appliedCouponCode, couponDiscount,
-          tax: 0, shippingCost, grandTotal,
-          paymentMethod: input.paymentMethod,
-          paymentStatus: initialPaymentStatus,
-          transactionId: input.transactionId?.trim() || null,
-          mobileProvider: input.mobileProvider || null,
-          mobileNumber: input.mobileNumber?.trim() || null,
-          status: 'PENDING', ipAddress: input.ipAddress || null,
-          estimatedDelivery, isPos: false,
-          items: { create: validatedItems },
-        },
-        include: { items: true },
-      });
+    txOperations.push(db.order.create({
+      data: {
+        id: orderId,
+        orderNumber, trackingToken,
+        userId: input.userId || null,
+        customerName: input.customerName.trim(),
+        customerPhone: input.customerPhone.replace(/\s/g, ''),
+        customerEmail: input.customerEmail?.trim() || null,
+        shippingAddress: input.shippingAddress.trim(),
+        division: input.division, district: input.district, upazila: input.upazila || null,
+        orderNote: input.orderNote?.trim() || null,
+        subTotal, totalAmount: subTotal, discount: couponDiscount,
+        couponCode: appliedCouponCode, couponDiscount,
+        tax: 0, shippingCost, grandTotal,
+        paymentMethod: input.paymentMethod,
+        paymentStatus: initialPaymentStatus,
+        transactionId: input.transactionId?.trim() || null,
+        mobileProvider: input.mobileProvider || null,
+        mobileNumber: input.mobileNumber?.trim() || null,
+        status: 'PENDING', ipAddress: input.ipAddress || null,
+        estimatedDelivery, isPos: false,
+        items: { create: validatedItems },
+      },
+      include: { items: true },
+    }));
 
-      await tx.orderEvent.create({
-        data: {
-          orderId: newOrder.id, eventType: 'ORDER_CREATED',
-          newStatus: 'PENDING', newPaymentStatus: initialPaymentStatus,
-          changedBy: input.userId || 'guest',
-          note: `Order placed via website. Payment: ${input.paymentMethod}`,
-        },
-      });
+    txOperations.push(db.orderEvent.create({
+      data: {
+        orderId, eventType: 'ORDER_CREATED',
+        newStatus: 'PENDING', newPaymentStatus: initialPaymentStatus,
+        changedBy: input.userId || 'guest',
+        note: `Order placed via website. Payment: ${input.paymentMethod}`,
+      },
+    }));
 
-      if (appliedCouponCode) {
-        await tx.$executeRaw`UPDATE coupons SET used_count = used_count + 1 WHERE code = ${appliedCouponCode}`;
-      }
+    if (appliedCouponCode) {
+      txOperations.push(db.$executeRaw`UPDATE coupons SET used_count = used_count + 1 WHERE code = ${appliedCouponCode}`);
+    }
 
-      return newOrder;
-    });
+    const txResults = await db.$transaction(txOperations);
+    const order = txResults.find((r: any) => r && r.orderNumber === orderNumber);
+    console.timeEnd('transaction');
 
+    console.time('revalidatePath');
     revalidatePath('/admin/orders');
+    revalidateTag('orders');
+    console.timeEnd('revalidatePath');
     return { success: true, order, orderNumber, trackingToken, grandTotal, estimatedDelivery, stockErrors };
   } catch (error: any) {
     console.error('placeOrder error:', error);
@@ -337,10 +342,13 @@ export async function updateOrderStatus(
   options?: { note?: string; cancelReason?: string; changedBy?: string; refundAmount?: number }
 ) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return { success: false, error: 'Unauthorized' };
+
     const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true } });
     if (!order) return { success: false, error: 'Order not found' };
 
-    if (!canTransitionStatus(order.status, newStatus)) {
+    if (newStatus !== 'CANCELLED' && !canTransitionStatus(order.status, newStatus)) {
       const allowed = getAllowedTransitions(order.status).join(', ') || 'none';
       return { success: false, error: `Cannot change ${order.status} → ${newStatus}. Allowed: ${allowed}` };
     }
@@ -359,7 +367,7 @@ export async function updateOrderStatus(
     }
 
     await db.$transaction(async (tx: any) => {
-      if (newStatus === 'CANCELLED' && order.status !== 'CANCELLED') {
+      if ((newStatus === 'CANCELLED' || newStatus === 'RETURNED') && order.status !== 'CANCELLED' && order.status !== 'RETURNED') {
         for (const item of order.items) {
           if (item.variantId) {
             await tx.variant.update({ where: { id: item.variantId }, data: { stock: { increment: item.quantity } } });
@@ -381,10 +389,11 @@ export async function updateOrderStatus(
 
     revalidatePath('/admin/orders');
     revalidatePath(`/admin/orders/${orderId}`);
+    revalidateTag('orders');
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error('updateOrderStatus error:', error);
-    return { success: false, error: 'Failed to update order status' };
+    return { success: false, error: error?.message || 'Failed to update order status' };
   }
 }
 
@@ -396,6 +405,9 @@ export async function updatePaymentStatus(
   options?: { note?: string; changedBy?: string }
 ) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return { success: false, error: 'Unauthorized' };
+
     const order = await db.order.findUnique({ where: { id: orderId }, select: { id: true, status: true, paymentStatus: true } });
     if (!order) return { success: false, error: 'Order not found' };
 
@@ -423,6 +435,7 @@ export async function updatePaymentStatus(
 
     revalidatePath('/admin/orders');
     revalidatePath(`/admin/orders/${orderId}`);
+    revalidateTag('orders');
     return { success: true };
   } catch (error) {
     console.error('updatePaymentStatus error:', error);
@@ -434,6 +447,9 @@ export async function updatePaymentStatus(
 
 export async function setOrderInternalNote(orderId: string, note: string, changedBy?: string) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return { success: false, error: 'Unauthorized' };
+
     await db.$transaction(async (tx: any) => {
       await tx.order.update({ where: { id: orderId }, data: { internalNote: note } });
       await tx.orderEvent.create({ data: { orderId, eventType: 'NOTE_ADDED', changedBy: changedBy || 'admin', note } });
@@ -642,19 +658,30 @@ export async function cancelOrder(orderId: string, options?: { reason?: string; 
 
 export async function deleteOrder(orderId: string) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return { success: false, error: 'Unauthorized' };
+
+    const order = await db.order.findUnique({ where: { id: orderId } });
+    if (!order) return { success: false, error: 'Order not found' };
+    
+    if (order.status !== 'CANCELLED') {
+      return { success: false, error: 'Order must be cancelled before deletion' };
+    }
+
     await db.order.delete({ where: { id: orderId } });
     revalidatePath('/admin/orders');
+    revalidateTag('orders');
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error('deleteOrder error:', error);
-    return { success: false, error: 'Failed to delete order' };
+    return { success: false, error: error?.message || 'Failed to delete order' };
   }
 }
 
 // ─── GET ORDER STATS ─────────────────────────────────────────────────────────
 
-export async function getOrderStats() {
-  try {
+const getOrderStatsCached = unstable_cache(
+  async () => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const [
       totalOrders, pendingOrders, confirmedOrders, processingOrders,
@@ -676,6 +703,14 @@ export async function getOrderStats() {
       success: true,
       stats: { totalOrders, pendingOrders, confirmedOrders, processingOrders, shippedOrders, deliveredOrders, cancelledOrders, totalRevenue: revenueResult?._sum?.grandTotal || 0, todayOrders, todayRevenue: todayRevenueResult?._sum?.grandTotal || 0 },
     };
+  },
+  ['order-stats'],
+  { revalidate: 300, tags: ['orders'] }
+);
+
+export async function getOrderStats() {
+  try {
+    return await getOrderStatsCached();
   } catch (error) {
     console.error('getOrderStats error:', error);
     return { success: false, stats: null };

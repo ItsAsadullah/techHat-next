@@ -632,6 +632,7 @@ export async function searchProducts(query: string, limit = 20) {
           OR: [
             { name: { contains: term, mode: 'insensitive' } },
             { sku: { contains: term, mode: 'insensitive' } },
+            { model: { contains: term, mode: 'insensitive' } },
             { barcode: { contains: term, mode: 'insensitive' } },
             { shortDesc: { contains: term, mode: 'insensitive' } },
             { category: { name: { contains: term, mode: 'insensitive' } } },
@@ -666,6 +667,7 @@ export async function searchProducts(query: string, limit = 20) {
           price: true,
           offerPrice: true,
           sku: true,
+          model: true,
           barcode: true,
           images: true,
           category: { select: { name: true } },
@@ -710,24 +712,61 @@ export async function searchProducts(query: string, limit = 20) {
       }),
     ]);
 
+    const mappedProducts = products.map((p) => ({
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      price: p.price,
+      offerPrice: p.offerPrice,
+      sku: p.sku,
+      model: p.model,
+      barcode: p.barcode,
+      image: p.productImages?.[0]?.url || p.images?.[0] || '',
+      categoryName: p.category?.name || '',
+      brandName: p.brand?.name || '',
+      matchedText: p.variants?.[0]
+        ? [p.variants[0].name, p.variants[0].sku, p.variants[0].upc].filter(Boolean).join(' / ')
+        : p.specs?.[0]
+          ? `${p.specs[0].name}: ${p.specs[0].value}`
+          : '',
+    }));
+
+    const q = term.toLowerCase();
+    const getScore = (p: any) => {
+        let score = 0;
+        const name = p.name.toLowerCase();
+        const sku = p.sku?.toLowerCase() || '';
+        const model = p.model?.toLowerCase() || '';
+        const barcode = p.barcode?.toLowerCase() || '';
+        
+        // Product Model gets HIGHEST priority
+        if (model === q) score += 1000;
+        else if (model.startsWith(q)) score += 500;
+        else if (model.includes(q)) score += 100;
+        
+        // Product Title gets second highest priority
+        if (name === q) score += 800;
+        else if (name.startsWith(q)) score += 400;
+        else if (name.includes(q)) score += 50;
+
+        // SKU/Barcode gets third priority
+        if (sku === q || barcode === q) score += 600;
+        else if (sku.startsWith(q) || barcode.startsWith(q)) score += 300;
+        else if (sku.includes(q) || barcode.includes(q)) score += 30;
+        
+        // Match in matchedText (Variants/Specs)
+        const mt = (p.matchedText || '').toLowerCase();
+        if (mt === q) score += 600;
+        else if (mt.startsWith(q)) score += 300;
+        else if (mt.includes(q)) score += 30;
+        
+        return score;
+    };
+
+    mappedProducts.sort((a, b) => getScore(b) - getScore(a));
+
     return {
-      products: products.map((p) => ({
-        id: p.id,
-        name: p.name,
-        slug: p.slug,
-        price: p.price,
-        offerPrice: p.offerPrice,
-        sku: p.sku,
-        barcode: p.barcode,
-        image: p.productImages?.[0]?.url || p.images?.[0] || '',
-        categoryName: p.category?.name || '',
-        brandName: p.brand?.name || '',
-        matchedText: p.variants?.[0]
-          ? [p.variants[0].name, p.variants[0].sku, p.variants[0].upc].filter(Boolean).join(' / ')
-          : p.specs?.[0]
-            ? `${p.specs[0].name}: ${p.specs[0].value}`
-            : '',
-      })),
+      products: mappedProducts,
       categories: categories.map((c) => ({
         id: c.id,
         name: c.name,

@@ -40,6 +40,7 @@ export interface POSProduct {
   id: string;
   name: string;
   sku: string | null;
+  model: string | null;
   barcode: string | null;
   price: number;
   offerPrice: number | null;
@@ -52,8 +53,10 @@ export interface POSProduct {
     sku: string | null;
     price: number;
     offerPrice: number | null;
+    costPrice: number;
     stock: number;
     image: string | null;
+    costPrice: number;
   }[];
 }
 
@@ -68,6 +71,7 @@ export async function searchPOSProducts(query: string, categoryId?: string): Pro
       where.OR = [
         { name: { contains: q, mode: 'insensitive' } },
         { sku: { contains: q, mode: 'insensitive' } },
+        { model: { contains: q, mode: 'insensitive' } },
         { barcode: { contains: q, mode: 'insensitive' } },
         { variants: { some: { sku: { contains: q, mode: 'insensitive' } } } },
       ];
@@ -83,9 +87,11 @@ export async function searchPOSProducts(query: string, categoryId?: string): Pro
         id: true,
         name: true,
         sku: true,
+        model: true,
         barcode: true,
         price: true,
         offerPrice: true,
+        costPrice: true,
         stock: true,
         category: { select: { name: true } },
         productImages: {
@@ -100,6 +106,7 @@ export async function searchPOSProducts(query: string, categoryId?: string): Pro
             sku: true,
             price: true,
             offerPrice: true,
+            costPrice: true,
             stock: true,
             image: true,
           },
@@ -109,18 +116,60 @@ export async function searchPOSProducts(query: string, categoryId?: string): Pro
       orderBy: { name: 'asc' },
     });
 
-    return products.map((p) => ({
+    const mappedProducts = products.map((p) => ({
       id: p.id,
       name: p.name,
       sku: p.sku,
+      model: p.model,
       barcode: p.barcode,
       price: p.price,
       offerPrice: p.offerPrice,
+      costPrice: p.costPrice,
       stock: p.stock,
       image: p.productImages[0]?.url || null,
       categoryName: p.category.name,
       variants: p.variants,
     }));
+
+    if (query && query.trim().length > 0) {
+      const q = query.trim().toLowerCase();
+      
+      const getScore = (p: POSProduct) => {
+        let score = 0;
+        const name = p.name.toLowerCase();
+        const sku = p.sku?.toLowerCase() || '';
+        const model = p.model?.toLowerCase() || '';
+        const barcode = p.barcode?.toLowerCase() || '';
+        
+        // Product Model gets highest priority
+        if (model === q) score += 1000;
+        else if (model.startsWith(q)) score += 500;
+        else if (model.includes(q)) score += 100;
+        
+        // Product Title gets second highest priority
+        if (name === q) score += 800;
+        else if (name.startsWith(q)) score += 400;
+        else if (name.includes(q)) score += 50;
+
+        // SKU/Barcode gets third priority
+        if (sku === q || barcode === q) score += 600;
+        else if (sku.startsWith(q) || barcode.startsWith(q)) score += 300;
+        else if (sku.includes(q) || barcode.includes(q)) score += 30;
+
+        for (const v of p.variants) {
+           const vsku = v.sku?.toLowerCase() || '';
+           if (vsku === q) score += 600;
+           else if (vsku.startsWith(q)) score += 300;
+           else if (vsku.includes(q)) score += 30;
+        }
+        
+        return score;
+      };
+
+      mappedProducts.sort((a, b) => getScore(b) - getScore(a));
+    }
+
+    return mappedProducts;
   } catch (error: any) {
     console.error('searchPOSProducts error:', error);
     return [];
@@ -136,6 +185,7 @@ export async function findProductByBarcode(barcode: string): Promise<POSProduct 
         OR: [
           { barcode: b },
           { sku: b },
+          { model: b },
           { variants: { some: { sku: b } } },
         ],
       },
@@ -143,9 +193,11 @@ export async function findProductByBarcode(barcode: string): Promise<POSProduct 
         id: true,
         name: true,
         sku: true,
+        model: true,
         barcode: true,
         price: true,
         offerPrice: true,
+        costPrice: true,
         stock: true,
         category: { select: { name: true } },
         productImages: {
@@ -160,6 +212,7 @@ export async function findProductByBarcode(barcode: string): Promise<POSProduct 
             sku: true,
             price: true,
             offerPrice: true,
+            costPrice: true,
             stock: true,
             image: true,
           },
@@ -176,6 +229,7 @@ export async function findProductByBarcode(barcode: string): Promise<POSProduct 
       barcode: product.barcode,
       price: product.price,
       offerPrice: product.offerPrice,
+      costPrice: product.costPrice,
       stock: product.stock,
       image: product.productImages[0]?.url || null,
       categoryName: product.category.name,
@@ -244,13 +298,33 @@ export interface SaleResult {
 
 export async function completeSale(input: CompleteSaleInput): Promise<SaleResult> {
   try {
-    // Validate stock availability before proceeding
+    // PERF: Batch stock validation — replaces the original per-item sequential
+    // findUnique loop (2N DB queries for N items) with 2 batch findMany calls
+    // + Map lookups. For a 10-item cart this goes from 20 queries → 2 queries.
+    const productIds = input.items.filter(i => !i.variantId).map(i => i.productId);
+    const variantIds = input.items.filter(i => i.variantId).map(i => i.variantId!);
+
+    const [stockProducts, stockVariants] = await Promise.all([
+      productIds.length
+        ? prisma.product.findMany({
+            where: { id: { in: productIds } },
+            select: { id: true, stock: true, name: true },
+          })
+        : Promise.resolve([]),
+      variantIds.length
+        ? prisma.variant.findMany({
+            where: { id: { in: variantIds } },
+            select: { id: true, stock: true, name: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const productStockMap = new Map(stockProducts.map((p: any) => [p.id, p]));
+    const variantStockMap = new Map(stockVariants.map((v: any) => [v.id, v]));
+
     for (const item of input.items) {
       if (item.variantId) {
-        const variant = await prisma.variant.findUnique({
-          where: { id: item.variantId },
-          select: { stock: true, name: true },
-        });
+        const variant = variantStockMap.get(item.variantId);
         if (!variant || variant.stock < item.quantity) {
           return {
             success: false,
@@ -258,10 +332,7 @@ export async function completeSale(input: CompleteSaleInput): Promise<SaleResult
           };
         }
       } else {
-        const product = await prisma.product.findUnique({
-          where: { id: item.productId },
-          select: { stock: true, name: true },
-        });
+        const product = productStockMap.get(item.productId);
         if (!product || product.stock < item.quantity) {
           return {
             success: false,

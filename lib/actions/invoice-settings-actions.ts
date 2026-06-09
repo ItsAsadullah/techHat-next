@@ -224,18 +224,26 @@ const DEFAULT_PAYMENT: PaymentMethodSettings = {
   bankDetails: { name: '', account: '', branch: '', routing: '' },
 };
 
+const _getPaymentMethodSettingsCached = unstable_cache(
+  async () => {
+    const rows = await prisma.setting.findMany({ where: { category: 'payments' } });
+    const map = rows.reduce((acc, r) => { acc[r.key] = r.value; return acc; }, {} as Record<string, string>);
+    try {
+      return {
+        enabled: map.paymentEnabled ? JSON.parse(map.paymentEnabled) : DEFAULT_PAYMENT.enabled,
+        numbers: map.paymentNumbers ? JSON.parse(map.paymentNumbers) : DEFAULT_PAYMENT.numbers,
+        bankDetails: map.bankDetails ? JSON.parse(map.bankDetails) : DEFAULT_PAYMENT.bankDetails,
+      };
+    } catch {
+      return DEFAULT_PAYMENT;
+    }
+  },
+  ['payment-settings'],
+  { revalidate: 300, tags: ['payments'] }
+);
+
 export async function getPaymentMethodSettings(): Promise<PaymentMethodSettings> {
-  const rows = await prisma.setting.findMany({ where: { category: 'payments' } });
-  const map = rows.reduce((acc, r) => { acc[r.key] = r.value; return acc; }, {} as Record<string, string>);
-  try {
-    return {
-      enabled: map.paymentEnabled ? JSON.parse(map.paymentEnabled) : DEFAULT_PAYMENT.enabled,
-      numbers: map.paymentNumbers ? JSON.parse(map.paymentNumbers) : DEFAULT_PAYMENT.numbers,
-      bankDetails: map.bankDetails ? JSON.parse(map.bankDetails) : DEFAULT_PAYMENT.bankDetails,
-    };
-  } catch {
-    return DEFAULT_PAYMENT;
-  }
+  return _getPaymentMethodSettingsCached();
 }
 
 export async function updatePaymentMethodSettings(data: PaymentMethodSettings) {
@@ -257,6 +265,8 @@ export async function updatePaymentMethodSettings(data: PaymentMethodSettings) {
         create: { key: 'bankDetails', value: JSON.stringify(data.bankDetails), category: 'payments' },
       }),
     ]);
+    // @ts-expect-error - Next.js 16 requires a second argument for revalidateTag
+    revalidateTag('payments');
     revalidatePath('/admin/settings/payments');
     return { success: true };
   } catch (error: any) {
@@ -272,18 +282,26 @@ export type ShippingSettings = {
   freeDeliveryThreshold: number;
 };
 
+const _getShippingSettingsCached = unstable_cache(
+  async () => {
+    try {
+      const rows = await prisma.setting.findMany({ where: { category: 'shipping' } });
+      const m = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+      return {
+        shippingDhaka: Number(m.shippingDhaka) || 60,
+        shippingOutsideDhaka: Number(m.shippingOutsideDhaka) || 120,
+        freeDeliveryThreshold: Number(m.freeDeliveryThreshold) || 0,
+      };
+    } catch {
+      return { shippingDhaka: 60, shippingOutsideDhaka: 120, freeDeliveryThreshold: 0 };
+    }
+  },
+  ['shipping-settings'],
+  { revalidate: 300, tags: ['shipping'] }
+);
+
 export async function getShippingSettings(): Promise<ShippingSettings> {
-  try {
-    const rows = await prisma.setting.findMany({ where: { category: 'shipping' } });
-    const m = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-    return {
-      shippingDhaka: Number(m.shippingDhaka) || 60,
-      shippingOutsideDhaka: Number(m.shippingOutsideDhaka) || 120,
-      freeDeliveryThreshold: Number(m.freeDeliveryThreshold) || 0,
-    };
-  } catch {
-    return { shippingDhaka: 60, shippingOutsideDhaka: 120, freeDeliveryThreshold: 0 };
-  }
+  return _getShippingSettingsCached();
 }
 
 export async function updateShippingSettings(data: ShippingSettings) {
@@ -293,6 +311,8 @@ export async function updateShippingSettings(data: ShippingSettings) {
       prisma.setting.upsert({ where: { key: 'shippingOutsideDhaka' }, update: { value: String(data.shippingOutsideDhaka), category: 'shipping' }, create: { key: 'shippingOutsideDhaka', value: String(data.shippingOutsideDhaka), category: 'shipping' } }),
       prisma.setting.upsert({ where: { key: 'freeDeliveryThreshold' }, update: { value: String(data.freeDeliveryThreshold), category: 'shipping' }, create: { key: 'freeDeliveryThreshold', value: String(data.freeDeliveryThreshold), category: 'shipping' } }),
     ]);
+    // @ts-expect-error - Next.js 16 requires a second argument for revalidateTag
+    revalidateTag('shipping');
     revalidatePath('/admin/settings/store');
     return { success: true };
   } catch (error: any) {
@@ -309,19 +329,27 @@ export type AnalyticsSettings = {
   tiktokPixelId: string;
 };
 
+const _getAnalyticsSettingsCached = unstable_cache(
+  async () => {
+    try {
+      const rows = await prisma.setting.findMany({ where: { category: 'analytics' } });
+      const m = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+      return {
+        metaPixelId: m.metaPixelId ?? '',
+        googleAnalyticsId: m.googleAnalyticsId ?? '',
+        googleTagManagerId: m.googleTagManagerId ?? '',
+        tiktokPixelId: m.tiktokPixelId ?? '',
+      };
+    } catch {
+      return { metaPixelId: '', googleAnalyticsId: '', googleTagManagerId: '', tiktokPixelId: '' };
+    }
+  },
+  ['analytics-settings'],
+  { revalidate: 300, tags: ['analytics'] }
+);
+
 export async function getAnalyticsSettings(): Promise<AnalyticsSettings> {
-  try {
-    const rows = await prisma.setting.findMany({ where: { category: 'analytics' } });
-    const m = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-    return {
-      metaPixelId: m.metaPixelId ?? '',
-      googleAnalyticsId: m.googleAnalyticsId ?? '',
-      googleTagManagerId: m.googleTagManagerId ?? '',
-      tiktokPixelId: m.tiktokPixelId ?? '',
-    };
-  } catch {
-    return { metaPixelId: '', googleAnalyticsId: '', googleTagManagerId: '', tiktokPixelId: '' };
-  }
+  return _getAnalyticsSettingsCached();
 }
 
 export async function updateAnalyticsSettings(data: AnalyticsSettings) {
@@ -341,6 +369,8 @@ export async function updateAnalyticsSettings(data: AnalyticsSettings) {
         })
       )
     );
+    // @ts-expect-error - Next.js 16 requires a second argument for revalidateTag
+    revalidateTag('analytics');
     revalidatePath('/admin/settings/analytics');
     revalidatePath('/');
     return { success: true };

@@ -182,6 +182,7 @@ model Category {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
+  @@index([name])
   @@index([parentId, isActive])
   @@map("categories")
 }
@@ -246,6 +247,7 @@ model Product {
   price         Float
   offerPrice    Float?
   costPrice     Float         @default(0)
+  model         String?
   
   // Inventory
   sku           String?       @unique
@@ -296,6 +298,7 @@ model Product {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
+  @@index([name])
   @@index([categoryId, isActive])
   @@index([isActive, isFlashSale])
   @@index([isActive, isBestSeller])
@@ -337,6 +340,7 @@ model Brand {
   isFeatured    Boolean   @default(false) @map("is_featured")
   products      Product[]
 
+  @@index([name])
   @@map("brands")
 }
 

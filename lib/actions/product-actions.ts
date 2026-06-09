@@ -28,11 +28,13 @@ export async function createProduct(formData: FormData) {
     const warrantyMonths = parseInt(formData.get('warrantyMonths') as string) || 0;
     const videoUrl = formData.get('videoUrl') as string;
     const skuRaw = formData.get('sku') as string;
+    const modelRaw = formData.get('model') as string;
 
     // Sanitize free-text fields
     const name = sanitizeString(nameRaw) || '';
     const description = sanitizeString(descriptionRaw) || '';
     const sku = sanitizeString(skuRaw) || '';
+    const model = sanitizeString(modelRaw) || null;
 
     // JSON Fields
     const rawSpecs = formData.get('specifications') as string;
@@ -300,6 +302,7 @@ export async function getProduct(id: string) {
         name: true,
         slug: true,
         sku: true,
+        model: true,
         barcode: true,
         price: true,
         costPrice: true,
@@ -388,6 +391,7 @@ export async function getProduct(id: string) {
       // Sanitize fields to remove CR/LF from database
       product.name = sanitizeString(product.name);
       product.sku = sanitizeString(product.sku);
+      product.model = sanitizeString(product.model);
       product.barcode = sanitizeString(product.barcode);
       product.description = sanitizeString(product.description);
       
@@ -426,6 +430,7 @@ export async function updateProduct(id: string, formData: FormData) {
     const name = sanitizeString(nameRaw) || '';
     const description = sanitizeString(descriptionRaw) || '';
     const sku = sanitizeString(skuRaw) || '';
+    const model = sanitizeString(modelRaw) || null;
 
     // JSON Fields
     const rawSpecs = formData.get('specifications') as string;
@@ -565,6 +570,7 @@ export async function updateProduct(id: string, formData: FormData) {
                 unit,
                 warrantyMonths,
                 videoUrl: videoUrl || undefined,
+                model,
                 sku: sku && sku.trim().length > 0 ? sku : null,
                 barcode: productBarcode,
                 specifications: specifications || Prisma.JsonNull,
@@ -721,6 +727,7 @@ export async function getProducts({
               OR: [
                 { name: { contains: search, mode: 'insensitive' } },
                 { sku: { contains: search, mode: 'insensitive' } },
+                { model: { contains: search, mode: 'insensitive' } },
                 { barcode: { contains: search, mode: 'insensitive' } },
               ],
             }
