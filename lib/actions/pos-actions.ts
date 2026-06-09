@@ -44,6 +44,7 @@ export interface POSProduct {
   barcode: string | null;
   price: number;
   offerPrice: number | null;
+  costPrice: number;
   stock: number;
   image: string | null;
   categoryName: string;
@@ -56,7 +57,6 @@ export interface POSProduct {
     costPrice: number;
     stock: number;
     image: string | null;
-    costPrice: number;
   }[];
 }
 
@@ -226,6 +226,7 @@ export async function findProductByBarcode(barcode: string): Promise<POSProduct 
       id: product.id,
       name: product.name,
       sku: product.sku,
+      model: product.model,
       barcode: product.barcode,
       price: product.price,
       offerPrice: product.offerPrice,

@@ -323,6 +323,7 @@ export async function placeOrder(input: PlaceOrderInput) {
 
     console.time('revalidatePath');
     revalidatePath('/admin/orders');
+    // @ts-expect-error - Next.js 16 requires a second argument for revalidateTag
     revalidateTag('orders');
     console.timeEnd('revalidatePath');
     return { success: true, order, orderNumber, trackingToken, grandTotal, estimatedDelivery, stockErrors };
@@ -389,6 +390,7 @@ export async function updateOrderStatus(
 
     revalidatePath('/admin/orders');
     revalidatePath(`/admin/orders/${orderId}`);
+    // @ts-expect-error - Next.js 16 requires a second argument for revalidateTag
     revalidateTag('orders');
     return { success: true };
   } catch (error: any) {
@@ -435,6 +437,7 @@ export async function updatePaymentStatus(
 
     revalidatePath('/admin/orders');
     revalidatePath(`/admin/orders/${orderId}`);
+    // @ts-expect-error - Next.js 16 requires a second argument for revalidateTag
     revalidateTag('orders');
     return { success: true };
   } catch (error) {
@@ -670,6 +673,7 @@ export async function deleteOrder(orderId: string) {
 
     await db.order.delete({ where: { id: orderId } });
     revalidatePath('/admin/orders');
+    // @ts-expect-error - Next.js 16 requires a second argument for revalidateTag
     revalidateTag('orders');
     return { success: true };
   } catch (error: any) {

@@ -425,6 +425,7 @@ export async function updateProduct(id: string, formData: FormData) {
     const warrantyMonths = parseInt(formData.get('warrantyMonths') as string) || 0;
     const videoUrl = formData.get('videoUrl') as string;
     const skuRaw = formData.get('sku') as string;
+    const modelRaw = formData.get('model') as string;
 
     // Sanitize free-text fields
     const name = sanitizeString(nameRaw) || '';
