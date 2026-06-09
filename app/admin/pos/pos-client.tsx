@@ -11,7 +11,7 @@ import { getPOSCustomerList } from '@/lib/actions/ledger-actions';
 import type { POSCustomerOption } from '@/components/admin/pos/customer-search-combobox';
 import type { InvoiceSettings } from '@/lib/actions/invoice-settings-actions';
 import { toast } from 'sonner';
-import { Maximize, Minimize, Keyboard, BarChart2, Users, CreditCard, Grid3X3, ShoppingCart } from 'lucide-react';
+import { Maximize, Minimize, Keyboard, BarChart2, Users, CreditCard, Grid3X3, ShoppingCart, MoreVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 
@@ -39,6 +39,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
   const [isProcessing, setIsProcessing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [dailySummary, setDailySummary] = useState(initialDailySummary);
   const [posCustomers, setPosCustomers] = useState<POSCustomerOption[]>([]);
 
@@ -375,40 +376,44 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
             <p className="text-[10px] text-blue-200">Ready to sell</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <a
-            href="/admin/pos/reports"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs font-semibold transition-colors"
-          >
-            <BarChart2 className="h-3.5 w-3.5" />
-            Reports
-          </a>
-          <a
-            href="/admin/pos/customers"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs font-semibold transition-colors"
-          >
-            <Users className="h-3.5 w-3.5" />
-            Customers
-          </a>
-          <a
-            href="/admin/pos/payments"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs font-semibold transition-colors"
-          >
-            <CreditCard className="h-3.5 w-3.5" />
-            Payments
-          </a>
-          <button
-            onClick={() => setShowShortcuts(!showShortcuts)}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-            title="Keyboard shortcuts"
-          >
+        <div className="flex items-center gap-1 sm:gap-2">
+          {/* Desktop Links */}
+          <div className="hidden lg:flex items-center gap-2">
+            <a href="/admin/pos/reports" className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs font-semibold transition-colors">
+              <BarChart2 className="h-3.5 w-3.5" /> Reports
+            </a>
+            <a href="/admin/pos/customers" className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs font-semibold transition-colors">
+              <Users className="h-3.5 w-3.5" /> Customers
+            </a>
+            <a href="/admin/pos/payments" className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs font-semibold transition-colors">
+              <CreditCard className="h-3.5 w-3.5" /> Payments
+            </a>
+          </div>
+
+          {/* Mobile Dropdown Toggle */}
+          <div className="relative lg:hidden">
+            <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-white">
+              <MoreVertical className="h-4 w-4" />
+            </button>
+            {showMobileMenu && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-1.5 z-50 flex flex-col gap-1">
+                <a href="/admin/pos/reports" className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-sm font-semibold">
+                  <BarChart2 className="h-4 w-4" /> Reports
+                </a>
+                <a href="/admin/pos/customers" className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-sm font-semibold">
+                  <Users className="h-4 w-4" /> Customers
+                </a>
+                <a href="/admin/pos/payments" className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-sm font-semibold">
+                  <CreditCard className="h-4 w-4" /> Payments
+                </a>
+              </div>
+            )}
+          </div>
+
+          <button onClick={() => setShowShortcuts(!showShortcuts)} className="p-2 hover:bg-white/10 rounded-lg transition-colors hidden sm:block" title="Keyboard shortcuts">
             <Keyboard className="h-4 w-4" />
           </button>
-          <button
-            onClick={toggleFullscreen}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-            title="Toggle fullscreen (F11)"
-          >
+          <button onClick={toggleFullscreen} className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Toggle fullscreen (F11)">
             {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </button>
         </div>
@@ -460,18 +465,19 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
         <button
           onClick={() => setMobileView('cart')}
           className={cn(
-            'flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors relative',
+            'flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors',
             mobileView === 'cart'
               ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
               : 'text-gray-500'
           )}
         >
           <ShoppingCart className="w-4 h-4" />
-          Cart
+          <span>Cart</span>
           {totalItems > 0 && (
-            <span className="absolute top-1.5 right-6 w-4 h-4 bg-blue-600 text-white text-[10px] font-black rounded-full flex items-center justify-center">
-              {totalItems}
-            </span>
+            <div className="flex items-center gap-1.5 ml-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+              <span className="text-[10px] font-black">{totalItems}</span>
+              <span className="text-[10px] font-bold border-l border-blue-200 pl-1.5">৳{grandTotal.toLocaleString()}</span>
+            </div>
           )}
         </button>
       </div>

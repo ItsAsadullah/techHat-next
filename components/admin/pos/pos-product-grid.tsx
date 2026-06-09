@@ -214,8 +214,8 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
   return (
     <div className="flex flex-col h-full">
       {/* Search Bar */}
-      <div className="p-4 space-y-3 border-b border-gray-100 bg-white">
-        <div className="flex gap-2">
+      <div className="p-3 sm:p-4 space-y-3 border-b border-gray-100 bg-white">
+        <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <Input
@@ -223,34 +223,36 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
               placeholder="Search products (F2)..."
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-11 h-12 text-base bg-gray-50 border-gray-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-medium"
+              className="pl-11 h-12 text-base bg-gray-50 border-gray-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl font-medium w-full"
             />
           </div>
-          <form onSubmit={handleBarcodeSubmit} className="flex gap-2">
-            <div className="relative">
-              <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <Input
-                ref={barcodeInputRef}
-                placeholder="Scan barcode..."
-                value={barcodeBuffer}
-                onChange={(e) => setBarcodeBuffer(e.target.value)}
-                className="pl-11 h-12 w-48 bg-gray-50 border-gray-200 focus:bg-white focus:border-green-500 focus:ring-2 focus:ring-green-500/20 rounded-xl font-mono"
-              />
+          <div className="flex gap-2 w-full sm:w-auto">
+            <form onSubmit={handleBarcodeSubmit} className="flex-1 sm:flex-none">
+              <div className="relative w-full">
+                <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Input
+                  ref={barcodeInputRef}
+                  placeholder="Scan barcode..."
+                  value={barcodeBuffer}
+                  onChange={(e) => setBarcodeBuffer(e.target.value)}
+                  className="pl-11 h-12 w-full sm:w-48 bg-gray-50 border-gray-200 focus:bg-white focus:border-green-500 focus:ring-2 focus:ring-green-500/20 rounded-xl font-mono"
+                />
+              </div>
+            </form>
+            <div className="flex border border-gray-200 rounded-xl overflow-hidden shrink-0">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={cn('p-3 transition-colors flex-1 sm:flex-none flex items-center justify-center', viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:bg-gray-50')}
+              >
+                <Grid3X3 className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={cn('p-3 transition-colors flex-1 sm:flex-none flex items-center justify-center', viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:bg-gray-50')}
+              >
+                <List className="h-5 w-5" />
+              </button>
             </div>
-          </form>
-          <div className="flex border border-gray-200 rounded-xl overflow-hidden">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={cn('p-3 transition-colors', viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:bg-gray-50')}
-            >
-              <Grid3X3 className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={cn('p-3 transition-colors', viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:bg-gray-50')}
-            >
-              <List className="h-5 w-5" />
-            </button>
           </div>
         </div>
 
@@ -348,7 +350,7 @@ const ProductGridCard = memo(function ProductGridCard({ product, onClick }: Prod
         if (product.stock > 0) onClick(product);
       }}
       className={cn(
-        'relative flex flex-col bg-white rounded-xl border p-3 text-left transition-all duration-150 group',
+        'relative flex flex-col bg-white rounded-xl border p-2 sm:p-3 text-left transition-all duration-150 group',
         product.stock > 0
           ? 'border-gray-200 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-100 active:scale-[0.98] cursor-pointer'
           : 'border-gray-100 opacity-50 cursor-not-allowed'
@@ -430,7 +432,7 @@ const ProductGridCard = memo(function ProductGridCard({ product, onClick }: Prod
       </div>
 
       {/* Info */}
-      <p className="text-xs font-bold text-gray-900 line-clamp-2 leading-tight mb-1.5 min-h-[2rem]">
+      <p className="text-[11px] sm:text-xs font-bold text-gray-900 line-clamp-2 leading-tight mb-1 sm:mb-1.5 min-h-[1.75rem] sm:min-h-[2rem]">
         {product.name}
       </p>
       <div className="flex items-baseline justify-between">
@@ -461,7 +463,7 @@ const ProductListItem = memo(function ProductListItem({ product, onClick }: Prod
         if (product.stock > 0) onClick(product);
       }}
       className={cn(
-        'w-full flex items-center gap-4 bg-white rounded-xl border p-3 text-left transition-all duration-150 relative group',
+        'w-full flex items-center gap-2 sm:gap-4 bg-white rounded-xl border p-2 sm:p-3 text-left transition-all duration-150 relative group',
         product.stock > 0
           ? 'border-gray-200 hover:border-blue-300 hover:shadow-md active:scale-[0.99] cursor-pointer'
           : 'border-gray-100 opacity-50 cursor-not-allowed'
