@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath, unstable_cache, revalidateTag } from 'next/cache';
+import { after } from 'next/server';
 import { randomUUID } from 'crypto';
 import {
   ORDER_STATUS_TRANSITIONS,
@@ -322,9 +323,11 @@ export async function placeOrder(input: PlaceOrderInput) {
     console.timeEnd('transaction');
 
     console.time('revalidatePath');
-    revalidatePath('/admin/orders');
-    // @ts-expect-error - Next.js 16 requires a second argument for revalidateTag
-    revalidateTag('orders');
+    after(() => {
+      revalidatePath('/admin/orders');
+      // @ts-expect-error - Next.js 16 requires a second argument for revalidateTag
+      revalidateTag('orders');
+    });
     console.timeEnd('revalidatePath');
     return { success: true, order, orderNumber, trackingToken, grandTotal, estimatedDelivery, stockErrors };
   } catch (error: any) {
