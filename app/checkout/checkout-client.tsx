@@ -87,8 +87,11 @@ const STEPS = [
   { id: 3, label: 'Payment', icon: CreditCard },
 ];
 
-const validatePhone = (p: string) =>
-  /^(?:\+?88)?01[3-9]\d{8}$/.test(p.replace(/[\s-]/g, ''));
+const validatePhone = (p: string) => {
+  const bnEn: Record<string, string> = { '০':'0', '১':'1', '২':'2', '৩':'3', '৪':'4', '৫':'5', '৬':'6', '৭':'7', '৮':'8', '৯':'9' };
+  const eng = p.replace(/[০-৯]/g, m => bnEn[m]).replace(/[\s-]/g, '');
+  return /^(?:\+?88)?01[3-9]\d{8}$/.test(eng);
+};
 
 // ─────────────────────────────────────────────────────────
 //  Main Component

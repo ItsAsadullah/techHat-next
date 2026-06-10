@@ -177,9 +177,17 @@ export async function placeOrder(input: PlaceOrderInput) {
   try {
     // 1. Validate required fields
     const phoneRegex = /^(\+?880|0)?1[3-9]\d{8}$/;
+    
+    // Normalize phone numbers (convert Bengali to English and remove spaces/dashes)
+    const bnEnMap: Record<string, string> = { '০':'0', '১':'1', '২':'2', '৩':'3', '৪':'4', '৫':'5', '৬':'6', '৭':'7', '৮':'8', '৯':'9' };
+    const normalizePhone = (p?: string) => p ? p.replace(/[০-৯]/g, m => bnEnMap[m]).replace(/[\s-]/g, '') : '';
+    
+    const engPhone = normalizePhone(input.customerPhone);
+    const engMobileNumber = normalizePhone(input.mobileNumber);
+
     if (!input.customerName?.trim())
       return { success: false, error: 'Customer name is required' };
-    if (!phoneRegex.test(input.customerPhone?.replace(/\s/g, '')))
+    if (!phoneRegex.test(engPhone))
       return { success: false, error: 'Enter a valid phone number' };
     if (!input.shippingAddress?.trim())
       return { success: false, error: 'Shipping address is required' };
@@ -285,7 +293,7 @@ export async function placeOrder(input: PlaceOrderInput) {
         orderNumber, trackingToken,
         userId: input.userId || null,
         customerName: input.customerName.trim(),
-        customerPhone: input.customerPhone.replace(/\s/g, ''),
+        customerPhone: engPhone,
         customerEmail: input.customerEmail?.trim() || null,
         shippingAddress: input.shippingAddress.trim(),
         division: input.division, district: input.district, upazila: input.upazila || null,
@@ -297,7 +305,7 @@ export async function placeOrder(input: PlaceOrderInput) {
         paymentStatus: initialPaymentStatus,
         transactionId: input.transactionId?.trim() || null,
         mobileProvider: input.mobileProvider || null,
-        mobileNumber: input.mobileNumber?.trim() || null,
+        mobileNumber: engMobileNumber || null,
         status: 'PENDING', ipAddress: input.ipAddress || null,
         estimatedDelivery, isPos: false,
         items: { create: validatedItems },
