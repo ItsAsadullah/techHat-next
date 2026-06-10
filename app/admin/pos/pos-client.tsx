@@ -79,6 +79,25 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
   const [selectedProduct, setSelectedProduct] = useState<POSProduct | null>(null);
   const [mobileView, setMobileView] = useState<'products' | 'cart'>('products');
 
+  // Hide global bottom nav on mobile cart view so checkout button stays at the bottom
+  useEffect(() => {
+    const bottomNav = document.getElementById('admin-bottom-nav');
+    const mainContent = document.getElementById('admin-main-content');
+    
+    if (mobileView === 'cart') {
+      if (bottomNav) bottomNav.style.display = 'none';
+      if (mainContent) mainContent.style.paddingBottom = '0px';
+    } else {
+      if (bottomNav) bottomNav.style.display = '';
+      if (mainContent) mainContent.style.paddingBottom = '';
+    }
+
+    return () => {
+      if (bottomNav) bottomNav.style.display = '';
+      if (mainContent) mainContent.style.paddingBottom = '';
+    };
+  }, [mobileView]);
+
   const {
     cart,
     heldOrders,

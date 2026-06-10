@@ -347,7 +347,7 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
           </header>
 
           {/* Content */}
-          <main className={cn(
+          <main id="admin-main-content" className={cn(
             "flex-1 overflow-y-auto",
             isPOS ? "p-1 lg:p-2" : "p-3 sm:p-4 lg:p-8",
             "pb-20 lg:pb-0"
@@ -357,7 +357,7 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
         </div>
 
         {/* ════ MOBILE BOTTOM NAV ════ */}
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
+        <nav id="admin-bottom-nav" className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
           <div className="flex items-stretch h-14">
             {bottomItems.map((item) => {
               const active = pathname.startsWith(item.href);
