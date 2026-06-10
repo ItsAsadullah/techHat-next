@@ -83,9 +83,9 @@ export default function Footer() {
             © {new Date().getFullYear()} TechHat. All rights reserved.
           </p>
           <div className="flex gap-6">
-            <a href="#" className="text-sm text-gray-400 hover:text-gray-600">Privacy Policy</a>
-            <a href="#" className="text-sm text-gray-400 hover:text-gray-600">Terms of Service</a>
-            <a href="#" className="text-sm text-gray-400 hover:text-gray-600">Cookie Policy</a>
+            <Link href="/privacy-policy" className="text-sm text-gray-400 hover:text-gray-600">Privacy Policy</Link>
+            <Link href="/terms-of-service" className="text-sm text-gray-400 hover:text-gray-600">Terms of Service</Link>
+            <Link href="/privacy-policy" className="text-sm text-gray-400 hover:text-gray-600">Cookie Policy</Link>
           </div>
         </div>
       </div>
