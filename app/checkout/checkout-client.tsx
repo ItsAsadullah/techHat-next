@@ -384,6 +384,33 @@ export default function CheckoutClient({ paymentSettings, hotline }: { paymentSe
           value: data.grandTotal ?? grandTotal,
           order_id: data.orderNumber,
         });
+
+        // Auto-save address to localStorage
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY) || '[]';
+          const addrs = JSON.parse(raw);
+          const isExisting = addrs.some((a: any) => 
+            a.phone === form.customerPhone.trim() && a.address === form.shippingAddress.trim()
+          );
+          if (!isExisting) {
+            const newAddr = {
+              id: Date.now().toString(),
+              label: 'Recent Order',
+              type: 'home',
+              name: form.customerName.trim(),
+              phone: form.customerPhone.trim(),
+              address: form.shippingAddress.trim(),
+              division: form.division,
+              district: form.district,
+              upazila: form.upazila || '',
+              isDefault: true,
+            };
+            const newAddrs = addrs.map((a: any) => ({ ...a, isDefault: false }));
+            newAddrs.push(newAddr);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(newAddrs));
+          }
+        } catch { /* ignore */ }
+
         clearCart();
         setOrderSuccess({
           orderNumber: data.orderNumber,

@@ -1,10 +1,13 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { MapPin, Plus, Trash2, Edit3, Home, Briefcase, CheckCircle2, X } from 'lucide-react';
+
+import { bangladeshLocations } from '@/lib/location-data';
+import { ChevronDown } from 'lucide-react';
 
 interface Address {
   id: string;
@@ -15,6 +18,7 @@ interface Address {
   address: string;
   district: string;
   division: string;
+  upazila?: string;
   isDefault: boolean;
 }
 
@@ -24,6 +28,22 @@ const ADDRESS_TYPES = [
   { value: 'work', label: 'Work', icon: Briefcase },
   { value: 'other', label: 'Other', icon: MapPin },
 ];
+
+function SelectInput({ value, onChange, options, placeholder }: { value: string, onChange: (v: string) => void, options: string[], placeholder: string }) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className={`w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all appearance-none bg-white ${!value ? 'text-gray-400' : 'text-gray-900'}`}
+      >
+        <option value="" disabled>{placeholder}</option>
+        {options.map(o => <option key={o} value={o} className="text-gray-900">{o}</option>)}
+      </select>
+      <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+    </div>
+  );
+}
 
 function AddressForm({ initial, onSave, onCancel }: {
   initial?: Address | null;
@@ -38,7 +58,18 @@ function AddressForm({ initial, onSave, onCancel }: {
     address: initial?.address || '',
     district: initial?.district || '',
     division: initial?.division || '',
+    upazila: initial?.upazila || '',
   });
+
+  const divisions = useMemo(() => Object.keys(bangladeshLocations.divisions).sort(), []);
+  const districts = useMemo(() =>
+    form.division ? Object.keys(bangladeshLocations.divisions[form.division]?.districts ?? {}).sort() : [],
+    [form.division]);
+  const upazilas = useMemo(() =>
+    form.division && form.district
+      ? Object.keys(bangladeshLocations.divisions[form.division]?.districts[form.district]?.upazilas ?? {}).sort()
+      : [],
+    [form.division, form.district]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,8 +80,14 @@ function AddressForm({ initial, onSave, onCancel }: {
     onSave({ ...form, id: initial?.id || Date.now().toString(), isDefault: initial?.isDefault || false } as Address);
   };
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm(prev => ({ ...prev, [k]: e.target.value }));
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setForm(prev => {
+      const next = { ...prev, [k]: e.target.value };
+      if (k === 'division') { next.district = ''; next.upazila = ''; }
+      if (k === 'district') { next.upazila = ''; }
+      return next;
+    });
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -98,16 +135,18 @@ function AddressForm({ initial, onSave, onCancel }: {
           className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all resize-none" />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1.5">Division *</label>
-          <input value={form.division} onChange={set('division')} placeholder="e.g. Dhaka"
-            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
+          <SelectInput value={form.division} onChange={v => setForm(p => ({ ...p, division: v, district: '', upazila: '' }))} placeholder="Select division" options={divisions} />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1.5">District *</label>
-          <input value={form.district} onChange={set('district')} placeholder="e.g. Dhaka"
-            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
+          <SelectInput value={form.district} onChange={v => setForm(p => ({ ...p, district: v, upazila: '' }))} placeholder="Select district" options={districts} />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1.5">Upazila</label>
+          <SelectInput value={form.upazila || ''} onChange={v => setForm(p => ({ ...p, upazila: v }))} placeholder="Select upazila" options={upazilas} />
         </div>
       </div>
 
@@ -270,7 +309,7 @@ export default function AddressesPage() {
                       </div>
                       <p className="text-sm font-medium text-gray-700">{addr.name} · {addr.phone}</p>
                       <p className="text-sm text-gray-500 mt-0.5">{addr.address}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{addr.district}, {addr.division}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{[addr.upazila, addr.district, addr.division].filter(Boolean).join(', ')}</p>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button onClick={() => startEdit(addr)} className="p-2 hover:bg-blue-50 rounded-lg text-gray-400 hover:text-blue-600 transition-colors">
