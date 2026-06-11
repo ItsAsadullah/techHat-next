@@ -423,8 +423,9 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
         <div className="w-6 h-6 sm:hidden order-1"></div>
 
         {/* Title: Absolute Center on both mobile and desktop */}
-        <div className="absolute left-1/2 -translate-x-1/2 font-extrabold text-base sm:text-lg pointer-events-none top-1 sm:top-1/2 sm:-translate-y-1/2">
-          TechHat POS
+        <div className="absolute left-1/2 -translate-x-1/2 font-extrabold text-base sm:text-lg pointer-events-none top-1 sm:top-1/2 sm:-translate-y-1/2 flex items-center gap-2">
+          <img src="/images/techhat.png" alt="TechHat Logo" className="h-5 sm:h-6 w-auto object-contain drop-shadow-sm" />
+          <span>TechHat POS</span>
         </div>
 
         {/* Stats: Center on mobile, Left on desktop */}
