@@ -735,7 +735,7 @@ const CartItemRow = memo(function CartItemRow({
         )}
 
         {/* Price (editable) and quantity controls */}
-        <div className="flex items-center gap-2 min-w-0 flex-wrap mt-0.5">
+        <div className="w-full mt-1">
           {isEditing ? (
             <div className="flex items-center gap-1.5 flex-wrap min-w-0">
               <Input
@@ -779,22 +779,25 @@ const CartItemRow = memo(function CartItemRow({
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-              <span className="text-xs font-semibold text-blue-600 shrink-0 leading-none">
-                ৳{item.price.toLocaleString()}
-              </span>
-              <button
-                onClick={() => {
-                  onSetEditingPriceIndex(index);
-                  onSetPriceInput(String(item.price));
-                }}
-                className="text-[10px] text-gray-400 px-1.5 py-0.5 rounded border border-gray-200 hover:bg-gray-50 shrink-0 leading-none"
-              >
-                Edit
-              </button>
+            <div className="flex items-center justify-between w-full">
+              {/* Left: Price & Edit */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-xs font-semibold text-blue-600 leading-none">
+                  ৳{item.price.toLocaleString()}
+                </span>
+                <button
+                  onClick={() => {
+                    onSetEditingPriceIndex(index);
+                    onSetPriceInput(String(item.price));
+                  }}
+                  className="text-[10px] text-gray-400 px-1.5 py-0.5 rounded border border-gray-200 hover:bg-gray-50 leading-none"
+                >
+                  Edit
+                </button>
+              </div>
 
-              {/* Quantity Controls */}
-              <div className="flex items-center gap-1 shrink-0 ml-1">
+              {/* Center: Quantity Controls */}
+              <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={() => {
                     if (item.quantity <= 1) {
@@ -819,28 +822,25 @@ const CartItemRow = memo(function CartItemRow({
                 </button>
               </div>
 
-              {/* Inlined Line Total */}
-              <div className="flex items-center gap-1 shrink-0 ml-1 border-l border-gray-200 pl-1.5 sm:pl-2">
-                <span className="text-gray-400 text-[11px] font-bold leading-none">=</span>
+              {/* Right: Line Total & Eye Icon (Mobile) */}
+              <div className="flex items-center gap-1.5 shrink-0 justify-end">
                 <p className="text-sm font-black text-gray-900 leading-none">
                   ৳{(item.price * item.quantity).toLocaleString()}
                 </p>
-              </div>
-
-              {/* Cost Price Toggle (Mobile inline) */}
-              <div className="sm:hidden ml-auto flex items-center justify-end pl-2">
-                {showCost && (
-                  <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-100 mr-1">
-                    CP: ৳{(item.costPrice || 0).toLocaleString()}
-                  </span>
-                )}
-                <button
-                  onClick={() => setShowCost(!showCost)}
-                  className="text-gray-400 hover:text-emerald-600 transition-colors"
-                  title="View Cost Price"
-                >
-                  {showCost ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                </button>
+                <div className="sm:hidden flex items-center">
+                  {showCost && (
+                    <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-100 mr-1">
+                      CP: ৳{(item.costPrice || 0).toLocaleString()}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setShowCost(!showCost)}
+                    className="text-gray-400 hover:text-emerald-600 transition-colors"
+                    title="View Cost Price"
+                  >
+                    {showCost ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
               </div>
             </div>
           )}
