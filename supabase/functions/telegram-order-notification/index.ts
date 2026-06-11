@@ -186,6 +186,12 @@ serve(async (req: Request) => {
 
     const order = payload.record;
 
+    // Skip notification for POS orders
+    if (order.is_pos) {
+      console.log(`⏭️ Skipping POS order: ${order.order_number}`);
+      return new Response(JSON.stringify({ skipped: true, reason: 'POS order' }), { status: 200 });
+    }
+
     // ── Fetch order items — wait 2s for transaction to fully commit ───────────
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
