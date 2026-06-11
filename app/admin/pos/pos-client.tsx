@@ -24,7 +24,7 @@ const PaymentDetailsModal = dynamic(() => import('@/components/admin/pos/payment
 const VariantPickerModal = dynamic(() => import('@/components/admin/pos/variant-picker-modal').then(m => ({ default: m.VariantPickerModal })), { ssr: false });
 
 interface POSClientProps {
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; productCount?: number }[];
   initialDailySummary: {
     totalSales: number;
     totalOrders: number;

@@ -12,7 +12,7 @@ import { useGlobalScanner } from '@/components/admin/global-scanner-provider';
 import { BarcodeScannerModal } from '@/components/admin/pos/barcode-scanner-modal';
 
 interface POSProductGridProps {
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; productCount?: number }[];
   onProductSelect: (product: POSProduct, variantId?: string) => void;
   searchInputRef: React.RefObject<HTMLInputElement | null>;
   initialProducts?: POSProduct[];
@@ -25,6 +25,10 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showScannerModal, setShowScannerModal] = useState(false);
+  const [showCategories, setShowCategories] = useState(false);
+
+  // Calculate total products for the "All" badge
+  const totalProductsCount = categories.reduce((sum, cat) => sum + (cat.productCount || 0), 0);
 
   // -- Mobile scanner integration (WiFi/URL-based) ----------------------
   const { lastScanEvent } = useGlobalScanner();
@@ -176,47 +180,81 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
             </button>
           </div>
 
-          {/* View toggle */}
-          <div className="flex border border-gray-200 rounded-lg overflow-hidden shrink-0">
+          {/* View & Category toggle */}
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
-              onClick={() => setViewMode('grid')}
-              className={cn('p-2 transition-colors', viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:bg-gray-50')}
+              onClick={() => setShowCategories(!showCategories)}
+              className={cn(
+                'px-3 sm:px-4 h-9 sm:h-10 border rounded-lg text-xs sm:text-sm font-semibold transition-colors flex items-center gap-2',
+                showCategories 
+                  ? 'bg-blue-50 text-blue-600 border-blue-200' 
+                  : (selectedCategory ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50')
+              )}
             >
-              <Grid3X3 className="h-4 w-4" />
+              <Package className="h-4 w-4" />
+              <span className="hidden sm:inline">Categories</span>
             </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={cn('p-2 transition-colors', viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:bg-gray-50')}
-            >
-              <List className="h-4 w-4" />
-            </button>
+            
+            <div className="flex border border-gray-200 rounded-lg overflow-hidden shrink-0 h-9 sm:h-10">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={cn('p-2 transition-colors', viewMode === 'grid' ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:bg-gray-50')}
+              >
+                <Grid3X3 className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={cn('p-2 transition-colors', viewMode === 'list' ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:bg-gray-50')}
+              >
+                <List className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Category pills */}
-        <div className="flex gap-1.5 overflow-x-auto px-3 pb-2 sm:px-4 scrollbar-hide">
-          <button
-            onClick={() => handleCategorySelect(undefined)}
-            className={cn(
-              'px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all border shrink-0',
-              !selectedCategory ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-            )}
-          >
-            All
-          </button>
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => handleCategorySelect(cat.id === selectedCategory ? undefined : cat.id)}
-              className={cn(
-                'px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all border shrink-0',
-                selectedCategory === cat.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-              )}
-            >
-              {cat.name}
-            </button>
-          ))}
-        </div>
+        {/* Collapsible Category Area */}
+        {showCategories && (
+          <div className="px-3 pb-3 sm:px-4 sm:pb-4 border-t border-gray-100 pt-3 bg-gray-50/50">
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => { handleCategorySelect(undefined); setShowCategories(false); }}
+                className={cn(
+                  'px-3 py-1.5 rounded-full text-xs font-semibold transition-all border flex items-center gap-1.5',
+                  !selectedCategory ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                )}
+              >
+                All Products
+                <span className={cn(
+                  'px-1.5 py-0.5 rounded-full text-[10px]',
+                  !selectedCategory ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                )}>
+                  {totalProductsCount}
+                </span>
+              </button>
+              
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => { handleCategorySelect(cat.id === selectedCategory ? undefined : cat.id); setShowCategories(false); }}
+                  className={cn(
+                    'px-3 py-1.5 rounded-full text-xs font-semibold transition-all border flex items-center gap-1.5',
+                    selectedCategory === cat.id ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  )}
+                >
+                  {cat.name}
+                  {(cat.productCount !== undefined && cat.productCount > 0) && (
+                    <span className={cn(
+                      'px-1.5 py-0.5 rounded-full text-[10px]',
+                      selectedCategory === cat.id ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                    )}>
+                      {cat.productCount}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Scrollable product area ───────────────────────────────────── */}

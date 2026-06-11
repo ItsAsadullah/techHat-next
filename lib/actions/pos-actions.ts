@@ -571,10 +571,21 @@ export async function completeSale(input: CompleteSaleInput): Promise<SaleResult
 }
 
 export async function getPOSCategories() {
-  return prisma.category.findMany({
-    select: { id: true, name: true },
+  const categories = await prisma.category.findMany({
+    select: { 
+      id: true, 
+      name: true,
+      _count: {
+        select: { products: { where: { isActive: true } } }
+      }
+    },
     orderBy: { name: 'asc' },
   });
+  return categories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    productCount: c._count.products,
+  }));
 }
 
 export async function getDailySalesSummary() {
