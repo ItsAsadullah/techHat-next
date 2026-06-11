@@ -319,8 +319,10 @@ export async function completeSale(input: CompleteSaleInput): Promise<SaleResult
     // PERF: Batch stock validation — replaces the original per-item sequential
     // findUnique loop (2N DB queries for N items) with 2 batch findMany calls
     // + Map lookups. For a 10-item cart this goes from 20 queries → 2 queries.
-    const productIds = input.items.filter(i => !i.variantId).map(i => i.productId);
-    const variantIds = input.items.filter(i => i.variantId).map(i => i.variantId!);
+    // We need to fetch product stock for ALL items to allow fallback logic
+    // when a variant's stock is out of sync with its parent product.
+    const productIds = Array.from(new Set(input.items.map(i => i.productId)));
+    const variantIds = Array.from(new Set(input.items.filter(i => i.variantId).map(i => i.variantId!)));
 
     const [stockProducts, stockVariants] = await Promise.all([
       productIds.length
