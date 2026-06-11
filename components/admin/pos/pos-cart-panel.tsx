@@ -27,6 +27,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import type { CartItem } from '@/lib/actions/pos-actions';
 import type { POSCartState } from '@/lib/hooks/use-pos-cart';
@@ -189,26 +190,32 @@ export function POSCartPanel({
         </div>
         <div className="flex items-center gap-1">
           {heldOrders.length > 0 && (
-            <div className="relative group">
-              <Button variant="ghost" size="sm" className="text-amber-600 hover:bg-amber-50 gap-1 text-xs font-semibold">
-                <Pause className="h-3.5 w-3.5" />
-                Held ({heldOrders.length})
-              </Button>
-              <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-xl z-50 hidden group-hover:block p-2 space-y-1">
-                {heldOrders.map((order, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => onResumeOrder(idx)}
-                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-blue-50 text-sm transition-colors"
-                  >
-                    <span className="font-semibold text-gray-900">Order #{idx + 1}</span>
-                    <span className="text-gray-500 ml-2">
-                      {order.items.length} items • ৳{order.items.reduce((s, i) => s + i.price * i.quantity, 0).toLocaleString()}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-amber-600 hover:bg-amber-50 gap-1 text-xs font-semibold">
+                  <Pause className="h-3.5 w-3.5" />
+                  Held ({heldOrders.length})
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-xl z-50">
+                <div className="space-y-1">
+                  {heldOrders.map((order, idx) => (
+                    <DropdownMenuItem
+                      key={idx}
+                      onClick={() => onResumeOrder(idx)}
+                      className="w-full cursor-pointer px-3 py-2 rounded-lg hover:bg-blue-50 focus:bg-blue-50 text-sm transition-colors"
+                    >
+                      <div className="flex flex-col gap-0.5 w-full">
+                        <span className="font-semibold text-gray-900">Order #{idx + 1}</span>
+                        <span className="text-gray-500 text-xs">
+                          {order.items.length} items • ৳{order.items.reduce((s, i) => s + i.price * i.quantity, 0).toLocaleString()}
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           <Button
             variant="ghost"
