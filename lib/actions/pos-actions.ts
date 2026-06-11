@@ -640,6 +640,19 @@ export async function getDailySalesSummary(targetDate?: Date | string) {
   };
 }
 
+export async function getPOSSalesDates() {
+  const dates = await prisma.order.findMany({
+    where: { isPos: true, paymentStatus: 'PAID' },
+    select: { createdAt: true },
+  });
+
+  const uniqueDates = Array.from(
+    new Set(dates.map((d) => new Date(d.createdAt).toISOString().split('T')[0]))
+  );
+
+  return uniqueDates;
+}
+
 export async function getDailyPOSOrders(targetDate?: Date | string) {
   const dateObj = targetDate ? new Date(targetDate) : new Date();
   const startOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());

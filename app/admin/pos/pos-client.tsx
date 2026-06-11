@@ -6,7 +6,7 @@ import { POSProductGrid } from '@/components/admin/pos/pos-product-grid';
 import { POSCartPanel } from '@/components/admin/pos/pos-cart-panel';
 import { ClearCartDialog } from '@/components/admin/pos/clear-cart-dialog';
 import { DailyOrdersModal } from '@/components/admin/pos/daily-orders-modal';
-import { completeSale, getDailySalesSummary, type POSProduct, type CompleteSaleInput } from '@/lib/actions/pos-actions';
+import { completeSale, getDailySalesSummary, getPOSSalesDates, type POSProduct, type CompleteSaleInput } from '@/lib/actions/pos-actions';
 import { getPOSCustomerList } from '@/lib/actions/ledger-actions';
 import type { POSCustomerOption } from '@/components/admin/pos/customer-search-combobox';
 import type { InvoiceSettings } from '@/lib/actions/invoice-settings-actions';
@@ -50,6 +50,14 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString());
   const [showOrdersModal, setShowOrdersModal] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [salesDates, setSalesDates] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Fetch unique dates with POS sales on mount
+    getPOSSalesDates().then((dates) => {
+      setSalesDates(dates);
+    }).catch(console.error);
+  }, []);
 
   const handleDateChange = async (date: Date | undefined) => {
     if (!date) return;
@@ -428,6 +436,20 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
                   selected={new Date(selectedDate)}
                   onSelect={handleDateChange}
                   initialFocus
+                  captionLayout="dropdown-buttons"
+                  fromYear={2020}
+                  toYear={new Date().getFullYear() + 5}
+                  disabled={(date) => {
+                    const dateStr = format(date, 'yyyy-MM-dd');
+                    const todayStr = format(new Date(), 'yyyy-MM-dd');
+                    return !salesDates.includes(dateStr) && dateStr !== todayStr;
+                  }}
+                  modifiers={{
+                    hasSales: (date) => salesDates.includes(format(date, 'yyyy-MM-dd')),
+                  }}
+                  modifiersClassNames={{
+                    hasSales: "font-bold text-blue-600 bg-blue-50/50 relative after:content-[''] after:absolute after:bottom-1.5 after:w-1.5 after:h-1.5 after:bg-blue-600 after:rounded-full after:left-1/2 after:-translate-x-1/2",
+                  }}
                 />
               </PopoverContent>
             </Popover>
