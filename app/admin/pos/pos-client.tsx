@@ -436,7 +436,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
                   selected={new Date(selectedDate)}
                   onSelect={handleDateChange}
                   initialFocus
-                  captionLayout="dropdown-buttons"
+                  captionLayout="dropdown"
                   fromYear={2020}
                   toYear={new Date().getFullYear() + 5}
                   disabled={(date) => {
