@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { CartItem, POSProduct } from '@/lib/actions/pos-actions';
 
 export interface POSCartState {
@@ -21,25 +21,48 @@ export interface POSCartState {
   guarantorAddress: string;
 }
 
-export function usePOSCart() {
-  const [cart, setCart] = useState<POSCartState>({
-    items: [],
-    discount: 0,
-    discountType: 'fixed',
-    tax: 0,
-    paymentMethod: 'CASH',
-    amountReceived: 0,
-    customerName: '',
-    customerPhone: '',
-    note: '',
-    paidAmount: null,
-    guarantorName: '',
-    guarantorPhone: '',
-    guarantorRelation: '',
-    guarantorAddress: '',
-  });
+const emptyCart: POSCartState = {
+  items: [],
+  discount: 0,
+  discountType: 'fixed',
+  tax: 0,
+  paymentMethod: 'CASH',
+  amountReceived: 0,
+  customerName: '',
+  customerPhone: '',
+  note: '',
+  paidAmount: null,
+  guarantorName: '',
+  guarantorPhone: '',
+  guarantorRelation: '',
+  guarantorAddress: '',
+};
 
+export function usePOSCart() {
+  const [cart, setCart] = useState<POSCartState>(emptyCart);
   const [heldOrders, setHeldOrders] = useState<POSCartState[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Load from local storage on mount
+  useEffect(() => {
+    try {
+      const savedCart = localStorage.getItem('techhat_pos_cart');
+      const savedHeld = localStorage.getItem('techhat_pos_held_orders');
+      if (savedCart) setCart(JSON.parse(savedCart));
+      if (savedHeld) setHeldOrders(JSON.parse(savedHeld));
+    } catch (e) {
+      console.error('Failed to load POS state', e);
+    }
+    setIsInitialized(true);
+  }, []);
+
+  // Save to local storage whenever state changes
+  useEffect(() => {
+    if (isInitialized) {
+      localStorage.setItem('techhat_pos_cart', JSON.stringify(cart));
+      localStorage.setItem('techhat_pos_held_orders', JSON.stringify(heldOrders));
+    }
+  }, [cart, heldOrders, isInitialized]);
 
   const addItem = useCallback((product: POSProduct, variantId?: string) => {
     setCart((prev) => {
@@ -121,29 +144,14 @@ export function usePOSCart() {
   }, []);
 
   const clearCart = useCallback(() => {
-    setCart({
-      items: [],
-      discount: 0,
-      discountType: 'fixed',
-      tax: 0,
-      paymentMethod: 'CASH',
-      amountReceived: 0,
-      customerName: '',
-      customerPhone: '',
-      note: '',
-      paidAmount: null,
-      guarantorName: '',
-      guarantorPhone: '',
-      guarantorRelation: '',
-      guarantorAddress: '',
-    });
+    setCart(emptyCart);
   }, []);
 
   const holdOrder = useCallback(() => {
     if (cart.items.length === 0) return;
-    setHeldOrders((prev) => [...prev, { ...cart }]);
-    clearCart();
-  }, [cart, clearCart]);
+    setHeldOrders((prev) => [...prev, cart]);
+    setCart(emptyCart);
+  }, [cart]);
 
   const resumeOrder = useCallback((index: number) => {
     const order = heldOrders[index];
