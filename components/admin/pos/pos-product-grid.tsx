@@ -448,7 +448,7 @@ const ProductGridCard = memo(function ProductGridCard({ product, onClick }: Prod
             src={product.image}
             alt={product.name}
             fill
-            className="object-cover group-hover:scale-105 transition-transform"
+            className="object-contain group-hover:scale-105 transition-transform"
             sizes="150px"
           />
         ) : (
@@ -528,7 +528,7 @@ const ProductListItem = memo(function ProductListItem({ product, onClick }: Prod
     >
       <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-gray-100 shrink-0">
         {product.image ? (
-          <Image src={product.image} alt={product.name} fill className="object-cover" sizes="56px" />
+          <Image src={product.image} alt={product.name} fill className="object-contain" sizes="56px" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Package className="h-6 w-6 text-gray-300" />
