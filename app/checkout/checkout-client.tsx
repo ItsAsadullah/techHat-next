@@ -938,7 +938,7 @@ export default function CheckoutClient({ paymentSettings, hotline }: { paymentSe
                             </div>
                             <div>
                               <label className="text-xs font-semibold text-gray-700 block mb-1.5">Transaction ID (TrxID) <span className="text-red-500">*</span></label>
-                              <input type="text" value={transactionId} onChange={e => { setTransactionId(e.target.value.toUpperCase()); setPaymentErrors(p => ({ ...p, transactionId: '' })); }} placeholder="e.g. ABC12345678"
+                              <input type="text" value={transactionId} onChange={e => { setTransactionId(e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase()); setPaymentErrors(p => ({ ...p, transactionId: '' })); }} placeholder="e.g. ABC12345678"
                                 className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 transition-all font-mono bg-white ${paymentErrors.transactionId ? 'border-red-400' : 'border-gray-200'}`}
                               />
                               {paymentErrors.transactionId && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{paymentErrors.transactionId}</p>}
@@ -973,7 +973,7 @@ export default function CheckoutClient({ paymentSettings, hotline }: { paymentSe
                             ))}
                             <div>
                               <label className="text-xs font-semibold text-gray-700 block mb-1.5">Reference Number (Optional)</label>
-                              <input type="text" value={transactionId} onChange={e => setTransactionId(e.target.value)} placeholder="Transfer reference number"
+                              <input type="text" value={transactionId} onChange={e => setTransactionId(e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} placeholder="Transfer reference number"
                                 className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white transition-all" />
                             </div>
                           </div>
