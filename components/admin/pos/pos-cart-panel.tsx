@@ -668,6 +668,7 @@ const CartItemRow = memo(function CartItemRow({
   onSetEditingPriceIndex,
   onSetPriceInput,
   onSetItemPrice,
+  onResetItemPrice,
 }: CartItemRowProps) {
   const isEditing = editingPriceIndex === index;
   const [showCost, setShowCost] = useState(false);
