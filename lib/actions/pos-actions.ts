@@ -343,10 +343,19 @@ export async function completeSale(input: CompleteSaleInput): Promise<SaleResult
     for (const item of input.items) {
       if (item.variantId) {
         const variant = variantStockMap.get(item.variantId);
-        if (!variant || variant.stock < item.quantity) {
+        const product = productStockMap.get(item.productId);
+        
+        let availableStock = variant?.stock || 0;
+        
+        // Fallback: if variant stock is 0 but product stock is > 0 (happens when out of sync)
+        if (variant && availableStock <= 0 && product && product.stock > 0) {
+          availableStock = product.stock;
+        }
+
+        if (!variant || availableStock < item.quantity) {
           return {
             success: false,
-            error: `Insufficient stock for "${item.name} - ${variant?.name || item.variantName}". Available: ${variant?.stock || 0}, Requested: ${item.quantity}`,
+            error: `Insufficient stock for "${item.name}${variant?.name && variant.name.toLowerCase() !== 'default' ? ` - ${variant.name}` : ''}". Available: ${availableStock}, Requested: ${item.quantity}`,
           };
         }
       } else {
