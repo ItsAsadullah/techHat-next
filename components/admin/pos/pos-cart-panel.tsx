@@ -604,7 +604,7 @@ export function POSCartPanel({
           </div>
 
           {/* Sticky Complete Sale Button */}
-          <div className="px-3 pt-3 pb-2 sm:px-4 sm:pb-4 sm:pt-3 border-t border-gray-100">
+          <div className="px-3 pt-2 pb-0 sm:px-4 sm:pb-4 sm:pt-3 border-t border-gray-100">
             {hasDue && !dueFormFilled && (
               <p className="text-xs text-red-600 font-semibold text-center mb-2 flex items-center justify-center gap-1">
                 <AlertCircle className="h-3.5 w-3.5" />
@@ -618,7 +618,7 @@ export function POSCartPanel({
                 cart.items.length === 0 ||
                 !canCompleteSale
               }
-              className="w-full h-12 sm:h-14 bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-black text-base sm:text-lg shadow-xl shadow-blue-200 transition-all disabled:opacity-50 disabled:shadow-none active:scale-[0.98]"
+              className="w-full h-11 sm:h-14 mb-1 sm:mb-0 bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-black text-base sm:text-lg shadow-xl shadow-blue-200 transition-all disabled:opacity-50 disabled:shadow-none active:scale-[0.98]"
             >
               {isProcessing ? (
                 <span className="flex items-center gap-2">
