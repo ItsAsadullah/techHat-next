@@ -21,6 +21,8 @@ import {
   AlertCircle,
   UserCheck,
   PlusCircle,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -666,9 +668,9 @@ const CartItemRow = memo(function CartItemRow({
   onSetEditingPriceIndex,
   onSetPriceInput,
   onSetItemPrice,
-  onResetItemPrice,
 }: CartItemRowProps) {
   const isEditing = editingPriceIndex === index;
+  const [showCost, setShowCost] = useState(false);
 
   return (
     <div className="px-3 sm:px-4 py-3 flex flex-col sm:flex-row sm:items-start gap-3 hover:bg-gray-50/50 transition-colors group border-b border-gray-50 last:border-0">
@@ -696,9 +698,26 @@ const CartItemRow = memo(function CartItemRow({
 
         {/* Details */}
         <div className="flex-1 min-w-0 flex flex-col gap-1">
-          <p className="text-sm font-bold text-gray-900 truncate leading-tight min-h-[1.1rem]">
-            {item.name}
-          </p>
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm font-bold text-gray-900 truncate leading-tight min-h-[1.1rem]">
+              {item.name}
+            </p>
+            {/* Cost price toggle */}
+            <div className="flex items-center gap-1 shrink-0">
+              {showCost && (
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                  CP: ৳{(item.costPrice || 0).toLocaleString()}
+                </span>
+              )}
+              <button
+                onClick={() => setShowCost(!showCost)}
+                className="text-gray-400 hover:text-emerald-600 transition-colors"
+                title="View Cost Price"
+              >
+                {showCost ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+          </div>
           {item.variantName && (
             <p className="text-[11px] text-gray-500">{item.variantName}</p>
           )}

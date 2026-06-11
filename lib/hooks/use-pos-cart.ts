@@ -79,6 +79,7 @@ export function usePOSCart() {
         variantName: variant?.name,
         price: effectivePrice,
         originalPrice: effectivePrice,
+        costPrice: variant ? variant.costPrice : product.costPrice,
         quantity: 1,
         image: variant?.image || product.image,
         maxStock,

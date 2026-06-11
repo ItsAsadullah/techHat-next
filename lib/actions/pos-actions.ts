@@ -265,6 +265,7 @@ export interface CartItem {
   variantName?: string;
   price: number;
   originalPrice: number;
+  costPrice: number;
   quantity: number;
   image: string | null;
   maxStock: number;
