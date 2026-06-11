@@ -27,7 +27,12 @@ function cartReducer(state: CartState, action: Action): CartState {
       const items = existing
         ? state.items.map((i) =>
             i.id === action.item.id
-              ? { ...i, quantity: Math.min(i.quantity + action.item.quantity, i.stock), isSelected: true }
+              ? { 
+                  ...i, 
+                  ...action.item, // Sync latest stock, price, etc.
+                  quantity: Math.min(i.quantity + action.item.quantity, action.item.stock), 
+                  isSelected: true 
+                }
               : i
           )
         : [...state.items, { ...action.item, isSelected: true }];
