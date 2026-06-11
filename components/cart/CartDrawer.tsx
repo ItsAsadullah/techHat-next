@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export default function CartDrawer() {
-  const { items, count, total, isOpen, closeCart, removeFromCart, updateQuantity, addToCart } = useCart();
+  const { items, count, total, selectedCount, selectedTotal, isOpen, closeCart, removeFromCart, updateQuantity, toggleSelection, toggleAllSelection, addToCart } = useCart();
   const { items: wishlistItems, removeFromWishlist } = useWishlist();
   const firstFocusRef = useRef<HTMLButtonElement | null>(null);
   const carouselRef = useRef<HTMLDivElement | null>(null);
@@ -102,6 +102,20 @@ export default function CartDrawer() {
 
             {/* Items */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+              {items.length > 0 && (
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <input
+                    type="checkbox"
+                    id="selectAll"
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    checked={items.length > 0 && items.every(i => i.isSelected !== false)}
+                    onChange={(e) => toggleAllSelection(e.target.checked)}
+                  />
+                  <label htmlFor="selectAll" className="text-sm font-medium text-gray-700 cursor-pointer select-none">
+                    Select All
+                  </label>
+                </div>
+              )}
               {items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full gap-4 py-16 text-center">
                   <div className="bg-muted/50 rounded-full p-6">
@@ -125,9 +139,19 @@ export default function CartDrawer() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, x: 40, scale: 0.9 }}
                       transition={{ duration: 0.22 }}
-                      className="flex gap-3 p-3 rounded-xl border"
-                      style={{ backgroundColor: 'rgba(241,245,249,0.3)', borderColor: 'rgba(226,232,240,0.5)' }}
+                      className="flex gap-3 p-3 rounded-xl border relative"
+                      style={{ backgroundColor: item.isSelected !== false ? 'rgba(241,245,249,0.3)' : 'rgba(250,250,250,0.8)', borderColor: item.isSelected !== false ? 'rgba(59,130,246,0.3)' : 'rgba(226,232,240,0.5)' }}
                     >
+                      {/* Checkbox */}
+                      <div className="flex items-center pt-1">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          checked={item.isSelected !== false}
+                          onChange={() => toggleSelection(item.id)}
+                        />
+                      </div>
+                      
                       {/* Image */}
                       <Link
                         href={`/products/${item.slug}`}
@@ -325,15 +349,22 @@ export default function CartDrawer() {
             {items.length > 0 && (
               <div className="border-t px-5 py-4 space-y-3 bg-background">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal ({count} items)</span>
-                  <span className="font-bold text-base">৳{total.toLocaleString()}</span>
+                  <span className="text-muted-foreground">Subtotal ({selectedCount} items)</span>
+                  <span className="font-bold text-base">৳{selectedTotal.toLocaleString()}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">Shipping calculated at checkout</p>
-                <Button className="w-full gap-2" size="lg" asChild onClick={closeCart}>
-                  <Link href="/checkout">
-                    <ShoppingBag className="h-4 w-4" />
-                    Proceed to Checkout
-                  </Link>
+                <Button className="w-full gap-2" size="lg" disabled={selectedCount === 0} asChild={selectedCount > 0} onClick={(e) => {
+                  if (selectedCount === 0) e.preventDefault();
+                  else closeCart();
+                }}>
+                  {selectedCount > 0 ? (
+                    <Link href="/checkout">
+                      <ShoppingBag className="h-4 w-4" />
+                      Proceed to Checkout
+                    </Link>
+                  ) : (
+                    <span>Select items to checkout</span>
+                  )}
                 </Button>
                 <Button variant="outline" className="w-full" size="sm" onClick={closeCart} asChild>
                   <Link href="/">Continue Shopping</Link>

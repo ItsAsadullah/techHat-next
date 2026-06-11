@@ -98,7 +98,8 @@ const validatePhone = (p: string) => {
 // ─────────────────────────────────────────────────────────
 
 export default function CheckoutClient({ paymentSettings, hotline }: { paymentSettings: PaymentMethodSettings, hotline?: string }) {
-  const { items: cart, updateQuantity, removeFromCart, clearCart } = useCart();
+  const { items: cart, updateQuantity, removeFromCart, clearCart, removeSelectedFromCart } = useCart();
+  const selectedCartItems = useMemo(() => cart.filter(i => i.isSelected !== false), [cart]);
 
   // — Auth —
   const [user, setUser] = useState<any>(null);
@@ -205,8 +206,8 @@ export default function CheckoutClient({ paymentSettings, hotline }: { paymentSe
     [form.division, form.district]);
 
   const subTotal = useMemo(
-    () => cart.reduce((s: number, i: CartItem) => s + (i.offerPrice ?? i.price) * i.quantity, 0),
-    [cart]
+    () => selectedCartItems.reduce((s: number, i: CartItem) => s + (i.offerPrice ?? i.price) * i.quantity, 0),
+    [selectedCartItems]
   );
   const shippingCost = (() => {
     if (shippingRates.freeThreshold > 0 && subTotal >= shippingRates.freeThreshold) return 0;
@@ -214,8 +215,8 @@ export default function CheckoutClient({ paymentSettings, hotline }: { paymentSe
   })();
   const discount = couponDiscount;
   const grandTotal = subTotal + shippingCost - discount;
-  const totalItems = cart.reduce((s: number, i: CartItem) => s + i.quantity, 0);
-  const savings = cart.reduce((s: number, i: CartItem) =>
+  const totalItems = selectedCartItems.reduce((s: number, i: CartItem) => s + i.quantity, 0);
+  const savings = selectedCartItems.reduce((s: number, i: CartItem) =>
     s + (i.offerPrice != null && i.offerPrice < i.price ? (i.price - i.offerPrice) * i.quantity : 0), 0);
 
   // ─── Address apply ────────────────────────────────────
@@ -287,7 +288,7 @@ export default function CheckoutClient({ paymentSettings, hotline }: { paymentSe
   // ─── Step navigation ─────────────────────────────────
   const goToStep = (target: Step) => {
     if (target === 2 && step === 1) {
-      if (cart.length === 0) return;
+      if (selectedCartItems.length === 0) return;
       setCompletedSteps(prev => new Set([...prev, 1]));
       setStep(2);
       // ★ Meta Pixel: user moved from cart to delivery = checkout started
@@ -363,7 +364,7 @@ export default function CheckoutClient({ paymentSettings, hotline }: { paymentSe
           // shippingCost and discount are intentionally omitted —
           // the server always recalculates them from the DB.
           couponCode: couponDiscount > 0 ? couponCode.trim().toUpperCase() : undefined,
-          items: cart.map((i: CartItem) => {
+          items: selectedCartItems.map((i: CartItem) => {
             const [productId, variantId] = i.id.split('__');
             return {
               productId,
@@ -411,7 +412,7 @@ export default function CheckoutClient({ paymentSettings, hotline }: { paymentSe
           }
         } catch { /* ignore */ }
 
-        clearCart();
+        removeSelectedFromCart();
         setOrderSuccess({
           orderNumber: data.orderNumber,
           grandTotal: data.grandTotal ?? grandTotal,
@@ -533,17 +534,17 @@ export default function CheckoutClient({ paymentSettings, hotline }: { paymentSe
   }
 
   // ─── EMPTY CART ───────────────────────────────────────
-  if (!authLoading && cart.length === 0 && step === 1) {
+  if (!authLoading && selectedCartItems.length === 0 && step === 1) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
             <ShoppingCart className="w-12 h-12 text-blue-300" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Your Cart is Empty</h2>
-          <p className="text-gray-500 mb-8">Add items to your cart before checking out.</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">No Items Selected</h2>
+          <p className="text-gray-500 mb-8">Please select at least one item from your cart to checkout.</p>
           <Link href="/" className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3.5 rounded-2xl transition-colors">
-            <ArrowLeft className="w-4 h-4" /> Start Shopping
+            <ArrowLeft className="w-4 h-4" /> Go Back
           </Link>
         </div>
       </div>
@@ -638,9 +639,9 @@ export default function CheckoutClient({ paymentSettings, hotline }: { paymentSe
               {step === 1 && (
                 <motion.div key="step1" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.22 }} className="space-y-4">
 
-                  <Card title="Cart Items" icon={<ShoppingCart className="w-4 h-4" />} badge={`${totalItems}items`}>
+                  <Card title="Cart Items" icon={<ShoppingCart className="w-4 h-4" />} badge={`${totalItems} items`}>
                     <div className="divide-y divide-gray-100">
-                      {cart.map((item: CartItem) => (
+                      {selectedCartItems.map((item: CartItem) => (
                         <div key={item.id} className="py-4 first:pt-0 last:pb-0">
                           <div className="flex gap-3">
                             <div className="relative w-[72px] h-[72px] flex-shrink-0 rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
@@ -1099,7 +1100,7 @@ export default function CheckoutClient({ paymentSettings, hotline }: { paymentSe
 
                 {/* Mini items */}
                 <div className="px-5 py-3 max-h-64 overflow-y-auto divide-y divide-gray-50">
-                  {cart.map((item: CartItem) => (
+                  {selectedCartItems.map((item: CartItem) => (
                     <div key={item.id} className="py-2.5 flex items-center gap-3">
                       <div className="relative w-10 h-10 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 border border-gray-100">
                         {item.image ? <Image src={item.image} alt={item.name} fill className="object-cover" sizes="40px" /> : <Package className="w-5 h-5 text-gray-300 m-auto" />}

@@ -11,12 +11,15 @@ export interface CartItem {
   quantity: number;
   stock: number;
   warrantyMonths: number | null;
+  isSelected?: boolean;
 }
 
 export interface CartState {
   items: CartItem[];
   count: number;
   total: number;
+  selectedCount: number;
+  selectedTotal: number;
   isOpen: boolean;
 }
 
@@ -24,7 +27,10 @@ export interface CartContextType extends CartState {
   addToCart: (item: Omit<CartItem, 'quantity'> & { quantity?: number }, sourceEl?: HTMLElement | null) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
+  toggleSelection: (id: string) => void;
+  toggleAllSelection: (selected: boolean) => void;
   clearCart: () => void;
+  removeSelectedFromCart: () => void;
   openCart: () => void;
   closeCart: () => void;
   cartIconRef: React.RefObject<HTMLButtonElement | null>;

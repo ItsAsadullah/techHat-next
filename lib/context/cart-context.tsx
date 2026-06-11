@@ -11,6 +11,9 @@ type Action =
   | { type: 'REMOVE'; id: string }
   | { type: 'UPDATE_QTY'; id: string; quantity: number }
   | { type: 'CLEAR' }
+  | { type: 'REMOVE_SELECTED' }
+  | { type: 'TOGGLE_SELECT'; id: string }
+  | { type: 'TOGGLE_SELECT_ALL'; selected: boolean }
   | { type: 'OPEN' }
   | { type: 'CLOSE' }
   | { type: 'HYDRATE'; items: CartItem[] };
@@ -24,10 +27,10 @@ function cartReducer(state: CartState, action: Action): CartState {
       const items = existing
         ? state.items.map((i) =>
             i.id === action.item.id
-              ? { ...i, quantity: Math.min(i.quantity + action.item.quantity, i.stock) }
+              ? { ...i, quantity: Math.min(i.quantity + action.item.quantity, i.stock), isSelected: true }
               : i
           )
-        : [...state.items, action.item];
+        : [...state.items, { ...action.item, isSelected: true }];
       return recalc({ ...state, items });
     }
     case 'REMOVE':
@@ -43,6 +46,18 @@ function cartReducer(state: CartState, action: Action): CartState {
     }
     case 'CLEAR':
       return recalc({ ...state, items: [] });
+    case 'REMOVE_SELECTED':
+      return recalc({ ...state, items: state.items.filter(i => i.isSelected === false) });
+    case 'TOGGLE_SELECT':
+      return recalc({
+        ...state,
+        items: state.items.map(i => i.id === action.id ? { ...i, isSelected: i.isSelected === false ? true : false } : i)
+      });
+    case 'TOGGLE_SELECT_ALL':
+      return recalc({
+        ...state,
+        items: state.items.map(i => ({ ...i, isSelected: action.selected }))
+      });
     case 'OPEN':
       return { ...state, isOpen: true };
     case 'CLOSE':
@@ -55,7 +70,12 @@ function cartReducer(state: CartState, action: Action): CartState {
 function recalc(state: CartState): CartState {
   const count = state.items.reduce((s, i) => s + i.quantity, 0);
   const total = state.items.reduce((s, i) => s + (i.offerPrice ?? i.price) * i.quantity, 0);
-  return { ...state, count, total };
+  
+  const selectedItems = state.items.filter(i => i.isSelected !== false);
+  const selectedCount = selectedItems.reduce((s, i) => s + i.quantity, 0);
+  const selectedTotal = selectedItems.reduce((s, i) => s + (i.offerPrice ?? i.price) * i.quantity, 0);
+
+  return { ...state, count, total, selectedCount, selectedTotal };
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -63,7 +83,7 @@ function recalc(state: CartState): CartState {
 const CartContext = createContext<CartContextType | null>(null);
 export { CartContext };
 
-const INITIAL: CartState = { items: [], count: 0, total: 0, isOpen: false };
+const INITIAL: CartState = { items: [], count: 0, total: 0, selectedCount: 0, selectedTotal: 0, isOpen: false };
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, INITIAL);
@@ -114,13 +134,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const removeFromCart = useCallback((id: string) => dispatch({ type: 'REMOVE', id }), []);
   const updateQuantity = useCallback((id: string, quantity: number) => dispatch({ type: 'UPDATE_QTY', id, quantity }), []);
+  const toggleSelection = useCallback((id: string) => dispatch({ type: 'TOGGLE_SELECT', id }), []);
+  const toggleAllSelection = useCallback((selected: boolean) => dispatch({ type: 'TOGGLE_SELECT_ALL', selected }), []);
   const clearCart = useCallback(() => dispatch({ type: 'CLEAR' }), []);
+  const removeSelectedFromCart = useCallback(() => dispatch({ type: 'REMOVE_SELECTED' }), []);
   const openCart = useCallback(() => dispatch({ type: 'OPEN' }), []);
   const closeCart = useCallback(() => dispatch({ type: 'CLOSE' }), []);
 
   return (
     <CartContext.Provider
-      value={{ ...state, addToCart, removeFromCart, updateQuantity, clearCart, openCart, closeCart, cartIconRef }}
+      value={{ ...state, addToCart, removeFromCart, updateQuantity, toggleSelection, toggleAllSelection, clearCart, removeSelectedFromCart, openCart, closeCart, cartIconRef }}
     >
       {children}
     </CartContext.Provider>
