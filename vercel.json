@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/daily-summary",
+      "schedule": "59 17 * * *"
+    },
+    {
+      "path": "/api/cron/low-stock",
+      "schedule": "0 */6 * * *"
+    }
+  ]
+}

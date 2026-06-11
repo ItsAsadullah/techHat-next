@@ -442,10 +442,9 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
                   mode="single"
                   selected={new Date(selectedDate)}
                   onSelect={handleDateChange}
-                  initialFocus
                   captionLayout="dropdown"
-                  fromYear={2020}
-                  toYear={new Date().getFullYear() + 5}
+                  startMonth={new Date(2020, 0)}
+                  endMonth={new Date(new Date().getFullYear() + 5, 11)}
                   disabled={(date) => {
                     const dateStr = format(date, 'yyyy-MM-dd');
                     const todayStr = format(new Date(), 'yyyy-MM-dd');
