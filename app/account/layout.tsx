@@ -73,7 +73,11 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.replace('/');
+    try {
+      localStorage.removeItem('th_cart');
+      localStorage.removeItem('th_wishlist');
+    } catch { /* ignore */ }
+    window.location.href = '/';
   };
 
   if (loading) {

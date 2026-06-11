@@ -214,7 +214,14 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
   const currentPage = menuItems.find(i => pathname.startsWith(i.href));
   const initials = staffName.charAt(0).toUpperCase();
 
-  const handleLogout = async () => { await supabase.auth.signOut(); router.replace('/'); };
+  const handleLogout = async () => { 
+    await supabase.auth.signOut(); 
+    try {
+      localStorage.removeItem('th_cart');
+      localStorage.removeItem('th_wishlist');
+    } catch { /* ignore */ }
+    window.location.href = '/'; 
+  };
 
   // ── Early returns ──
   if (!isAuthed && !isLoginPage) {
