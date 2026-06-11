@@ -432,7 +432,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
           <button onClick={() => setShowShortcuts(!showShortcuts)} className="p-2 hover:bg-white/10 rounded-lg transition-colors hidden sm:block" title="Keyboard shortcuts">
             <Keyboard className="h-4 w-4" />
           </button>
-          <button onClick={toggleFullscreen} className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Toggle fullscreen (F11)">
+          <button onClick={toggleFullscreen} className="p-2 hover:bg-white/10 rounded-lg transition-colors hidden sm:block" title="Toggle fullscreen (F11)">
             {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </button>
         </div>
