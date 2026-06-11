@@ -406,36 +406,35 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
     )}>
       {/* Top Bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-linear-to-r from-blue-600 to-blue-700 text-white">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-            <span className="text-sm font-black">POS</span>
-          </div>
-          <div>
-            <h1 className="text-sm font-bold leading-tight">TechHat Point of Sale</h1>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-blue-100 mt-0.5">
-              <label className="flex items-center gap-1 cursor-pointer hover:text-white transition-colors">
-                <Clock className="w-3 h-3" />
-                <input 
-                  type="date" 
-                  value={selectedDate.split('T')[0]} 
-                  onChange={handleDateChange}
-                  className="bg-transparent text-[10px] text-inherit border-none p-0 cursor-pointer focus:ring-0 [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-70 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
-                />
-              </label>
-              <div className="w-px h-3 bg-white/20 hidden sm:block"></div>
-              <div className="flex items-center gap-1">
-                <DollarSign className="w-3 h-3 text-green-300" />
-                <span className="font-bold text-white">৳{dailySummary.totalSales.toLocaleString()}</span>
-              </div>
-              <button onClick={() => setShowOrdersModal(true)} className="flex items-center gap-1 hover:text-white transition-colors">
-                <ShoppingCart className="w-3 h-3" />
-                <span className="font-bold">{dailySummary.totalOrders} orders</span>
-              </button>
-              <button onClick={() => setShowOrdersModal(true)} className="flex items-center gap-1 hover:text-white transition-colors">
-                <Package className="w-3 h-3" />
-                <span className="font-bold">{dailySummary.totalItems} items</span>
-              </button>
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4">
+          <h1 className="text-sm font-bold whitespace-nowrap">TechHat Point of Sale</h1>
+          <div className="hidden sm:block w-px h-4 bg-white/20"></div>
+          
+          <div className="flex items-center gap-3 sm:gap-4 text-xs text-blue-50">
+            <label className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
+              <Clock className="w-3.5 h-3.5" />
+              <input 
+                type="date" 
+                value={selectedDate.split('T')[0]} 
+                onChange={handleDateChange}
+                className="bg-transparent text-xs text-inherit border-none p-0 cursor-pointer focus:ring-0 [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-70 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
+              />
+            </label>
+            <div className="w-px h-3 bg-white/20"></div>
+            <div className="flex items-center gap-1.5">
+              <DollarSign className="w-3.5 h-3.5 text-green-300" />
+              <span className="font-bold text-white tracking-wide">৳{dailySummary.totalSales.toLocaleString()}</span>
             </div>
+            <div className="w-px h-3 bg-white/20"></div>
+            <button onClick={() => setShowOrdersModal(true)} className="flex items-center gap-1.5 hover:text-white transition-colors">
+              <ShoppingCart className="w-3.5 h-3.5" />
+              <span className="font-bold">{dailySummary.totalOrders} orders</span>
+            </button>
+            <div className="w-px h-3 bg-white/20 hidden sm:block"></div>
+            <button onClick={() => setShowOrdersModal(true)} className="hidden sm:flex items-center gap-1.5 hover:text-white transition-colors">
+              <Package className="w-3.5 h-3.5" />
+              <span className="font-bold">{dailySummary.totalItems} items</span>
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-1 sm:gap-2">
