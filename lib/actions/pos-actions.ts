@@ -112,7 +112,7 @@ export async function searchPOSProducts(query: string, categoryId?: string): Pro
           },
         },
       },
-      take: 30,
+      take: 500,
       orderBy: { name: 'asc' },
     });
 
