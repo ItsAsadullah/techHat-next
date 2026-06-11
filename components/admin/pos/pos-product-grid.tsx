@@ -1,9 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, memo } from 'react';
-import { Search, Barcode, Package, Grid3X3, List, Loader2, Eye, ScanLine, X, ExternalLink } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Search, Package, Grid3X3, List, Loader2, Eye, ScanLine } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -11,6 +9,7 @@ import { searchPOSProducts, findProductByBarcode, type POSProduct } from '@/lib/
 import { useDebouncedCallback } from 'use-debounce';
 import Image from 'next/image';
 import { useGlobalScanner } from '@/components/admin/global-scanner-provider';
+import { BarcodeScannerModal } from '@/components/admin/pos/barcode-scanner-modal';
 
 interface POSProductGridProps {
   categories: { id: string; name: string }[];
@@ -25,39 +24,37 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const barcodeInputRef = useRef<HTMLInputElement>(null);
-  const [barcodeBuffer, setBarcodeBuffer] = useState('');
   const [showScannerModal, setShowScannerModal] = useState(false);
 
-    // -- Mobile scanner integration ------------------------------------------------
-  // Use lastScanEvent (not lastScannedCode) so the same barcode scanned twice
-  // still triggers a new product lookup (t = Date.now() always differs).
-  const { lastScanEvent, scannerUrl } = useGlobalScanner();
+  // -- Mobile scanner integration (WiFi/URL-based) ----------------------
+  const { lastScanEvent } = useGlobalScanner();
   const processedScanRef = useRef<number>(0);
 
   useEffect(() => {
     if (!lastScanEvent || lastScanEvent.t === processedScanRef.current) return;
     processedScanRef.current = lastScanEvent.t;
-    const { code } = lastScanEvent;
-    findProductByBarcode(code).then((product) => {
+    handleBarcodeCode(lastScanEvent.code);
+  }, [lastScanEvent]);
+
+  // ── Core product lookup ───────────────────────────────────────────────
+  const handleBarcodeCode = useCallback(
+    async (code: string): Promise<{ found: boolean; message?: string }> => {
+      const product = await findProductByBarcode(code);
       if (product) {
         onProductSelect(product, product.variants[0]?.id);
-        setShowScannerModal(false); // Auto-close after scan
-      } else {
-        searchPOSProducts(code).then((results) => {
-          if (results.length === 1) {
-            onProductSelect(results[0], results[0].variants[0]?.id);
-            setShowScannerModal(false); // Auto-close after scan
-          }
-        });
+        return { found: true, message: 'Product added to cart!' };
       }
-    });
-  }, [lastScanEvent, onProductSelect]);
+      const results = await searchPOSProducts(code);
+      if (results.length === 1) {
+        onProductSelect(results[0], results[0].variants[0]?.id);
+        return { found: true, message: 'Product added to cart!' };
+      }
+      return { found: false, message: 'No product found for this barcode.' };
+    },
+    [onProductSelect]
+  );
 
-  // Initial load is now handled via server-side props (initialProducts)
-  // We only need to fetch if the search query or category changes.
-  // The component mounts with the pre-fetched products, avoiding the loading spinner!
-
+  // ── Product search ────────────────────────────────────────────────────
   const loadProducts = async (query: string, catId?: string) => {
     setLoading(true);
     try {
@@ -70,70 +67,48 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
     }
   };
 
-  // PERF: Increased debounce from 150ms → 300ms to reduce API calls during
-  // rapid typing. 150ms was too aggressive — users type faster than that,
-  // causing unnecessary intermediate searches that get discarded.
   const debouncedSearch = useDebouncedCallback((query: string) => {
     loadProducts(query, selectedCategory);
   }, 300);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
-    
-    // INSTANT FEEDBACK: Filter the initial products locally for zero-latency search
-    // This makes the UI feel instantly responsive while the debounced server request
-    // runs in the background to fetch the complete results.
     if (!selectedCategory) {
       if (value.trim().length > 0) {
         const q = value.toLowerCase();
-        
         const getScore = (p: POSProduct) => {
           let score = 0;
           const name = p.name.toLowerCase();
           const sku = p.sku?.toLowerCase() || '';
           const model = p.model?.toLowerCase() || '';
           const barcode = p.barcode?.toLowerCase() || '';
-          
-          // Product Model gets highest priority
           if (model === q) score += 1000;
           else if (model.startsWith(q)) score += 500;
           else if (model.includes(q)) score += 100;
-          
-          // Product Title gets second highest priority
           if (name === q) score += 800;
           else if (name.startsWith(q)) score += 400;
           else if (name.includes(q)) score += 50;
-
-          // SKU/Barcode gets third priority
           if (sku === q || barcode === q) score += 600;
           else if (sku.startsWith(q) || barcode.startsWith(q)) score += 300;
           else if (sku.includes(q) || barcode.includes(q)) score += 30;
-          
           for (const v of p.variants) {
-             const vsku = v.sku?.toLowerCase() || '';
-             if (vsku === q) score += 600;
-             else if (vsku.startsWith(q)) score += 300;
-             else if (vsku.includes(q)) score += 30;
+            const vsku = v.sku?.toLowerCase() || '';
+            if (vsku === q) score += 600;
+            else if (vsku.startsWith(q)) score += 300;
+            else if (vsku.includes(q)) score += 30;
           }
-
           return score;
         };
-
         const localMatches = initialProducts
-          .map(p => ({ product: p, score: getScore(p) }))
-          .filter(x => x.score > 0)
+          .map((p) => ({ product: p, score: getScore(p) }))
+          .filter((x) => x.score > 0)
           .sort((a, b) => b.score - a.score)
-          .map(x => x.product);
-
-        // Only set local matches if we found some, otherwise wait for server
-        if (localMatches.length > 0) {
-          setProducts(localMatches);
-        }
+          .map((x) => x.product);
+        if (localMatches.length > 0) setProducts(localMatches);
       } else {
         setProducts(initialProducts);
       }
     }
-    
     debouncedSearch(value);
   };
 
@@ -142,72 +117,33 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
     loadProducts(searchQuery, catId);
   };
 
-  const handleBarcodeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!barcodeBuffer.trim()) return;
-
-    const product = await findProductByBarcode(barcodeBuffer.trim());
-    if (product) {
-      onProductSelect(product);
-      setBarcodeBuffer('');
-    } else {
-      // Try search as fallback
-      const results = await searchPOSProducts(barcodeBuffer.trim());
-      if (results.length === 1) {
-        onProductSelect(results[0]);
-      }
-      setBarcodeBuffer('');
-    }
-  };
-
-  // Global barcode listener - rapid keystrokes indicate scanner
+  // Global hardware barcode scanner (USB/Bluetooth) — rapid keystroke detection
   useEffect(() => {
     let buffer = '';
     let timeout: NodeJS.Timeout;
-
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept if typing in an input (except barcode input)
       const target = e.target as HTMLElement;
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
-      ) {
-        return;
-      }
-
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
       if (e.key === 'Enter' && buffer.length > 3) {
         e.preventDefault();
-        findProductByBarcode(buffer).then((product) => {
-          if (product) onProductSelect(product);
-        });
+        handleBarcodeCode(buffer);
         buffer = '';
         return;
       }
-
       if (e.key.length === 1) {
         buffer += e.key;
         clearTimeout(timeout);
-        timeout = setTimeout(() => {
-          buffer = '';
-        }, 100);
+        timeout = setTimeout(() => { buffer = ''; }, 100);
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      clearTimeout(timeout);
-    };
-  }, [onProductSelect]);
+    return () => { window.removeEventListener('keydown', handleKeyDown); clearTimeout(timeout); };
+  }, [handleBarcodeCode]);
 
   const handleProductClick = useCallback((product: POSProduct) => {
     if (product.variants.length > 1) {
-      // Show variant picker - for now pick first with stock
       const availableVariant = product.variants.find((v) => v.stock > 0);
-      if (availableVariant) {
-        onProductSelect(product, availableVariant.id);
-      }
+      if (availableVariant) onProductSelect(product, availableVariant.id);
     } else if (product.variants.length === 1) {
       onProductSelect(product, product.variants[0].id);
     } else {
@@ -216,11 +152,11 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
   }, [onProductSelect]);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Search Bar */}
-      <div className="px-3 py-2 sm:px-4 sm:py-3 space-y-2 border-b border-gray-100 bg-white">
-        <div className="flex items-center gap-2">
-          {/* Search + Scanner button */}
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* ── Sticky top: search + categories ──────────────────────────── */}
+      <div className="shrink-0 bg-white border-b border-gray-100">
+        {/* Search row */}
+        <div className="px-3 py-2 sm:px-4 sm:py-3 flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
             <input
@@ -230,41 +166,40 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
               onChange={(e) => handleSearchChange(e.target.value)}
               className="w-full pl-9 pr-10 h-9 sm:h-10 text-sm bg-gray-50 border border-gray-200 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 rounded-lg font-medium"
             />
-            {/* Scanner trigger button inside search box */}
+            {/* Camera scanner trigger */}
             <button
               onClick={() => setShowScannerModal(true)}
-              title="Scan barcode"
+              title="Scan barcode with camera"
               className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-blue-600 transition-colors"
             >
               <ScanLine className="h-4 w-4" />
             </button>
           </div>
-          {/* View Toggle */}
+
+          {/* View toggle */}
           <div className="flex border border-gray-200 rounded-lg overflow-hidden shrink-0">
             <button
               onClick={() => setViewMode('grid')}
-              className={cn('p-2 transition-colors flex items-center justify-center', viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:bg-gray-50')}
+              className={cn('p-2 transition-colors', viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:bg-gray-50')}
             >
               <Grid3X3 className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={cn('p-2 transition-colors flex items-center justify-center', viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:bg-gray-50')}
+              className={cn('p-2 transition-colors', viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:bg-gray-50')}
             >
               <List className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        {/* Category Filters — compact */}
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
+        {/* Category pills */}
+        <div className="flex gap-1.5 overflow-x-auto px-3 pb-2 sm:px-4 scrollbar-hide">
           <button
             onClick={() => handleCategorySelect(undefined)}
             className={cn(
               'px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all border shrink-0',
-              !selectedCategory
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+              !selectedCategory ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
             )}
           >
             All
@@ -275,9 +210,7 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
               onClick={() => handleCategorySelect(cat.id === selectedCategory ? undefined : cat.id)}
               className={cn(
                 'px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all border shrink-0',
-                selectedCategory === cat.id
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                selectedCategory === cat.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
               )}
             >
               {cat.name}
@@ -286,110 +219,46 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
         </div>
       </div>
 
-      {/* Product Grid */}
+      {/* ── Scrollable product area ───────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto p-2 sm:p-4 bg-gray-50/50">
         {loading ? (
-          <div className="flex items-center justify-center h-64">
+          <div className="flex items-center justify-center h-48">
             <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
           </div>
         ) : products.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-            <Package className="h-16 w-16 mb-4 opacity-30" />
-            <p className="text-lg font-medium">No products found</p>
+          <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+            <Package className="h-14 w-14 mb-3 opacity-30" />
+            <p className="text-base font-medium">No products found</p>
             <p className="text-sm">Try adjusting your search or filters</p>
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
             {products.map((product) => (
-              <ProductGridCard
-                key={product.id}
-                product={product}
-                onClick={handleProductClick}
-              />
+              <ProductGridCard key={product.id} product={product} onClick={handleProductClick} />
             ))}
           </div>
         ) : (
           <div className="space-y-2">
             {products.map((product) => (
-              <ProductListItem
-                key={product.id}
-                product={product}
-                onClick={handleProductClick}
-              />
+              <ProductListItem key={product.id} product={product} onClick={handleProductClick} />
             ))}
           </div>
         )}
       </div>
 
-      {/* Scanner Modal Popup */}
-      {showScannerModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <ScanLine className="h-4 w-4 text-blue-600" />
-                </div>
-                <h3 className="font-bold text-gray-900">Scan Barcode</h3>
-              </div>
-              <button
-                onClick={() => setShowScannerModal(false)}
-                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {scannerUrl ? (
-              <>
-                <p className="text-xs text-gray-500 mb-3 text-center">Open this URL on your phone camera to scan:</p>
-                <div className="bg-gray-50 rounded-xl p-3 text-center">
-                  <p className="text-xs font-mono text-blue-600 break-all mb-2">{scannerUrl}</p>
-                  <a
-                    href={scannerUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
-                  >
-                    Open Scanner <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
-                <p className="text-xs text-center text-gray-400 mt-3">This popup will close automatically when a product is scanned.</p>
-              </>
-            ) : (
-              <>
-                <p className="text-xs text-gray-500 mb-3">Or type/paste a barcode manually:</p>
-                <form onSubmit={handleBarcodeSubmit}>
-                  <div className="relative">
-                    <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      ref={barcodeInputRef}
-                      autoFocus
-                      placeholder="Scan or type barcode..."
-                      value={barcodeBuffer}
-                      onChange={(e) => setBarcodeBuffer(e.target.value)}
-                      className="w-full pl-9 pr-4 h-10 bg-gray-50 border border-gray-200 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 rounded-xl font-mono text-sm"
-                    />
-                  </div>
-                  <button type="submit" className="w-full mt-3 h-10 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-colors">
-                    Lookup Product
-                  </button>
-                </form>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {/* ── Camera Barcode Scanner Modal ──────────────────────────────── */}
+      <BarcodeScannerModal
+        isOpen={showScannerModal}
+        onClose={() => setShowScannerModal(false)}
+        onScan={handleBarcodeCode}
+      />
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// PERF: Extracted memoized product card components. React.memo prevents
-// re-rendering a card when sibling cards change or parent re-renders
-// due to search/filter state updates. Only the card whose props changed
-// will re-render — saving ~80% of render work in a 30-card grid.
-// ═══════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
+// Memoized product cards
+// ══════════════════════════════════════════════════════════════════════
 
 interface ProductCardProps {
   product: POSProduct;
@@ -403,9 +272,7 @@ const ProductGridCard = memo(function ProductGridCard({ product, onClick }: Prod
 
   return (
     <div
-      onClick={() => {
-        if (product.stock > 0) onClick(product);
-      }}
+      onClick={() => { if (product.stock > 0) onClick(product); }}
       className={cn(
         'relative flex flex-col bg-white rounded-xl border p-2 text-left transition-all duration-150 group',
         product.stock > 0
@@ -413,7 +280,7 @@ const ProductGridCard = memo(function ProductGridCard({ product, onClick }: Prod
           : 'border-gray-100 opacity-50 cursor-not-allowed'
       )}
     >
-      {/* Eye Icon for Price Details */}
+      {/* Eye — price details */}
       <div className="absolute top-1.5 left-1.5 z-10" onClick={(e) => e.stopPropagation()}>
         <Popover>
           <PopoverTrigger asChild>
@@ -441,7 +308,7 @@ const ProductGridCard = memo(function ProductGridCard({ product, onClick }: Prod
         </Popover>
       </div>
 
-      {/* Image — compact on mobile */}
+      {/* Image */}
       <div className="relative aspect-[4/3] sm:aspect-square rounded-lg overflow-hidden bg-gray-100 mb-2">
         {product.image ? (
           <Image
@@ -457,7 +324,7 @@ const ProductGridCard = memo(function ProductGridCard({ product, onClick }: Prod
           </div>
         )}
 
-        {/* Stock Badge */}
+        {/* Stock badge */}
         <div className="absolute top-1 right-1">
           <Badge
             variant="secondary"
@@ -470,15 +337,11 @@ const ProductGridCard = memo(function ProductGridCard({ product, onClick }: Prod
                 : 'bg-green-100 text-green-700 border border-green-200'
             )}
           >
-            {product.stock <= 0 
-              ? 'Out of stock' 
-              : product.stock <= 5 
-              ? `Low: ${product.stock}` 
-              : product.stock}
+            {product.stock <= 0 ? 'Out of stock' : product.stock <= 5 ? `Low: ${product.stock}` : product.stock}
           </Badge>
         </div>
 
-        {/* Variants indicator */}
+        {/* Variants badge */}
         {product.variants.length > 1 && (
           <div className="absolute bottom-1 left-1">
             <Badge variant="secondary" className="text-[9px] bg-purple-100 text-purple-700 px-1 py-0 leading-4">
@@ -516,9 +379,7 @@ const ProductListItem = memo(function ProductListItem({ product, onClick }: Prod
 
   return (
     <div
-      onClick={() => {
-        if (product.stock > 0) onClick(product);
-      }}
+      onClick={() => { if (product.stock > 0) onClick(product); }}
       className={cn(
         'w-full flex items-center gap-2 sm:gap-4 bg-white rounded-xl border p-2 sm:p-3 text-left transition-all duration-150 relative group',
         product.stock > 0
@@ -540,25 +401,19 @@ const ProductListItem = memo(function ProductListItem({ product, onClick }: Prod
         <p className="text-xs text-gray-500">{product.categoryName} • {product.sku || 'No SKU'}</p>
       </div>
       <div className="text-right shrink-0">
-        <p className="text-sm font-black text-blue-600">
-          ৳{(product.offerPrice || product.price).toLocaleString()}
-        </p>
+        <p className="text-sm font-black text-blue-600">৳{(product.offerPrice || product.price).toLocaleString()}</p>
         <Badge
           variant="secondary"
           className={cn(
             'text-[10px] mt-1',
-            product.stock <= 0
-              ? 'bg-red-100 text-red-700'
-              : product.stock <= 5
-              ? 'bg-amber-100 text-amber-700'
-              : 'bg-green-100 text-green-700'
+            product.stock <= 0 ? 'bg-red-100 text-red-700' : product.stock <= 5 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
           )}
         >
           Stock: {product.stock}
         </Badge>
       </div>
-      
-      {/* Eye Icon for Price Details */}
+
+      {/* Eye — price details */}
       <div className="shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
         <Popover>
           <PopoverTrigger asChild>
