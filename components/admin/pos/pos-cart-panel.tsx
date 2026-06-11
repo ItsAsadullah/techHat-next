@@ -730,7 +730,7 @@ const CartItemRow = memo(function CartItemRow({
             </button>
           </div>
         </div>
-        {item.variantName && (
+        {item.variantName && item.variantName.toLowerCase() !== 'default' && (
           <p className="text-[10px] sm:text-[11px] text-gray-500">{item.variantName}</p>
         )}
 
