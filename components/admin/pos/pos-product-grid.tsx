@@ -27,6 +27,18 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
 
+  // Sync products if server data refreshes (e.g., after sale)
+  useEffect(() => {
+    if (!searchQuery && !selectedCategory) {
+      setProducts(initialProducts);
+    } else {
+      // Re-fetch current search/category to get updated stock
+      loadProducts(searchQuery, selectedCategory);
+    }
+    // We only want to trigger this when `initialProducts` reference changes from server refresh
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProducts]);
+
   // Calculate total products for the "All" badge
   const totalProductsCount = categories.reduce((sum, cat) => sum + (cat.productCount || 0), 0);
 

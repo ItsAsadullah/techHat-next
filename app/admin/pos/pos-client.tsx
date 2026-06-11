@@ -13,6 +13,7 @@ import type { InvoiceSettings } from '@/lib/actions/invoice-settings-actions';
 import { toast } from 'sonner';
 import { Maximize, Minimize, Keyboard, BarChart2, Users, CreditCard, Grid3X3, ShoppingCart, MoreVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
 // PERF: Lazy-load modal components — these are heavy (~40KB combined) and only
@@ -35,6 +36,7 @@ interface POSClientProps {
 }
 
 export function POSClient({ categories, initialDailySummary, invoiceSettings, initialProducts }: POSClientProps) {
+  const router = useRouter();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -286,6 +288,8 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
 
         clearCart();
         toast.success(`Sale completed: ${result.orderNumber}`);
+        // Refresh server data to get updated stock
+        router.refresh();
       } else {
         toast.error(result.error || 'Failed to complete sale');
       }
