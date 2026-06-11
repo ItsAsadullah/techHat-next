@@ -11,7 +11,10 @@ import { getPOSCustomerList } from '@/lib/actions/ledger-actions';
 import type { POSCustomerOption } from '@/components/admin/pos/customer-search-combobox';
 import type { InvoiceSettings } from '@/lib/actions/invoice-settings-actions';
 import { toast } from 'sonner';
-import { Maximize, Minimize, Keyboard, BarChart2, Users, CreditCard, Grid3X3, ShoppingCart, MoreVertical, Clock, DollarSign, Package } from 'lucide-react';
+import { Maximize, Minimize, Keyboard, BarChart2, Users, CreditCard, Grid3X3, ShoppingCart, MoreVertical, Clock, DollarSign, Package, Calendar as CalendarIcon } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -46,12 +49,13 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
   const [posCustomers, setPosCustomers] = useState<POSCustomerOption[]>([]);
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString());
   const [showOrdersModal, setShowOrdersModal] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
-  const handleDateChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    if (!val) return;
-    const newDate = new Date(val).toISOString();
+  const handleDateChange = async (date: Date | undefined) => {
+    if (!date) return;
+    const newDate = date.toISOString();
     setSelectedDate(newDate);
+    setCalendarOpen(false);
     
     try {
       const summary = await getDailySalesSummary(newDate);
@@ -411,15 +415,22 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
           <div className="hidden sm:block w-px h-4 bg-white/20"></div>
           
           <div className="flex items-center gap-3 sm:gap-4 text-xs text-blue-50">
-            <label className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
-              <Clock className="w-3.5 h-3.5" />
-              <input 
-                type="date" 
-                value={selectedDate.split('T')[0]} 
-                onChange={handleDateChange}
-                className="bg-transparent text-xs text-inherit border-none p-0 cursor-pointer focus:ring-0 [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-70 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
-              />
-            </label>
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
+                  <CalendarIcon className="w-3.5 h-3.5" />
+                  <span className="font-semibold">{format(new Date(selectedDate), 'MMM d, yyyy')}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={new Date(selectedDate)}
+                  onSelect={handleDateChange}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
             <div className="w-px h-3 bg-white/20"></div>
             <div className="flex items-center gap-1.5">
               <DollarSign className="w-3.5 h-3.5 text-green-300" />
