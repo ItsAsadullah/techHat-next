@@ -8,14 +8,15 @@ const ALLOWED_CHAT_ID = process.env.TELEGRAM_CHAT_ID?.trim();
 // Exclude these statuses when calculating successful sales
 const EXCLUDED_STATUSES = ['CANCELLED', 'RETURNED', 'FAILED'];
 
-async function sendMessage(text: string) {
-  if (!TELEGRAM_BOT_TOKEN || !ALLOWED_CHAT_ID) return;
+async function sendMessage(text: string, targetChatId?: string) {
+  const chatId = targetChatId || ALLOWED_CHAT_ID;
+  if (!TELEGRAM_BOT_TOKEN || !chatId) return;
   try {
     await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chat_id: ALLOWED_CHAT_ID,
+        chat_id: chatId,
         text,
         parse_mode: 'HTML',
       }),
@@ -30,21 +31,26 @@ export async function POST(req: Request) {
     const body = await req.json();
     const message = body.message;
 
-    // Remove accidental quotes from env variables just in case
-    const cleanAllowedId = String(ALLOWED_CHAT_ID).replace(/['"]/g, '').trim();
-    const cleanChatId = String(message.chat.id).replace(/['"]/g, '').trim();
-
-    // Security: Only respond if the chat.id matches the allowed private group
-    if (!message || !message.chat || cleanChatId !== cleanAllowedId) {
-      return NextResponse.json({ success: true, message: `Ignored: Unauthorized chat. Got: ${cleanChatId}, Expected: ${cleanAllowedId}` });
-    }
-
-    if (!message.text) {
+    if (!message || !message.text) {
       return NextResponse.json({ success: true });
     }
 
+    const cleanAllowedId = String(ALLOWED_CHAT_ID).replace(/['"]/g, '').trim();
+    const cleanChatId = String(message.chat.id).replace(/['"]/g, '').trim();
+    
     // Normalize command (e.g. "/today@bot_username" -> "/today")
     const text = message.text.trim().split('@')[0].trim();
+
+    // Secret debug command to help user find their exact chat ID
+    if (text.toLowerCase() === '/chatid') {
+      await sendMessage(`💬 <b>Debug Info:</b>\nআপনার এই গ্রুপের আসল Chat ID হলো:\n<code>${cleanChatId}</code>\n\nVercel-এ TELEGRAM_CHAT_ID এর জায়গায় ঠিক এই নাম্বারটি বসান!`, cleanChatId);
+      return NextResponse.json({ success: true });
+    }
+
+    // Security: Only respond if the chat.id matches the allowed private group
+    if (cleanChatId !== cleanAllowedId) {
+      return NextResponse.json({ success: true, message: `Ignored: Unauthorized chat. Got: ${cleanChatId}, Expected: ${cleanAllowedId}` });
+    }
     
     const today = new Date();
     const todayStart = startOfDay(today);
