@@ -39,10 +39,22 @@ function POSBodyLock({ isPOS }: { isPOS: boolean }) {
       const storeHeader = document.querySelector('header.sticky.top-0.z-\\[60\\]') || document.querySelector('header.sticky.top-0');
       const originalDisplay = storeHeader ? (storeHeader as HTMLElement).style.display : '';
       if (storeHeader) (storeHeader as HTMLElement).style.display = 'none';
+
+      // Fix for mobile keyboard causing the page to scroll up and get stuck
+      const handleFocusOut = () => {
+        setTimeout(() => {
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+          document.body.scrollTop = 0;
+          document.documentElement.scrollTop = 0;
+        }, 50);
+      };
+      
+      window.addEventListener('focusout', handleFocusOut);
       
       return () => {
         document.body.style.overflow = originalOverflow;
         if (storeHeader) (storeHeader as HTMLElement).style.display = originalDisplay;
+        window.removeEventListener('focusout', handleFocusOut);
       };
     }
   }, [isPOS]);
