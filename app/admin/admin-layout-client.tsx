@@ -235,7 +235,7 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
 
   return (
     <GlobalScannerProvider>
-      <div className="h-dvh bg-gray-50 dark:bg-gray-950 flex overflow-hidden">
+      <div className="fixed inset-0 bg-gray-50 dark:bg-gray-950 flex overflow-hidden">
 
         {/* Drawer overlay (mobile) */}
         {drawerOpen && (
