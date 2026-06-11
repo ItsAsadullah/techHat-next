@@ -417,10 +417,14 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
       isFullscreen ? 'fixed inset-0 z-100 rounded-none' : 'h-full w-full'
     )}>
       {/* Top Bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-linear-to-r from-blue-600 to-blue-700 text-white">
+      <div className="flex items-center justify-between px-4 py-2 bg-linear-to-r from-blue-600 to-blue-700 text-white relative">
+        
+        {/* Centered Title */}
+        <div className="absolute left-1/2 -translate-x-1/2 font-extrabold text-base sm:text-lg pointer-events-none hidden sm:block">
+          TechHat POS
+        </div>
+
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4">
-          <h1 className="text-sm font-bold whitespace-nowrap">TechHat Point of Sale</h1>
-          <div className="hidden sm:block w-px h-4 bg-white/20"></div>
           
           <div className="flex items-center gap-3 sm:gap-4 text-xs text-blue-50">
             <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
