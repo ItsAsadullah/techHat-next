@@ -149,7 +149,7 @@ export function POSCartPanel({
   };
 
   // PERF: Memoize quickAmounts to maintain reference equality
-  const quickAmounts = useMemo(() => [100, 500, 1000, 2000, 5000], []);
+  const quickAmounts = useMemo(() => [100, 500, 1000, 2000], []);
 
   // Due calculation based on amount received
   const cashDueAmount = cart.paymentMethod === 'CASH' && cart.amountReceived > 0 && cart.amountReceived < grandTotal
@@ -438,7 +438,7 @@ export function POSCartPanel({
                   ))}
                   <button
                     onClick={() => onSetAmountReceived(0)}
-                    className="px-3 py-1.5 border border-red-200 hover:bg-red-50 text-red-600 rounded-lg text-xs font-bold transition-colors active:scale-95 ml-auto"
+                    className="px-4 py-1.5 border border-red-200 hover:bg-red-50 text-red-600 rounded-lg text-xs font-bold transition-colors active:scale-95 ml-auto w-[76px]"
                   >
                     Clear
                   </button>
