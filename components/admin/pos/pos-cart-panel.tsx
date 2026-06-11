@@ -413,7 +413,8 @@ export function POSCartPanel({
                     value={cart.amountReceived || ''}
                     onChange={(e) => {
                       // BengaliNumberConverter will also fire, but just in case we handle it safely:
-                      const engVal = e.target.value.replace(/[০-৯]/g, m => ({'০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9'})[m as keyof typeof Object] || m);
+                      const bnEnMap: Record<string, string> = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' };
+                      const engVal = e.target.value.replace(/[০-৯]/g, m => bnEnMap[m] || m);
                       onSetAmountReceived(parseFloat(engVal) || 0);
                     }}
                     className="h-11 text-base font-bold flex-1"
