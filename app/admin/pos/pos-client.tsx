@@ -386,7 +386,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
   return (
     <div className={cn(
       'flex flex-col bg-white lg:rounded-2xl lg:border border-gray-200 lg:shadow-sm overflow-hidden',
-      isFullscreen ? 'fixed inset-0 z-100 rounded-none' : 'h-[calc(100dvh-3.5rem)] lg:h-[calc(100vh-8rem)]'
+      isFullscreen ? 'fixed inset-0 z-100 rounded-none' : 'h-full w-full'
     )}>
       {/* Top Bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-linear-to-r from-blue-600 to-blue-700 text-white">
