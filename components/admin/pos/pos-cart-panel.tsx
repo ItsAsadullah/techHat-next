@@ -687,147 +687,161 @@ const CartItemRow = memo(function CartItemRow({
   const [showCost, setShowCost] = useState(false);
 
   return (
-    <div className="px-3 sm:px-4 py-3 flex flex-col sm:flex-row sm:items-start gap-3 hover:bg-gray-50/50 transition-colors group border-b border-gray-50 last:border-0">
-      {/* Top Row on Mobile: Remove + Image + Details */}
-      <div className="flex items-start gap-3 flex-1 min-w-0">
-        {/* Remove */}
-        <button
-          onClick={() => onSetItemToDelete(index)}
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:text-white hover:bg-red-500 bg-red-50 transition-colors shrink-0 mt-1 active:scale-90"
-          title="Remove Item"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+    <div className="px-3 sm:px-4 py-3 flex items-center gap-2 sm:gap-3 hover:bg-gray-50/50 transition-colors group border-b border-gray-50 last:border-0 min-h-[4rem]">
+      {/* Remove */}
+      <button
+        onClick={() => onSetItemToDelete(index)}
+        className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:text-white hover:bg-red-500 bg-red-50 transition-colors shrink-0 active:scale-90"
+        title="Remove Item"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
 
-        {/* Image */}
-        <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
-          {item.image ? (
-            <Image src={item.image} alt={item.name} fill className="object-cover" sizes="48px" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Package className="h-5 w-5 text-gray-300" />
-            </div>
-          )}
+      {/* Image */}
+      <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
+        {item.image ? (
+          <Image src={item.image} alt={item.name} fill className="object-cover" sizes="48px" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Package className="h-5 w-5 text-gray-300" />
+          </div>
+        )}
+      </div>
+
+      {/* Details */}
+      <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-xs sm:text-sm font-bold text-gray-900 truncate leading-tight min-h-[1.1rem]">
+            {item.name}
+          </p>
+          {/* Cost price toggle */}
+          <div className="flex items-center gap-1 shrink-0 hidden sm:flex">
+            {showCost && (
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                CP: ৳{(item.costPrice || 0).toLocaleString()}
+              </span>
+            )}
+            <button
+              onClick={() => setShowCost(!showCost)}
+              className="text-gray-400 hover:text-emerald-600 transition-colors"
+              title="View Cost Price"
+            >
+              {showCost ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </button>
+          </div>
         </div>
+        {item.variantName && (
+          <p className="text-[10px] sm:text-[11px] text-gray-500">{item.variantName}</p>
+        )}
 
-        {/* Details */}
-        <div className="flex-1 min-w-0 flex flex-col gap-1">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-bold text-gray-900 truncate leading-tight min-h-[1.1rem]">
-              {item.name}
-            </p>
-            {/* Cost price toggle */}
-            <div className="flex items-center gap-1 shrink-0">
-              {showCost && (
-                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
-                  CP: ৳{(item.costPrice || 0).toLocaleString()}
-                </span>
-              )}
+        {/* Price (editable) and quantity controls */}
+        <div className="flex items-center gap-2 min-w-0 flex-wrap mt-0.5">
+          {isEditing ? (
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={priceInput}
+                onChange={(e) => onSetPriceInput(e.target.value)}
+                className="h-7 w-16 sm:w-20 text-xs shrink-0 px-2"
+              />
               <button
-                onClick={() => setShowCost(!showCost)}
-                className="text-gray-400 hover:text-emerald-600 transition-colors"
-                title="View Cost Price"
+                onClick={() => {
+                  const val = parseFloat(priceInput) || 0;
+                  if (val > 0 && typeof onSetItemPrice === 'function') {
+                    onSetItemPrice(index, val);
+                    onSetEditingPriceIndex(null);
+                  }
+                }}
+                className="px-2 py-1 bg-green-600 text-white rounded-lg text-[10px] font-semibold shrink-0"
               >
-                {showCost ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                Save
+              </button>
+              <button
+                onClick={() => {
+                  if (typeof onResetItemPrice === 'function') {
+                    onResetItemPrice(index);
+                    onSetPriceInput(String(item.originalPrice));
+                  }
+                }}
+                className="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-[10px] font-semibold shrink-0"
+              >
+                Reset
+              </button>
+              <button
+                onClick={() => {
+                  onSetEditingPriceIndex(null);
+                  onSetPriceInput('');
+                }}
+                className="px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-semibold shrink-0"
+              >
+                Cancel
               </button>
             </div>
-          </div>
-          {item.variantName && (
-            <p className="text-[11px] text-gray-500">{item.variantName}</p>
-          )}
+          ) : (
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+              <span className="text-xs font-semibold text-blue-600 shrink-0 leading-none">
+                ৳{item.price.toLocaleString()}
+              </span>
+              <button
+                onClick={() => {
+                  onSetEditingPriceIndex(index);
+                  onSetPriceInput(String(item.price));
+                }}
+                className="text-[10px] text-gray-400 px-1.5 py-0.5 rounded border border-gray-200 hover:bg-gray-50 shrink-0 leading-none"
+              >
+                Edit
+              </button>
 
-          {/* Price (editable) and quantity summary */}
-          <div className="flex items-center gap-3 min-w-0 flex-wrap sm:flex-nowrap mt-0.5">
-            {isEditing ? (
-              <div className="flex items-center gap-2 flex-wrap min-w-0">
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  value={priceInput}
-                  onChange={(e) => onSetPriceInput(e.target.value)}
-                  className="h-8 w-20 sm:w-24 text-sm shrink-0"
-                />
+              {/* Quantity Controls */}
+              <div className="flex items-center gap-1 shrink-0 ml-1">
                 <button
                   onClick={() => {
-                    const val = parseFloat(priceInput) || 0;
-                    if (val > 0 && typeof onSetItemPrice === 'function') {
-                      onSetItemPrice(index, val);
-                      onSetEditingPriceIndex(null);
+                    if (item.quantity <= 1) {
+                      onSetItemToDelete(index);
+                    } else {
+                      onUpdateQuantity(index, item.quantity - 1);
                     }
                   }}
-                  className="px-2 py-1 bg-green-600 text-white rounded-lg text-xs font-semibold shrink-0"
+                  className="w-5 h-5 sm:w-6 sm:h-6 rounded border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors active:scale-90"
                 >
-                  Save
+                  <Minus className="h-3 w-3" />
                 </button>
-                <button
-                  onClick={() => {
-                    if (typeof onResetItemPrice === 'function') {
-                      onResetItemPrice(index);
-                      onSetPriceInput(String(item.originalPrice));
-                    }
-                  }}
-                  className="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-semibold shrink-0"
-                >
-                  Reset
-                </button>
-                <button
-                  onClick={() => {
-                    onSetEditingPriceIndex(null);
-                    onSetPriceInput('');
-                  }}
-                  className="px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-semibold shrink-0"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-0.5">
-                <span className="text-xs font-semibold text-blue-600 shrink-0 leading-none">
-                  ৳{item.price.toLocaleString()}
+                <span className="w-5 sm:w-6 text-center text-[11px] sm:text-xs font-bold text-gray-900 leading-none">
+                  {item.quantity}
                 </span>
-                <span className="text-xs text-gray-500 shrink-0 leading-none">× {item.quantity}</span>
                 <button
-                  onClick={() => {
-                    onSetEditingPriceIndex(index);
-                    onSetPriceInput(String(item.price));
-                  }}
-                  className="text-xs text-gray-400 px-2 py-0.5 rounded hover:bg-gray-50 shrink-0 leading-none"
+                  onClick={() => onUpdateQuantity(index, item.quantity + 1)}
+                  disabled={item.quantity >= item.maxStock}
+                  className="w-5 h-5 sm:w-6 sm:h-6 rounded border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
                 >
-                  Edit
+                  <Plus className="h-3 w-3" />
                 </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Bottom Row on Mobile: Quantity + Total */}
-      <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto pl-11 sm:pl-0 pt-1 sm:pt-0">
-        {/* Quantity Controls */}
-        <div className="flex items-center gap-2 shrink-0">
+      {/* Line Total */}
+      <div className="text-right shrink-0 ml-auto flex flex-col items-end justify-center">
+        <p className="text-sm font-black text-gray-900 leading-none">
+          ৳{(item.price * item.quantity).toLocaleString()}
+        </p>
+        {/* Cost price toggle on mobile (moved under total for space) */}
+        <div className="sm:hidden mt-1 flex items-center justify-end">
+          {showCost && (
+            <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-100 mr-1">
+              CP: ৳{(item.costPrice || 0).toLocaleString()}
+            </span>
+          )}
           <button
-            onClick={() => onUpdateQuantity(index, item.quantity - 1)}
-            className="w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors active:scale-90"
+            onClick={() => setShowCost(!showCost)}
+            className="text-gray-400 hover:text-emerald-600 transition-colors"
+            title="View Cost Price"
           >
-            <Minus className="h-3.5 w-3.5" />
+            {showCost ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
           </button>
-          <span className="w-8 text-center text-sm font-bold text-gray-900">
-            {item.quantity}
-          </span>
-          <button
-            onClick={() => onUpdateQuantity(index, item.quantity + 1)}
-            disabled={item.quantity >= item.maxStock}
-            className="w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </button>
-        </div>
-
-        {/* Line Total */}
-        <div className="text-right shrink-0">
-          <p className="text-sm font-black text-gray-900 leading-none">
-            ৳{(item.price * item.quantity).toLocaleString()}
-          </p>
         </div>
       </div>
     </div>
