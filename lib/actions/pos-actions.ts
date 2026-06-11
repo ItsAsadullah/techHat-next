@@ -600,32 +600,33 @@ export async function getPOSCategories() {
   }));
 }
 
-export async function getDailySalesSummary() {
-  const today = new Date();
-  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+export async function getDailySalesSummary(targetDate?: Date | string) {
+  const dateObj = targetDate ? new Date(targetDate) : new Date();
+  const startOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+  const endOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate() + 1);
 
   const [totalSales, totalOrders, totalItems] = await Promise.all([
     prisma.order.aggregate({
       where: {
-        isPos: true, // Changed from type: 'POS'
-        paymentStatus: 'PAID', // Changed from status: 'COMPLETED'
-        createdAt: { gte: startOfDay },
+        isPos: true,
+        paymentStatus: 'PAID',
+        createdAt: { gte: startOfDay, lt: endOfDay },
       },
-      _sum: { grandTotal: true }, // Changed from total
+      _sum: { grandTotal: true },
     }),
     prisma.order.count({
       where: {
-        isPos: true, // Changed from type: 'POS'
-        paymentStatus: 'PAID', // Changed from status: 'COMPLETED'
-        createdAt: { gte: startOfDay },
+        isPos: true,
+        paymentStatus: 'PAID',
+        createdAt: { gte: startOfDay, lt: endOfDay },
       },
     }),
     prisma.orderItem.aggregate({
       where: {
         order: {
-          isPos: true, // Changed from type: 'POS'
-          paymentStatus: 'PAID', // Changed from status: 'COMPLETED'
-          createdAt: { gte: startOfDay },
+          isPos: true,
+          paymentStatus: 'PAID',
+          createdAt: { gte: startOfDay, lt: endOfDay },
         },
       },
       _sum: { quantity: true },
@@ -633,10 +634,33 @@ export async function getDailySalesSummary() {
   ]);
 
   return {
-    totalSales: totalSales._sum.grandTotal || 0, // Changed from total
+    totalSales: totalSales._sum.grandTotal || 0,
     totalOrders,
     totalItems: totalItems._sum.quantity || 0,
   };
+}
+
+export async function getDailyPOSOrders(targetDate?: Date | string) {
+  const dateObj = targetDate ? new Date(targetDate) : new Date();
+  const startOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+  const endOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate() + 1);
+
+  return prisma.order.findMany({
+    where: {
+      isPos: true,
+      paymentStatus: 'PAID',
+      createdAt: { gte: startOfDay, lt: endOfDay },
+    },
+    include: {
+      items: {
+        include: {
+          product: { select: { image: true } },
+          variant: { select: { image: true } }
+        }
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
 }
 
 export async function getRecentPOSOrders(limit = 10) {

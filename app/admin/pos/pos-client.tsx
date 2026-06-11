@@ -4,9 +4,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { usePOSCart } from '@/lib/hooks/use-pos-cart';
 import { POSProductGrid } from '@/components/admin/pos/pos-product-grid';
 import { POSCartPanel } from '@/components/admin/pos/pos-cart-panel';
-import { POSDailySummary } from '@/components/admin/pos/pos-daily-summary';
 import { ClearCartDialog } from '@/components/admin/pos/clear-cart-dialog';
-import { completeSale, type POSProduct, type CompleteSaleInput } from '@/lib/actions/pos-actions';
+import { DailyOrdersModal } from '@/components/admin/pos/daily-orders-modal';
+import { completeSale, getDailySalesSummary, type POSProduct, type CompleteSaleInput } from '@/lib/actions/pos-actions';
 import { getPOSCustomerList } from '@/lib/actions/ledger-actions';
 import type { POSCustomerOption } from '@/components/admin/pos/customer-search-combobox';
 import type { InvoiceSettings } from '@/lib/actions/invoice-settings-actions';
@@ -44,6 +44,22 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [dailySummary, setDailySummary] = useState(initialDailySummary);
   const [posCustomers, setPosCustomers] = useState<POSCustomerOption[]>([]);
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString());
+  const [showOrdersModal, setShowOrdersModal] = useState(false);
+
+  const handleDateChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (!val) return;
+    const newDate = new Date(val).toISOString();
+    setSelectedDate(newDate);
+    
+    try {
+      const summary = await getDailySalesSummary(newDate);
+      setDailySummary(summary);
+    } catch (err) {
+      console.error('Failed to fetch summary:', err);
+    }
+  };
 
   const toggleFullscreen = useCallback(async () => {
     try {
@@ -395,8 +411,31 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
             <span className="text-sm font-black">POS</span>
           </div>
           <div>
-            <h1 className="text-sm font-bold">TechHat Point of Sale</h1>
-            <p className="text-[10px] text-blue-200">Ready to sell</p>
+            <h1 className="text-sm font-bold leading-tight">TechHat Point of Sale</h1>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-blue-100 mt-0.5">
+              <label className="flex items-center gap-1 cursor-pointer hover:text-white transition-colors">
+                <Clock className="w-3 h-3" />
+                <input 
+                  type="date" 
+                  value={selectedDate.split('T')[0]} 
+                  onChange={handleDateChange}
+                  className="bg-transparent text-[10px] text-inherit border-none p-0 cursor-pointer focus:ring-0 [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-70 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
+                />
+              </label>
+              <div className="w-px h-3 bg-white/20 hidden sm:block"></div>
+              <div className="flex items-center gap-1">
+                <DollarSign className="w-3 h-3 text-green-300" />
+                <span className="font-bold text-white">৳{dailySummary.totalSales.toLocaleString()}</span>
+              </div>
+              <button onClick={() => setShowOrdersModal(true)} className="flex items-center gap-1 hover:text-white transition-colors">
+                <ShoppingCart className="w-3 h-3" />
+                <span className="font-bold">{dailySummary.totalOrders} orders</span>
+              </button>
+              <button onClick={() => setShowOrdersModal(true)} className="flex items-center gap-1 hover:text-white transition-colors">
+                <Package className="w-3 h-3" />
+                <span className="font-bold">{dailySummary.totalItems} items</span>
+              </button>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-1 sm:gap-2">
@@ -442,14 +481,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
         </div>
       </div>
 
-      {/* Daily Summary */}
-      <div className="shrink-0">
-        <POSDailySummary
-          totalSales={dailySummary.totalSales}
-          totalOrders={dailySummary.totalOrders}
-          totalItems={dailySummary.totalItems}
-        />
-      </div>
+
 
       {/* Shortcuts Help */}
       {showShortcuts && (
@@ -576,6 +608,14 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
           toast.info('Cart cleared');
         }}
       />
+
+      {showOrdersModal && (
+        <DailyOrdersModal
+          isOpen={showOrdersModal}
+          onClose={() => setShowOrdersModal(false)}
+          targetDate={selectedDate}
+        />
+      )}
 
       {/* Mixed Payment Modal */}
       <MixedPaymentModal
