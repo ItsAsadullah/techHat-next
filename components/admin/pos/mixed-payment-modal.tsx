@@ -134,7 +134,7 @@ export function MixedPaymentModal({ isOpen, onClose, grandTotal, onConfirm }: Mi
                   )}
                 </div>
                 <Input
-                  type="number"
+                  type="text" inputMode="numeric"
                   value={cash || ''}
                   onChange={(e) => setCash(parseFloat(e.target.value) || 0)}
                   placeholder="0"
@@ -163,7 +163,7 @@ export function MixedPaymentModal({ isOpen, onClose, grandTotal, onConfirm }: Mi
                       )}
                   </div>
                   <Input
-                    type="number"
+                    type="text" inputMode="numeric"
                     value={card || ''}
                     onChange={(e) => setCard(parseFloat(e.target.value) || 0)}
                     placeholder="0"
@@ -218,7 +218,7 @@ export function MixedPaymentModal({ isOpen, onClose, grandTotal, onConfirm }: Mi
                     )}
                   </div>
                   <Input
-                    type="number"
+                    type="text" inputMode="numeric"
                     value={mobile || ''}
                     onChange={(e) => setMobile(parseFloat(e.target.value) || 0)}
                     placeholder="0"
@@ -270,7 +270,7 @@ export function MixedPaymentModal({ isOpen, onClose, grandTotal, onConfirm }: Mi
                   <div className="space-y-1">
                     <Label className="text-xs">Cash Out Charge (Optional)</Label>
                     <Input 
-                      type="number"
+                      type="text" inputMode="numeric"
                       value={mobileCashOutCharge || ''}
                       onChange={(e) => setMobileCashOutCharge(parseFloat(e.target.value) || 0)}
                       placeholder="0"

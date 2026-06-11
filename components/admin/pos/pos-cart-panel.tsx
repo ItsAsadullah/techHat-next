@@ -344,7 +344,8 @@ export function POSCartPanel({
                   </button>
                 </div>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   placeholder="Amount"
                   value={discountInput}
                   onChange={(e) => setDiscountInput(e.target.value)}
@@ -406,10 +407,15 @@ export function POSCartPanel({
               <div className="px-4 pb-2 space-y-2 animate-in fade-in duration-150">
                 <div className="flex gap-2">
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     placeholder="Amount received"
                     value={cart.amountReceived || ''}
-                    onChange={(e) => onSetAmountReceived(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => {
+                      // BengaliNumberConverter will also fire, but just in case we handle it safely:
+                      const engVal = e.target.value.replace(/[০-৯]/g, m => ({'০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9'})[m as keyof typeof Object] || m);
+                      onSetAmountReceived(parseFloat(engVal) || 0);
+                    }}
                     className="h-11 text-base font-bold flex-1"
                   />
                   <Button
@@ -728,7 +734,8 @@ const CartItemRow = memo(function CartItemRow({
             {isEditing ? (
               <div className="flex items-center gap-2 flex-wrap min-w-0">
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={priceInput}
                   onChange={(e) => onSetPriceInput(e.target.value)}
                   className="h-8 w-20 sm:w-24 text-sm shrink-0"

@@ -134,7 +134,7 @@ export function PaymentDetailsModal({ isOpen, onClose, grandTotal, paymentMethod
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-gray-600">Cash Out Charge (Optional)</Label>
                 <Input 
-                  type="number"
+                  type="text" inputMode="numeric"
                   value={mobileCashOutCharge || ''}
                   onChange={(e) => setMobileCashOutCharge(parseFloat(e.target.value) || 0)}
                   placeholder="0"
