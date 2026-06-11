@@ -30,9 +30,13 @@ export async function POST(req: Request) {
     const body = await req.json();
     const message = body.message;
 
+    // Remove accidental quotes from env variables just in case
+    const cleanAllowedId = String(ALLOWED_CHAT_ID).replace(/['"]/g, '').trim();
+    const cleanChatId = String(message.chat.id).replace(/['"]/g, '').trim();
+
     // Security: Only respond if the chat.id matches the allowed private group
-    if (!message || !message.chat || String(message.chat.id) !== String(ALLOWED_CHAT_ID)) {
-      return NextResponse.json({ success: true, message: 'Ignored: Unauthorized chat' });
+    if (!message || !message.chat || cleanChatId !== cleanAllowedId) {
+      return NextResponse.json({ success: true, message: `Ignored: Unauthorized chat. Got: ${cleanChatId}, Expected: ${cleanAllowedId}` });
     }
 
     if (!message.text) {
