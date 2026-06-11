@@ -68,9 +68,16 @@ export function usePOSCart() {
         ? variant.offerPrice || variant.price
         : product.offerPrice || product.price;
 
-      const maxStock = variant ? variant.stock : product.stock;
+      let maxStock = variant ? variant.stock : product.stock;
+      
+      // Fallback: if a single "Default" variant has 0 stock but the main product shows stock, use main product stock
+      if (variant && product.variants.length === 1 && maxStock <= 0 && product.stock > 0) {
+        maxStock = product.stock;
+      }
 
-      if (maxStock <= 0) return prev;
+      if (maxStock <= 0) {
+        return prev;
+      }
 
       const newItem: CartItem = {
         productId: product.id,
