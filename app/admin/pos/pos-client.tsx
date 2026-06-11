@@ -417,17 +417,16 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
       isFullscreen ? 'fixed inset-0 z-100 rounded-none' : 'h-full w-full'
     )}>
       {/* Top Bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-linear-to-r from-blue-600 to-blue-700 text-white relative">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between px-3 sm:px-4 py-2 bg-linear-to-r from-blue-600 to-blue-700 text-white relative gap-y-2 sm:gap-y-0">
         
-        {/* Centered Title */}
-        <div className="absolute left-1/2 -translate-x-1/2 font-extrabold text-base sm:text-lg pointer-events-none hidden sm:block">
+        {/* Title: Left on mobile, Absolute Center on desktop */}
+        <div className="font-extrabold text-base sm:text-lg sm:absolute sm:left-1/2 sm:-translate-x-1/2 pointer-events-none order-1 sm:order-none">
           TechHat POS
         </div>
 
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4">
-          
-          <div className="flex items-center gap-3 sm:gap-4 text-xs text-blue-50">
-            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+        {/* Stats: New row on mobile, Left on desktop */}
+        <div className="flex items-center gap-3 sm:gap-4 text-xs text-blue-50 overflow-x-auto scrollbar-hide w-full sm:w-auto order-3 sm:order-first pt-2 sm:pt-0 border-t border-white/10 sm:border-0">
+          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
               <PopoverTrigger asChild>
                 <button className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
                   <CalendarIcon className="w-3.5 h-3.5" />
@@ -472,9 +471,10 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
               <Package className="w-3.5 h-3.5" />
               <span className="font-bold">{dailySummary.totalItems} items</span>
             </button>
-          </div>
         </div>
-        <div className="flex items-center gap-1 sm:gap-2">
+
+        {/* Actions: Right on both mobile and desktop */}
+        <div className="flex items-center gap-1 sm:gap-2 order-2 sm:order-last">
           {/* Desktop Links */}
           <div className="hidden lg:flex items-center gap-2">
             <a href="/admin/pos/reports" className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs font-semibold transition-colors">
