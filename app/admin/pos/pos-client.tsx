@@ -417,18 +417,18 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
       isFullscreen ? 'fixed inset-0 z-100 rounded-none' : 'h-full w-full'
     )}>
       {/* Top Bar */}
-      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between px-3 sm:px-4 py-3 sm:py-2 bg-linear-to-r from-blue-600 to-blue-700 text-white relative gap-y-3 sm:gap-y-0">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between px-3 sm:px-4 pt-1 pb-2 sm:py-2 bg-linear-to-r from-blue-600 to-blue-700 text-white relative gap-y-1 sm:gap-y-0">
         
         {/* Mobile Left Placeholder to push Actions to the right */}
-        <div className="w-8 h-8 sm:hidden order-1"></div>
+        <div className="w-6 h-6 sm:hidden order-1"></div>
 
         {/* Title: Absolute Center on both mobile and desktop */}
-        <div className="absolute left-1/2 -translate-x-1/2 font-extrabold text-base sm:text-lg pointer-events-none top-4 sm:top-1/2 sm:-translate-y-1/2">
+        <div className="absolute left-1/2 -translate-x-1/2 font-extrabold text-base sm:text-lg pointer-events-none top-1 sm:top-1/2 sm:-translate-y-1/2">
           TechHat POS
         </div>
 
         {/* Stats: Center on mobile, Left on desktop */}
-        <div className="flex justify-center sm:justify-start items-center gap-3 sm:gap-4 text-xs text-blue-50 overflow-x-auto scrollbar-hide w-full sm:w-auto order-3 sm:order-first pt-3 sm:pt-0 border-t border-white/10 sm:border-0">
+        <div className="flex justify-center sm:justify-start items-center gap-3 sm:gap-4 text-xs text-blue-50 overflow-x-auto scrollbar-hide w-full sm:w-auto order-3 sm:order-first pt-1 sm:pt-0 border-t border-white/10 sm:border-0">
           <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
               <PopoverTrigger asChild>
                 <button className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
@@ -493,8 +493,8 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
 
           {/* Mobile Dropdown Toggle */}
           <div className="relative lg:hidden">
-            <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-white">
-              <MoreVertical className="h-4 w-4" />
+            <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-1 hover:bg-white/20 rounded-lg transition-colors text-white">
+              <MoreVertical className="h-5 w-5" />
             </button>
             {showMobileMenu && (
               <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-1.5 z-50 flex flex-col gap-1">
