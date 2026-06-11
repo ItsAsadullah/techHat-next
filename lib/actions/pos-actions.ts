@@ -165,8 +165,24 @@ export async function searchPOSProducts(query: string, categoryId?: string): Pro
         
         return score;
       };
-
-      mappedProducts.sort((a, b) => getScore(b) - getScore(a));
+      
+      mappedProducts.sort((a, b) => {
+        const scoreDiff = getScore(b) - getScore(a);
+        if (scoreDiff !== 0) return scoreDiff;
+        
+        // Secondary sort: out of stock at the bottom
+        const aStock = a.stock > 0 || a.variants.some((v) => v.stock > 0) ? 1 : 0;
+        const bStock = b.stock > 0 || b.variants.some((v) => v.stock > 0) ? 1 : 0;
+        return bStock - aStock;
+      });
+    } else {
+      // Sort initial products: out of stock at the bottom, then alphabetical
+      mappedProducts.sort((a, b) => {
+        const aStock = a.stock > 0 || a.variants.some((v) => v.stock > 0) ? 1 : 0;
+        const bStock = b.stock > 0 || b.variants.some((v) => v.stock > 0) ? 1 : 0;
+        if (aStock !== bStock) return bStock - aStock;
+        return a.name.localeCompare(b.name);
+      });
     }
 
     return mappedProducts;

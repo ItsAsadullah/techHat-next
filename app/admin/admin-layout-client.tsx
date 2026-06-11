@@ -29,6 +29,26 @@ import { cn } from '@/lib/utils';
 import { GlobalScannerProvider, useGlobalScanner } from '@/components/admin/global-scanner-provider';
 import usePerformanceMonitor from '@/lib/hooks/use-performance-monitor';
 
+// Programmatically lock body scroll and hide main header for POS
+function POSBodyLock({ isPOS }: { isPOS: boolean }) {
+  useEffect(() => {
+    if (isPOS) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      // Find the storefront header (usually the first header or specific class)
+      const storeHeader = document.querySelector('header.sticky.top-0.z-\\[60\\]') || document.querySelector('header.sticky.top-0');
+      const originalDisplay = storeHeader ? (storeHeader as HTMLElement).style.display : '';
+      if (storeHeader) (storeHeader as HTMLElement).style.display = 'none';
+      
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        if (storeHeader) (storeHeader as HTMLElement).style.display = originalDisplay;
+      };
+    }
+  }, [isPOS]);
+  return null;
+}
+
 // ── Scanner Status Widget ──────────────────────────────────────────────────────
 function ScannerStatus() {
   const { isConnected, scannerUrl, startSession, stopSession } = useGlobalScanner();
@@ -235,7 +255,8 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
 
   return (
     <GlobalScannerProvider>
-      <div className="fixed inset-0 bg-gray-50 dark:bg-gray-950 flex overflow-hidden">
+      <POSBodyLock isPOS={isPOS} />
+      <div className="h-[100dvh] bg-gray-50 dark:bg-gray-950 flex overflow-hidden">
 
         {/* Drawer overlay (mobile) */}
         {drawerOpen && (
