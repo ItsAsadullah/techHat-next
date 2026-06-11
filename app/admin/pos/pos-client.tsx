@@ -423,16 +423,16 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
         <div className="w-6 h-6 sm:hidden order-1"></div>
 
         {/* Title: Absolute Center on both mobile and desktop */}
-        <div className="absolute left-1/2 -translate-x-1/2 font-extrabold text-base sm:text-lg pointer-events-none top-0.5 sm:top-1/2 sm:-translate-y-1/2 flex items-center gap-2">
+        <div className="absolute left-1/2 -translate-x-1/2 font-extrabold text-base sm:text-lg pointer-events-none top-2 sm:top-1/2 sm:-translate-y-1/2 flex items-center gap-1.5">
           <img src="/images/techhat.png" alt="TechHat Logo" className="h-5 sm:h-6 w-auto object-contain drop-shadow-sm" />
           <span>TechHat POS</span>
         </div>
 
         {/* Stats: Center on mobile, Left on desktop */}
-        <div className="flex justify-center sm:justify-start items-center gap-3 sm:gap-4 text-[11px] sm:text-xs text-blue-50 overflow-x-auto scrollbar-hide w-full sm:w-auto order-3 sm:order-first pt-0.5 sm:pt-0 border-t border-white/10 sm:border-0">
+        <div className="flex justify-center sm:justify-start items-center gap-3 sm:gap-4 text-[11px] sm:text-xs text-blue-50 overflow-x-auto scrollbar-hide w-full sm:w-auto order-3 sm:order-first pt-1 sm:pt-0 border-t border-white/10 sm:border-0 pb-1 sm:pb-0">
           <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
               <PopoverTrigger asChild>
-                <button className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
+                 <button className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
                   <CalendarIcon className="w-3.5 h-3.5" />
                   <span className="font-semibold">{format(new Date(selectedDate), 'MMM d, yyyy')}</span>
                 </button>
