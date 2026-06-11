@@ -417,15 +417,18 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
       isFullscreen ? 'fixed inset-0 z-100 rounded-none' : 'h-full w-full'
     )}>
       {/* Top Bar */}
-      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between px-3 sm:px-4 py-2 bg-linear-to-r from-blue-600 to-blue-700 text-white relative gap-y-2 sm:gap-y-0">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between px-3 sm:px-4 py-3 sm:py-2 bg-linear-to-r from-blue-600 to-blue-700 text-white relative gap-y-3 sm:gap-y-0">
         
-        {/* Title: Left on mobile, Absolute Center on desktop */}
-        <div className="font-extrabold text-base sm:text-lg sm:absolute sm:left-1/2 sm:-translate-x-1/2 pointer-events-none order-1 sm:order-none">
+        {/* Mobile Left Placeholder to push Actions to the right */}
+        <div className="w-8 h-8 sm:hidden order-1"></div>
+
+        {/* Title: Absolute Center on both mobile and desktop */}
+        <div className="absolute left-1/2 -translate-x-1/2 font-extrabold text-base sm:text-lg pointer-events-none top-4 sm:top-1/2 sm:-translate-y-1/2">
           TechHat POS
         </div>
 
-        {/* Stats: New row on mobile, Left on desktop */}
-        <div className="flex items-center gap-3 sm:gap-4 text-xs text-blue-50 overflow-x-auto scrollbar-hide w-full sm:w-auto order-3 sm:order-first pt-2 sm:pt-0 border-t border-white/10 sm:border-0">
+        {/* Stats: Center on mobile, Left on desktop */}
+        <div className="flex justify-center sm:justify-start items-center gap-3 sm:gap-4 text-xs text-blue-50 overflow-x-auto scrollbar-hide w-full sm:w-auto order-3 sm:order-first pt-3 sm:pt-0 border-t border-white/10 sm:border-0">
           <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
               <PopoverTrigger asChild>
                 <button className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
