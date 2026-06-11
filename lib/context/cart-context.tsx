@@ -115,18 +115,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'ADD', item: { ...item, quantity: item.quantity ?? 1 } });
 
       // Fly animation
-      if (sourceEl && cartIconRef.current) {
-        flyToTarget({
-          sourceEl,
-          targetEl: cartIconRef.current,
-          cloneType: 'image',
-          imageSrc: item.image ?? undefined,
-          onComplete: () => {
-            // bounce is handled via CSS class toggle on the icon
-            cartIconRef.current?.classList.add('cart-bounce');
-            setTimeout(() => cartIconRef.current?.classList.remove('cart-bounce'), 600);
-          },
-        });
+      if (sourceEl) {
+        let targetEl = cartIconRef.current;
+        
+        // Find visible cart target btn fallback
+        const cartBtns = Array.from(document.querySelectorAll('.cart-target-btn')) as HTMLElement[];
+        const visibleBtn = cartBtns.find(btn => btn.offsetParent !== null);
+        if (visibleBtn) targetEl = visibleBtn as HTMLButtonElement;
+
+        if (targetEl) {
+          flyToTarget({
+            sourceEl,
+            targetEl,
+            cloneType: 'image',
+            imageSrc: item.image ?? undefined,
+            onComplete: () => {
+              targetEl?.classList.add('cart-bounce');
+              setTimeout(() => targetEl?.classList.remove('cart-bounce'), 600);
+            },
+          });
+        }
       }
     },
     []

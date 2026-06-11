@@ -19,7 +19,7 @@ export default function FloatingCartButton() {
       style={{ backgroundColor: '#2563eb', color: '#ffffff' }}
       className={cn(
         'fixed bottom-6 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl',
-        'hover:shadow-2xl transition-shadow',
+        'hover:shadow-2xl transition-shadow cart-target-btn',
         'lg:hidden'
       )}
       aria-label={`Open cart (${count} items)`}

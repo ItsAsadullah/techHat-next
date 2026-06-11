@@ -216,7 +216,7 @@ export default function Navbar({ initialCategories }: { initialCategories?: Cate
             <button
               ref={cartIconRef}
               onClick={openCart}
-              className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="relative p-2 hover:bg-gray-100 rounded-full transition-colors cart-target-btn"
               aria-label={`Cart (${cartCount} items)`}
               title="Cart"
             >

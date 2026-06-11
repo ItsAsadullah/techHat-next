@@ -31,7 +31,7 @@ export default function CartHeaderButton({ onBeforeOpen, className, showLabel }:
     <button
       ref={cart?.cartIconRef}
       onClick={handleClick}
-      className={cn('relative p-2 rounded-full hover:bg-gray-50 transition-colors', className)}
+      className={cn('relative p-2 rounded-full hover:bg-gray-50 transition-colors cart-target-btn', className)}
       title="Cart"
       aria-label={`Cart (${count} items)`}
     >

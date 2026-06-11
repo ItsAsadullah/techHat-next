@@ -362,7 +362,7 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
                     key={item.id}
                     ref={item.id === 'cart' ? cart?.cartIconRef : undefined}
                     onClick={() => handleTabPress(item.id)}
-                    className="relative flex flex-col items-center -mb-1 group"
+                    className={`relative flex flex-col items-center -mb-1 group ${item.id === 'cart' ? 'cart-target-btn' : ''}`}
                     aria-label={item.label}
                   >
                     <motion.div
