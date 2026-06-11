@@ -439,11 +439,13 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
       </div>
 
       {/* Daily Summary */}
-      <POSDailySummary
-        totalSales={dailySummary.totalSales}
-        totalOrders={dailySummary.totalOrders}
-        totalItems={dailySummary.totalItems}
-      />
+      <div className="shrink-0">
+        <POSDailySummary
+          totalSales={dailySummary.totalSales}
+          totalOrders={dailySummary.totalOrders}
+          totalItems={dailySummary.totalItems}
+        />
+      </div>
 
       {/* Shortcuts Help */}
       {showShortcuts && (

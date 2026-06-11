@@ -358,9 +358,8 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
 
           {/* Content */}
           <main id="admin-main-content" className={cn(
-            "flex-1 overflow-y-auto",
-            isPOS ? "p-0 lg:p-2 bg-white dark:bg-gray-900" : "p-3 sm:p-4 lg:p-8",
-            "pb-20 lg:pb-0"
+            "flex-1",
+            isPOS ? "overflow-hidden p-0 lg:p-2 bg-white dark:bg-gray-900" : "overflow-y-auto p-3 sm:p-4 lg:p-8 pb-20 lg:pb-0"
           )}>
             {children}
           </main>
