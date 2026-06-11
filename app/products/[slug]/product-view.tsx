@@ -455,7 +455,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
 
   const handleAddToCart = useCallback((sourceEl?: HTMLButtonElement | null) => {
     if (!inStock) return;
-    const variantId = selectedVariant?.id;
+    const variantId = selectedVariant && selectedVariant.name !== 'Default' ? selectedVariant.id : undefined;
     const cartId = variantId ? `${product.id}__${variantId}` : product.id;
     const variantLabel = selectedVariant && selectedVariant.name !== 'Default'
       ? ` (${selectedVariant.name})`

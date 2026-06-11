@@ -158,8 +158,8 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
 
   const handleProductClick = useCallback((product: POSProduct) => {
     if (product.variants.length > 1) {
-      const availableVariant = product.variants.find((v) => v.stock > 0);
-      if (availableVariant) onProductSelect(product, availableVariant.id);
+      // Pass the product without a variantId so the VariantPickerModal opens
+      onProductSelect(product);
     } else if (product.variants.length === 1) {
       onProductSelect(product, product.variants[0].id);
     } else {
