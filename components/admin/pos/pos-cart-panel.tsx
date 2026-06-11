@@ -436,6 +436,12 @@ export function POSCartPanel({
                       ৳{amt.toLocaleString()}
                     </button>
                   ))}
+                  <button
+                    onClick={() => onSetAmountReceived(0)}
+                    className="px-3 py-1.5 border border-red-200 hover:bg-red-50 text-red-600 rounded-lg text-xs font-bold transition-colors active:scale-95 ml-auto"
+                  >
+                    Clear
+                  </button>
                 </div>
                 {cart.amountReceived > 0 && (
                   cashDueAmount > 0 ? (
