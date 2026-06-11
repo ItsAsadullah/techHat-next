@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { startOfDay, endOfDay, startOfMonth } from 'date-fns';
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const ALLOWED_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN?.trim();
+const ALLOWED_CHAT_ID = process.env.TELEGRAM_CHAT_ID?.trim();
 
 // Exclude these statuses when calculating successful sales
 const EXCLUDED_STATUSES = ['CANCELLED', 'RETURNED', 'FAILED'];
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     }
 
     // Normalize command (e.g. "/today@bot_username" -> "/today")
-    const text = message.text.trim().split('@')[0];
+    const text = message.text.trim().split('@')[0].trim();
     
     const today = new Date();
     const todayStart = startOfDay(today);
