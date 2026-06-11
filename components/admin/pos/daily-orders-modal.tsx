@@ -136,7 +136,7 @@ export function DailyOrdersModal({ isOpen, onClose, targetDate }: DailyOrdersMod
                         <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Items Purchased</h4>
                         <div className="space-y-3">
                           {order.items.map((item: any) => {
-                            const imgUrl = item.variant?.image || item.product?.image;
+                            const imgUrl = item.variant?.image || item.product?.productImages?.[0]?.url;
                             return (
                               <div key={item.id} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-gray-100 shadow-xs">
                                 <div className="relative w-12 h-12 rounded-md overflow-hidden bg-gray-100 shrink-0 border border-gray-200">

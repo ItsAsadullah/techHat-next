@@ -654,7 +654,15 @@ export async function getDailyPOSOrders(targetDate?: Date | string) {
     include: {
       items: {
         include: {
-          product: { select: { image: true } },
+          product: {
+            select: {
+              productImages: {
+                where: { isThumbnail: true },
+                select: { url: true },
+                take: 1
+              }
+            }
+          },
           variant: { select: { image: true } }
         }
       },
