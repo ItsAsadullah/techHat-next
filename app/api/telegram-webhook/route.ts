@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { startOfDay, endOfDay, startOfMonth } from 'date-fns';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const ALLOWED_CHAT_ID = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+const ALLOWED_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 // Exclude these statuses when calculating successful sales
 const EXCLUDED_STATUSES = ['CANCELLED', 'RETURNED', 'FAILED'];
