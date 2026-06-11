@@ -645,7 +645,7 @@ export async function getDailyPOSOrders(targetDate?: Date | string) {
   const startOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
   const endOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate() + 1);
 
-  return prisma.order.findMany({
+  const orders = await prisma.order.findMany({
     where: {
       isPos: true,
       paymentStatus: 'PAID',
@@ -669,6 +669,8 @@ export async function getDailyPOSOrders(targetDate?: Date | string) {
     },
     orderBy: { createdAt: 'desc' },
   });
+
+  return JSON.parse(JSON.stringify(orders));
 }
 
 export async function getRecentPOSOrders(limit = 10) {
