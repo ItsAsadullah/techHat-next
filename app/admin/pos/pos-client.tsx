@@ -11,7 +11,7 @@ import { getPOSCustomerList } from '@/lib/actions/ledger-actions';
 import type { POSCustomerOption } from '@/components/admin/pos/customer-search-combobox';
 import type { InvoiceSettings } from '@/lib/actions/invoice-settings-actions';
 import { toast } from 'sonner';
-import { Maximize, Minimize, Keyboard, BarChart2, Users, CreditCard, Grid3X3, ShoppingCart, MoreVertical } from 'lucide-react';
+import { Maximize, Minimize, Keyboard, BarChart2, Users, CreditCard, Grid3X3, ShoppingCart, MoreVertical, Clock, DollarSign, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
