@@ -15,102 +15,47 @@ const getDashboardStatsCached = unstable_cache(
     startOf7DaysAgo.setHours(0, 0, 0, 0);
 
     const [
-      // Revenue / Sales
-      totalRevenue,
-      thisMonthRevenue,
-      lastMonthRevenue,
-      todayRevenue,
-
-      // Orders
-      totalOrders,
-      thisMonthOrders,
-      pendingOrders,
-      todayOrders,
-
-      // POS specific
-      totalPOSRevenue,
-      totalPOSDue,
-
-      // Products
-      totalProducts,
-      lowStockProducts,
-      outOfStockProducts,
-
-      // Reviews
-      pendingReviews,
-      totalReviews,
-
-      // Recent POS orders
+      ordersStatsRaw,
+      productStatsRaw,
+      reviewStatsRaw,
       recentOrders,
-
-      // Last 7 days daily sales
       last7DaysSales,
-
-      // Category sales
       categorySales,
-
-      // Top products
       topProducts,
     ] = await Promise.all([
-      // Total revenue (all orders)
-      prisma.order.aggregate({ _sum: { grandTotal: true } }),
-      // This month revenue
-      prisma.order.aggregate({
-        _sum: { grandTotal: true },
-        where: { createdAt: { gte: startOfThisMonth } },
-      }),
-      // Last month revenue
-      prisma.order.aggregate({
-        _sum: { grandTotal: true },
-        where: { createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } },
-      }),
-      // Today revenue
-      prisma.order.aggregate({
-        _sum: { grandTotal: true },
-        where: { createdAt: { gte: startOfToday } },
-      }),
-
-      // Total orders
-      prisma.order.count(),
-      // This month orders
-      prisma.order.count({ where: { createdAt: { gte: startOfThisMonth } } }),
-      // Pending orders
-      prisma.order.count({ where: { isPos: false, paymentStatus: 'PENDING' } }),
-      // Today orders
-      prisma.order.count({ where: { createdAt: { gte: startOfToday } } }),
-
-      // Total POS revenue (paid)
-      prisma.order.aggregate({
-        _sum: { paidAmount: true },
-        where: { isPos: true },
-      }),
-      // Total POS due
-      prisma.order.aggregate({
-        _sum: { dueAmount: true },
-        where: { isPos: true },
-      }),
-
-      // Total active products
-      prisma.product.count({ where: { isActive: true } }),
-      // Low stock products
-      prisma.product.count({
-        where: {
-          isActive: true,
-          stock: { gt: 0 },
-          // Use a raw query or bypass strict type checking where Prisma is lagging
-          AND: [{ stock: { lte: prisma.product.fields.minStock as any as number } }],
-        },
-      }).catch(() =>
-        // fallback: count where stock <= 5
-        prisma.product.count({ where: { isActive: true, stock: { lte: 5, gt: 0 } } })
-      ),
-      // Out of stock
-      prisma.product.count({ where: { isActive: true, stock: 0 } }),
-
-      // Pending reviews
-      prisma.review.count({ where: { status: 'PENDING' } }),
-      // Total reviews
-      prisma.review.count(),
+      // Consolidated order stats
+      prisma.$queryRaw<any[]>`
+        SELECT 
+          COUNT(*) as "totalOrders",
+          SUM(grand_total) as "totalRevenue",
+          SUM(CASE WHEN created_at >= ${startOfThisMonth} THEN grand_total ELSE 0 END) as "thisMonthRevenue",
+          SUM(CASE WHEN created_at >= ${startOfLastMonth} AND created_at <= ${endOfLastMonth} THEN grand_total ELSE 0 END) as "lastMonthRevenue",
+          SUM(CASE WHEN created_at >= ${startOfToday} THEN grand_total ELSE 0 END) as "todayRevenue",
+          SUM(CASE WHEN created_at >= ${startOfThisMonth} THEN 1 ELSE 0 END) as "thisMonthOrders",
+          SUM(CASE WHEN created_at >= ${startOfToday} THEN 1 ELSE 0 END) as "todayOrders",
+          SUM(CASE WHEN is_pos = false AND payment_status = 'PENDING' THEN 1 ELSE 0 END) as "pendingOrders",
+          SUM(CASE WHEN is_pos = true THEN paid_amount ELSE 0 END) as "totalPOSRevenue",
+          SUM(CASE WHEN is_pos = true THEN due_amount ELSE 0 END) as "totalPOSDue"
+        FROM orders
+      `,
+      
+      // Consolidated product stats
+      prisma.$queryRaw<any[]>`
+        SELECT 
+          COUNT(*) as "totalProducts",
+          SUM(CASE WHEN stock <= 5 AND stock > 0 THEN 1 ELSE 0 END) as "lowStockProducts",
+          SUM(CASE WHEN stock = 0 THEN 1 ELSE 0 END) as "outOfStockProducts"
+        FROM products
+        WHERE "isActive" = true
+      `,
+      
+      // Consolidated review stats
+      prisma.$queryRaw<any[]>`
+        SELECT 
+          COUNT(*) as "totalReviews",
+          SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) as "pendingReviews"
+        FROM reviews
+      `,
 
       // Recent 10 orders
       prisma.order.findMany({
@@ -214,29 +159,33 @@ const getDashboardStatsCached = unstable_cache(
       orders: v.orders,
     }));
 
-    const thisMonthRev = thisMonthRevenue._sum.grandTotal || 0;
-    const lastMonthRev = lastMonthRevenue._sum.grandTotal || 0;
+    const os = ordersStatsRaw?.[0] || {};
+    const ps = productStatsRaw?.[0] || {};
+    const rs = reviewStatsRaw?.[0] || {};
+
+    const thisMonthRev = Number(os.thisMonthRevenue || 0);
+    const lastMonthRev = Number(os.lastMonthRevenue || 0);
     const revenueGrowth =
       lastMonthRev === 0 ? 100 : Math.round(((thisMonthRev - lastMonthRev) / lastMonthRev) * 100);
 
     return {
       stats: {
-        totalRevenue: totalRevenue._sum.grandTotal || 0,
+        totalRevenue: Number(os.totalRevenue || 0),
         thisMonthRevenue: thisMonthRev,
         lastMonthRevenue: lastMonthRev,
         revenueGrowth,
-        todayRevenue: todayRevenue._sum.grandTotal || 0,
-        totalOrders,
-        thisMonthOrders,
-        pendingOrders,
-        todayOrders,
-        totalPOSRevenue: totalPOSRevenue._sum.paidAmount || 0,
-        totalPOSDue: totalPOSDue._sum.dueAmount || 0,
-        totalProducts,
-        lowStockProducts,
-        outOfStockProducts,
-        pendingReviews,
-        totalReviews,
+        todayRevenue: Number(os.todayRevenue || 0),
+        totalOrders: Number(os.totalOrders || 0),
+        thisMonthOrders: Number(os.thisMonthOrders || 0),
+        pendingOrders: Number(os.pendingOrders || 0),
+        todayOrders: Number(os.todayOrders || 0),
+        totalPOSRevenue: Number(os.totalPOSRevenue || 0),
+        totalPOSDue: Number(os.totalPOSDue || 0),
+        totalProducts: Number(ps.totalProducts || 0),
+        lowStockProducts: Number(ps.lowStockProducts || 0),
+        outOfStockProducts: Number(ps.outOfStockProducts || 0),
+        pendingReviews: Number(rs.pendingReviews || 0),
+        totalReviews: Number(rs.totalReviews || 0),
       },
       salesChartData,
       categorySales,

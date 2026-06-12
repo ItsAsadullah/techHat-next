@@ -66,21 +66,26 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const brandingDefaults = { siteLogo: '', siteFavicon: '', topbarHotline: '', topbarDelivery: '', topbarShowDelivery: true };
-  let branding = brandingDefaults;
-  try { branding = await getBrandingSettings(); } catch {}
-  const logoUrl = publicImageUrl(branding.siteLogo);
-
-  let storeSettings = {
+  const storeSettingsDefaults = {
     storeName: 'TechHat', tagline: '', phone: '', altPhone: '',
     email: '', website: '', address: '', city: '', country: '',
     currency: 'BDT', currencySymbol: '৳', timezone: '',
     whatsappNumber: '', callNumber: ''
   };
-  try { storeSettings = await getStoreSettings(); } catch {}
+  const analyticsDefaults = { metaPixelId: '', googleAnalyticsId: '', googleTagManagerId: '', tiktokPixelId: '' };
 
-  // Analytics tracking IDs from admin settings (DB-driven)
-  let analytics = { metaPixelId: '', googleAnalyticsId: '', googleTagManagerId: '', tiktokPixelId: '' };
-  try { analytics = await getAnalyticsSettings(); } catch {}
+  // Parallelize all global settings fetches to drastically reduce TTFB blocking time
+  const [brandingResult, storeSettingsResult, analyticsResult] = await Promise.allSettled([
+    getBrandingSettings(),
+    getStoreSettings(),
+    getAnalyticsSettings()
+  ]);
+
+  const branding = brandingResult.status === 'fulfilled' ? brandingResult.value : brandingDefaults;
+  const storeSettings = storeSettingsResult.status === 'fulfilled' ? storeSettingsResult.value : storeSettingsDefaults;
+  const analytics = analyticsResult.status === 'fulfilled' ? analyticsResult.value : analyticsDefaults;
+
+  const logoUrl = publicImageUrl(branding.siteLogo);
 
   // JSON-LD Organization schema so Google indexes the logo
   const jsonLd = {

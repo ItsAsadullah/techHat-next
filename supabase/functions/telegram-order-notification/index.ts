@@ -271,8 +271,13 @@ serve(async (req: Request) => {
 
     if (firstImageUrl) {
       // Send photo with the message as caption (Telegram caption max = 1024 chars)
-      // If message is too long, send photo first then full text separately
-      const caption = message.length <= 1024 ? message : message.slice(0, 1000) + "\n<i>...আরো দেখুন Admin Panel এ</i>";
+      let caption = message;
+      let sendSeparateText = false;
+
+      if (message.length > 1024) {
+        caption = `🛒 <b>Tech Hat এ নতুন অর্ডার এসেছে!</b>\n📦 <b>অর্ডার নম্বর:</b> <code>${order.order_number}</code>\n\n<i>অর্ডারের বিস্তারিত তথ্য নিচের মেসেজে দেওয়া হলো...</i>`;
+        sendSeparateText = true;
+      }
 
       const photoRes = await fetch(`${telegramApiBase}/sendPhoto`, {
         method: "POST",
@@ -287,8 +292,8 @@ serve(async (req: Request) => {
 
       telegramResult = await photoRes.json();
 
-      // If message was truncated, send the full text as a follow-up
-      if (photoRes.ok && message.length > 1024) {
+      // If message was too long, send the full text as a follow-up
+      if (photoRes.ok && sendSeparateText) {
         await fetch(`${telegramApiBase}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
