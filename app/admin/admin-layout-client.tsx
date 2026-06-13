@@ -85,7 +85,7 @@ function ScannerStatus() {
 
   return (
     <>
-      <div className="flex items-center gap-1.5">
+      <div className="hidden sm:flex items-center gap-1.5">
         {(isOn || toggling) && (
           <span className={cn(
             "text-xs font-semibold px-1.5 py-0.5 rounded-full hidden sm:inline",
@@ -251,6 +251,8 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
     try {
       localStorage.removeItem('th_cart');
       localStorage.removeItem('th_wishlist');
+      localStorage.removeItem('techhat_pos_cart');
+      localStorage.removeItem('techhat_pos_held_orders');
     } catch { /* ignore */ }
     window.location.href = '/'; 
   };
@@ -391,7 +393,7 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
 
           {/* Content */}
           <main id="admin-main-content" className={cn(
-            "flex-1",
+            "flex-1 overflow-x-hidden w-full max-w-full",
             isPOS ? "overflow-hidden p-0 lg:p-2 bg-white dark:bg-gray-900" : "overflow-y-auto p-3 sm:p-4 lg:p-8 pb-20 lg:pb-0"
           )}>
             {children}

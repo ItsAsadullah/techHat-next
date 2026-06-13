@@ -39,7 +39,7 @@ const StatCard = memo(function StatCard({
 }) {
   const up = growth === undefined || growth >= 0;
   return (
-    <div className={`relative bg-gradient-to-br ${gradient} p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all overflow-hidden group`}>
+    <div className={`relative bg-gradient-to-br ${gradient} p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all overflow-hidden group min-w-0`}>
       <div className="absolute top-0 right-0 w-28 h-28 bg-white/10 rounded-full -mr-14 -mt-14 group-hover:scale-150 transition-transform duration-500" />
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-4">
@@ -100,7 +100,7 @@ export function DashboardClient({ stats, salesChartData, categorySales, topProdu
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-6 space-y-6">
+    <div className="h-full min-h-full bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-3 md:p-6 space-y-4 md:space-y-6 w-full max-w-full overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -154,15 +154,15 @@ export function DashboardClient({ stats, salesChartData, categorySales, topProdu
       {/* Charts row */}
       <div className="grid lg:grid-cols-3 gap-5">
         {/* Weekly Sales Chart */}
-        <div className="lg:col-span-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-6 rounded-2xl border border-white dark:border-gray-700 shadow-xl">
+        <div className="lg:col-span-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-white dark:border-gray-700 shadow-xl min-w-0">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Last 7 Days — Sales</h3>
             <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
               <div className="w-2.5 h-2.5 rounded-full bg-purple-500" />Sales
             </div>
           </div>
-          <div className="h-64" style={{ minHeight: 0 }}>
-            {mounted && <LazyResponsiveContainer width="100%" height={256}>
+          <div className="h-64 w-full min-w-0" style={{ minHeight: 0 }}>
+            {mounted && <LazyResponsiveContainer width="99%" height={256}>
               <LazyAreaChart data={salesChartData}>
                 <defs>
                   <linearGradient id="gSales" x1="0" y1="0" x2="0" y2="1">
@@ -184,12 +184,12 @@ export function DashboardClient({ stats, salesChartData, categorySales, topProdu
         </div>
 
         {/* Category Sales Pie */}
-        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-6 rounded-2xl border border-white dark:border-gray-700 shadow-xl">
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-white dark:border-gray-700 shadow-xl min-w-0">
           <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Sales by Category</h3>
           {categorySales.length > 0 ? (
             <>
-              <div className="h-44 flex items-center justify-center" style={{ minHeight: 0 }}>
-                {mounted && <LazyResponsiveContainer width="100%" height={176}>
+              <div className="h-44 flex items-center justify-center w-full min-w-0" style={{ minHeight: 0 }}>
+                {mounted && <LazyResponsiveContainer width="99%" height={176}>
                   <LazyPieChart>
                     <LazyPie data={categorySales} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={4} dataKey="value">
                       {categorySales.map((_, i) => <LazyCell key={i} fill={COLORS[i % COLORS.length]} />)}
@@ -219,7 +219,7 @@ export function DashboardClient({ stats, salesChartData, categorySales, topProdu
       {/* Bottom row: top products + recent orders */}
       <div className="grid lg:grid-cols-3 gap-5">
         {/* Top Products */}
-        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-6 rounded-2xl border border-white dark:border-gray-700 shadow-xl">
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-white dark:border-gray-700 shadow-xl min-w-0">
           <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Top Selling Products</h3>
           {topProducts.length > 0 ? (
             <div className="space-y-3">
@@ -252,12 +252,12 @@ export function DashboardClient({ stats, salesChartData, categorySales, topProdu
         </div>
 
         {/* Recent Orders */}
-        <div className="lg:col-span-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl border border-white dark:border-gray-700 shadow-xl overflow-hidden">
-          <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+        <div className="lg:col-span-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl border border-white dark:border-gray-700 shadow-xl overflow-hidden min-w-0">
+          <div className="p-4 md:p-5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
             <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Recent Transactions</h3>
             <span className="text-xs bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-semibold px-2.5 py-1 rounded-full">Latest 10</span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto hidden md:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 dark:bg-gray-700/50 text-xs text-gray-500 dark:text-gray-400 uppercase">
@@ -267,7 +267,6 @@ export function DashboardClient({ stats, salesChartData, categorySales, topProdu
                   <th className="px-4 py-3 text-right font-semibold">Amount</th>
                   <th className="px-4 py-3 text-center font-semibold">Pay</th>
                   <th className="px-4 py-3 text-center font-semibold">Status</th>
-                  {/* Note: th inherits tr dark bg */}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
@@ -305,6 +304,47 @@ export function DashboardClient({ stats, salesChartData, categorySales, topProdu
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Native Card List */}
+          <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+            {recentOrders.length > 0 ? recentOrders.map((o) => (
+              <div key={o.id} className="p-4 active:bg-gray-50 dark:active:bg-gray-800 transition-colors relative no-select">
+                <div className="flex justify-between items-start mb-2 gap-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-xs font-bold text-white flex-shrink-0 shadow-sm">
+                      {(o.customerName || 'G')[0].toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate flex items-center gap-1.5">
+                        <span className="truncate">{o.customerName || 'Guest'}</span>
+                        {o.isPos && <span className="text-[9px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold shrink-0">POS</span>}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5 truncate">{o.orderNumber}</div>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 ml-3">
+                    <div className="font-bold text-sm text-indigo-600 dark:text-indigo-400">৳{o.grandTotal.toLocaleString()}</div>
+                    {o.dueAmount > 0 && <div className="text-[10px] text-red-500 font-medium">Due: ৳{o.dueAmount.toLocaleString()}</div>}
+                  </div>
+                </div>
+                
+                <div className="text-xs text-gray-600 dark:text-gray-400 truncate mb-3">{o.firstItem}</div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-lg text-[11px] font-medium">
+                    {pmIcon(o.paymentMethod)}
+                    {o.paymentMethod === 'MOBILE_BANKING' ? 'MFS' : o.paymentMethod === 'CASH' ? 'Cash' : o.paymentMethod === 'CARD' ? 'Card' : 'Mixed'}
+                  </div>
+                  <div>{statusBadge(o)}</div>
+                </div>
+              </div>
+            )) : (
+              <div className="py-12 text-center text-gray-400 dark:text-gray-500 text-sm flex items-center justify-center gap-2">
+                <ShoppingCart className="w-4 h-4 opacity-50" />
+                No recent transactions
+              </div>
+            )}
           </div>
         </div>
       </div>

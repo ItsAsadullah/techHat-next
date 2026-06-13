@@ -540,7 +540,7 @@ export default function OrdersPage() {
           </AnimatePresence>
         </div>
 
-        {/* Orders Table */}
+        {/* Orders List / Table */}
         <div className="overflow-x-auto">
           {loading ? (
             <div className="flex items-center justify-center py-20">
@@ -553,44 +553,61 @@ export default function OrdersPage() {
               <p className="text-sm mt-1">Orders placed from the website will appear here</p>
             </div>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-xs text-gray-500 uppercase tracking-wider border-b border-gray-100 bg-gray-50/50">
-                  <th className="px-4 py-3 w-10">
-                    <input
-                      type="checkbox"
-                      checked={selectedOrders.size === orders.length && orders.length > 0}
-                      onChange={selectAll}
-                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            <>
+              {/* Desktop Table */}
+              <table className="w-full hidden lg:table">
+                <thead>
+                  <tr className="text-left text-xs text-gray-500 uppercase tracking-wider border-b border-gray-100 bg-gray-50/50">
+                    <th className="px-4 py-3 w-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedOrders.size === orders.length && orders.length > 0}
+                        onChange={selectAll}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </th>
+                    <th className="px-4 py-3 font-semibold">Order</th>
+                    <th className="px-4 py-3 font-semibold">Customer</th>
+                    <th className="px-4 py-3 font-semibold">Items</th>
+                    <th className="px-4 py-3 font-semibold">Total</th>
+                    <th className="px-4 py-3 font-semibold">Payment</th>
+                    <th className="px-4 py-3 font-semibold">Status</th>
+                    <th className="px-4 py-3 font-semibold">Date</th>
+                    <th className="px-4 py-3 font-semibold text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {orders.map((order) => (
+                    <OrderRow
+                      key={order.id}
+                      order={order}
+                      isSelected={selectedOrders.has(order.id)}
+                      isLoading={actionLoading === order.id}
+                      nextStatuses={getNextStatuses(order.status)}
+                      onToggleSelect={toggleSelectOrder}
+                      onStatusUpdate={handleStatusUpdate}
+                      onSetQuickPreview={setQuickPreview}
+                      onDeleteOrder={handleDeleteOrder}
+                      quickPreviewId={quickPreview?.id}
                     />
-                  </th>
-                  <th className="px-4 py-3 font-semibold">Order</th>
-                  <th className="px-4 py-3 font-semibold">Customer</th>
-                  <th className="px-4 py-3 font-semibold">Items</th>
-                  <th className="px-4 py-3 font-semibold">Total</th>
-                  <th className="px-4 py-3 font-semibold">Payment</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 font-semibold">Date</th>
-                  <th className="px-4 py-3 font-semibold text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {orders.map((order) => (
-                  <OrderRow
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Mobile Native Card List */}
+              <div className="lg:hidden flex flex-col divide-y divide-gray-100">
+                {orders.map(order => (
+                  <MobileOrderCard
                     key={order.id}
                     order={order}
-                    isSelected={selectedOrders.has(order.id)}
                     isLoading={actionLoading === order.id}
-                    nextStatuses={getNextStatuses(order.status)}
-                    onToggleSelect={toggleSelectOrder}
                     onStatusUpdate={handleStatusUpdate}
                     onSetQuickPreview={setQuickPreview}
-                    onDeleteOrder={handleDeleteOrder}
                     quickPreviewId={quickPreview?.id}
                   />
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </>
           )}
         </div>
 
@@ -1015,5 +1032,79 @@ const OrderRow = memo(function OrderRow({
         </div>
       </td>
     </tr>
+  );
+});
+
+// Mobile Native Card Component
+interface MobileOrderCardProps {
+  order: Order;
+  isLoading: boolean;
+  onStatusUpdate: (id: string, status: string) => void;
+  onSetQuickPreview: (order: Order | null) => void;
+  quickPreviewId?: string;
+}
+
+const MobileOrderCard = memo(function MobileOrderCard({
+  order,
+  isLoading,
+  onStatusUpdate,
+  onSetQuickPreview,
+  quickPreviewId
+}: MobileOrderCardProps) {
+  return (
+    <div className="p-4 bg-white active:bg-gray-50 transition-colors relative no-select">
+      <div className="flex justify-between items-start mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center shrink-0">
+            <User className="w-5 h-5 text-blue-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-gray-900 truncate">
+              {order.customerName || order.user?.fullName || 'Unknown'}
+            </p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <Link 
+                href={`/admin/orders/${order.id}`}
+                className="text-xs font-mono font-bold text-blue-600 hover:text-blue-800"
+              >
+                {order.orderNumber}
+              </Link>
+              <span className="text-[10px] text-gray-400 font-medium">{formatDateShort(order.createdAt)}</span>
+            </div>
+          </div>
+        </div>
+        <div className="text-right shrink-0">
+          <span className="text-sm font-bold text-gray-900 block">{formatPrice(order.grandTotal)}</span>
+          <StatusBadge status={order.paymentStatus} type="payment" />
+        </div>
+      </div>
+      
+      <div className="flex items-center justify-between mt-3">
+        <StatusBadge status={order.status} type="order" />
+        
+        <div className="flex items-center gap-2">
+          {isLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+          ) : (
+            <>
+              <button
+                onClick={() => onSetQuickPreview(quickPreviewId === order.id ? null : order)}
+                className="native-touch rounded-lg flex items-center justify-center text-gray-500 bg-gray-50 hover:bg-gray-100 transition-colors"
+                title="Quick Preview"
+              >
+                <MoreHorizontal className="w-5 h-5" />
+              </button>
+              <Link
+                href={`/admin/orders/${order.id}`}
+                className="native-touch rounded-lg flex items-center justify-center text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
+                title="View Details"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   );
 });

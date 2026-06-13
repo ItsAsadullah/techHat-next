@@ -18,6 +18,52 @@ export async function upsertPOSCustomer(name: string, phone: string) {
   }
 }
 
+export async function createPOSCustomer(data: { name: string; phone: string; email?: string; address?: string }) {
+  try {
+    const existing = await prisma.pOSCustomer.findUnique({ where: { phone: data.phone } });
+    if (existing) throw new Error('A customer with this phone number already exists.');
+    const customer = await prisma.pOSCustomer.create({ data });
+    revalidatePath('/admin/pos/customers');
+    return { success: true, customer };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to create customer' };
+  }
+}
+
+export async function updatePOSCustomer(id: string, data: { name: string; phone: string; email?: string; address?: string }) {
+  try {
+    const existing = await prisma.pOSCustomer.findUnique({ where: { phone: data.phone } });
+    if (existing && existing.id !== id) {
+      throw new Error('Another customer with this phone number already exists.');
+    }
+    const customer = await prisma.pOSCustomer.update({ where: { id }, data });
+    revalidatePath('/admin/pos/customers');
+    return { success: true, customer };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to update customer' };
+  }
+}
+
+export async function deletePOSCustomer(id: string) {
+  try {
+    const customer = await prisma.pOSCustomer.findUnique({
+      where: { id },
+      include: { _count: { select: { orders: true } } }
+    });
+    
+    if (!customer) throw new Error('Customer not found');
+    if (customer._count.orders > 0) {
+      throw new Error('Cannot delete customer with existing orders.');
+    }
+
+    await prisma.pOSCustomer.delete({ where: { id } });
+    revalidatePath('/admin/pos/customers');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to delete customer' };
+  }
+}
+
 export async function getPOSCustomers(search?: string) {
   const where: any = {};
   if (search) {

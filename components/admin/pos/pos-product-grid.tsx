@@ -46,29 +46,50 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
   const { lastScanEvent } = useGlobalScanner();
   const processedScanRef = useRef<number>(0);
 
-  useEffect(() => {
-    if (!lastScanEvent || lastScanEvent.t === processedScanRef.current) return;
-    processedScanRef.current = lastScanEvent.t;
-    handleBarcodeCode(lastScanEvent.code);
-  }, [lastScanEvent]);
-
   // ── Core product lookup ───────────────────────────────────────────────
+  const getAutoVariantId = useCallback((product: POSProduct, code?: string) => {
+    const normalizedCode = code?.trim().toLowerCase();
+    const matchingVariant = normalizedCode
+      ? product.variants.find((variant) =>
+          variant.sku?.toLowerCase() === normalizedCode ||
+          variant.upc?.toLowerCase() === normalizedCode
+        )
+      : undefined;
+
+    if (matchingVariant) return matchingVariant.id;
+    if (product.variants.length !== 1) return undefined;
+
+    const onlyVariant = product.variants[0];
+    const shouldUseProductStock =
+      onlyVariant.name.toLowerCase() === 'default' &&
+      onlyVariant.stock <= 0 &&
+      product.stock > 0;
+
+    return shouldUseProductStock ? undefined : onlyVariant.id;
+  }, []);
+
   const handleBarcodeCode = useCallback(
     async (code: string): Promise<{ found: boolean; message?: string }> => {
       const product = await findProductByBarcode(code);
       if (product) {
-        onProductSelect(product, product.variants[0]?.id);
+        onProductSelect(product, getAutoVariantId(product, code));
         return { found: true, message: 'Product added to cart!' };
       }
       const results = await searchPOSProducts(code);
       if (results.length === 1) {
-        onProductSelect(results[0], results[0].variants[0]?.id);
+        onProductSelect(results[0], getAutoVariantId(results[0], code));
         return { found: true, message: 'Product added to cart!' };
       }
       return { found: false, message: 'No product found for this barcode.' };
     },
-    [onProductSelect]
+    [getAutoVariantId, onProductSelect]
   );
+
+  useEffect(() => {
+    if (!lastScanEvent || lastScanEvent.t === processedScanRef.current) return;
+    processedScanRef.current = lastScanEvent.t;
+    handleBarcodeCode(lastScanEvent.code);
+  }, [lastScanEvent, handleBarcodeCode]);
 
   // ── Product search ────────────────────────────────────────────────────
   const loadProducts = async (query: string, catId?: string) => {
@@ -161,11 +182,11 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
       // Pass the product without a variantId so the VariantPickerModal opens
       onProductSelect(product);
     } else if (product.variants.length === 1) {
-      onProductSelect(product, product.variants[0].id);
+      onProductSelect(product, getAutoVariantId(product));
     } else {
       onProductSelect(product);
     }
-  }, [onProductSelect]);
+  }, [getAutoVariantId, onProductSelect]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">

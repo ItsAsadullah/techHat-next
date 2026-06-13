@@ -127,33 +127,30 @@ export const columns: ColumnDef<ProductColumn>[] = [
     cell: ({ row }) => {
         const stock = row.original.stock;
         const minStock = row.original.minStock || 5;
-        let color = "text-emerald-700";
-        let bg = "bg-emerald-50";
-        let border = "border-emerald-200";
-        let label = "In Stock";
+        let color = "text-emerald-600";
+        let label = "Healthy";
 
         if (stock <= 0) {
-            color = "text-red-700";
-            bg = "bg-red-50";
-            border = "border-red-200";
+            color = "text-red-600";
             label = "Out of Stock";
+        } else if (stock <= minStock / 2) {
+            color = "text-rose-600";
+            label = "Critical";
         } else if (stock <= minStock) {
-            color = "text-amber-700";
-            bg = "bg-amber-50";
-            border = "border-amber-200";
+            color = "text-amber-600";
             label = "Low Stock";
         }
 
         return (
-            <div className="flex flex-col items-start gap-1.5">
-                <Badge variant="outline" className={`${bg} ${color} ${border} font-semibold shadow-sm`}>
+            <div className="flex flex-col items-start gap-0.5">
+                <span className={`text-[11px] font-bold uppercase tracking-wider ${color}`}>
                     {label}
-                </Badge>
+                </span>
                 <div className="flex items-baseline gap-1">
-                    <span className={`text-sm font-bold ${stock <= minStock ? 'text-red-600' : 'text-gray-700'}`}>
+                    <span className={`text-sm font-bold ${color}`}>
                         {stock}
                     </span>
-                    <span className="text-xs text-gray-400">units</span>
+                    <span className="text-xs font-medium text-slate-400">units</span>
                 </div>
             </div>
         )

@@ -159,11 +159,24 @@
 @layer base {
   * {
     @apply border-border;
+    -webkit-tap-highlight-color: transparent; /* Remove blue tap highlight on mobile */
   }
   
-  body {
+  html, body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    overscroll-behavior-y: none; /* Prevent pull-to-refresh bounce on mobile */
+  }
+}
+
+/* Mobile Native App Utilities */
+@layer utilities {
+  .native-touch {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  .no-select {
+    user-select: none;
+    -webkit-user-select: none;
   }
 }
 

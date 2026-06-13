@@ -11,7 +11,7 @@ import { getPOSCustomerList } from '@/lib/actions/ledger-actions';
 import type { POSCustomerOption } from '@/components/admin/pos/customer-search-combobox';
 import type { InvoiceSettings } from '@/lib/actions/invoice-settings-actions';
 import { toast } from 'sonner';
-import { Maximize, Minimize, Keyboard, BarChart2, Users, CreditCard, Grid3X3, ShoppingCart, MoreVertical, Clock, DollarSign, Package, Calendar as CalendarIcon } from 'lucide-react';
+import { Maximize, Minimize, Keyboard, BarChart2, Users, CreditCard, Grid3X3, ShoppingCart, MoreVertical, DollarSign, Package, Calendar as CalendarIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
@@ -182,6 +182,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
     mobileTrxId?: string;
     mobileNumber?: string;
     mobileProvider?: string;
+    mobileCashOutCharge?: number;
     cardTrxId?: string;
     cardLast4?: string;
   }) => {
@@ -261,6 +262,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
           mobileTrxId: mixedBreakdown.mobileTrxId,
           mobileNumber: mixedBreakdown.mobileNumber,
           mobileProvider: mixedBreakdown.mobileProvider,
+          mobileCashOutCharge: mixedBreakdown.mobileCashOutCharge,
           cardTrxId: mixedBreakdown.cardTrxId,
           cardLast4: mixedBreakdown.cardLast4,
         }),
@@ -301,18 +303,19 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
             mobileTrxId: mixedBreakdown.mobileTrxId,
             mobileNumber: mixedBreakdown.mobileNumber,
             mobileProvider: mixedBreakdown.mobileProvider,
+            mobileCashOutCharge: mixedBreakdown.mobileCashOutCharge,
             cardTrxId: mixedBreakdown.cardTrxId,
             cardLast4: mixedBreakdown.cardLast4,
           }),
         });
         setShowReceipt(true);
 
-        // Update daily summary
-        setDailySummary((prev) => ({
-          totalSales: prev.totalSales + grandTotal,
-          totalOrders: prev.totalOrders + 1,
-          totalItems: prev.totalItems + totalItems,
-        }));
+        const [summary, dates] = await Promise.all([
+          getDailySalesSummary(selectedDate),
+          getPOSSalesDates(),
+        ]);
+        setDailySummary(summary);
+        setSalesDates(dates);
 
         clearCart();
         toast.success(`Sale completed: ${result.orderNumber}`);
@@ -326,7 +329,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
     } finally {
       setIsProcessing(false);
     }
-  }, [cart, subtotal, discountAmount, taxAmount, grandTotal, change, totalItems, clearCart]);
+  }, [cart, subtotal, discountAmount, taxAmount, grandTotal, change, clearCart, router, selectedDate]);
 
   const handleMixedPaymentConfirm = useCallback((breakdown: { 
     cash: number; 
@@ -335,6 +338,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
     mobileTrxId?: string;
     mobileNumber?: string;
     mobileProvider?: string;
+    mobileCashOutCharge?: number;
     cardTrxId?: string;
     cardLast4?: string;
   }) => {
@@ -346,6 +350,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
     mobileTrxId?: string;
     mobileNumber?: string;
     mobileProvider?: string;
+    mobileCashOutCharge?: number;
     cardTrxId?: string;
     cardLast4?: string;
   }) => {
@@ -596,7 +601,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
         {/* Right: Cart & Checkout */}
         <div className={cn(
           'shrink-0 flex flex-col',
-          mobileView === 'cart' ? 'flex w-full lg:flex lg:w-105' : 'hidden lg:flex lg:w-105'
+          mobileView === 'cart' ? 'flex w-full lg:flex lg:w-[26.25rem]' : 'hidden lg:flex lg:w-[26.25rem]'
         )}>
           <POSCartPanel
             cart={cart}

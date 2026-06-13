@@ -35,14 +35,13 @@ const getAdminRoleCached = unstable_cache(
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user } } = await supabase.auth.getUser();
 
   let staffRole = 'customer';
   let staffName = 'Admin';
   let isAuthed = false;
 
-  if (session?.user) {
-    const user = session.user;
+  if (user) {
     
     staffName = 
       user.user_metadata?.full_name || 

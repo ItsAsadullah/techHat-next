@@ -52,6 +52,7 @@ export interface POSProduct {
     id: string;
     name: string;
     sku: string | null;
+    upc: string | null;
     price: number;
     offerPrice: number | null;
     costPrice: number;
@@ -74,6 +75,7 @@ export async function searchPOSProducts(query: string, categoryId?: string): Pro
         { model: { contains: q, mode: 'insensitive' } },
         { barcode: { contains: q, mode: 'insensitive' } },
         { variants: { some: { sku: { contains: q, mode: 'insensitive' } } } },
+        { variants: { some: { upc: { contains: q, mode: 'insensitive' } } } },
       ];
     }
 
@@ -104,6 +106,7 @@ export async function searchPOSProducts(query: string, categoryId?: string): Pro
             id: true,
             name: true,
             sku: true,
+            upc: true,
             price: true,
             offerPrice: true,
             costPrice: true,
@@ -158,9 +161,13 @@ export async function searchPOSProducts(query: string, categoryId?: string): Pro
 
         for (const v of p.variants) {
            const vsku = v.sku?.toLowerCase() || '';
+           const vupc = v.upc?.toLowerCase() || '';
            if (vsku === q) score += 600;
            else if (vsku.startsWith(q)) score += 300;
            else if (vsku.includes(q)) score += 30;
+           if (vupc === q) score += 600;
+           else if (vupc.startsWith(q)) score += 300;
+           else if (vupc.includes(q)) score += 30;
         }
         
         return score;
@@ -203,6 +210,7 @@ export async function findProductByBarcode(barcode: string): Promise<POSProduct 
           { sku: b },
           { model: b },
           { variants: { some: { sku: b } } },
+          { variants: { some: { upc: b } } },
         ],
       },
       select: {
@@ -226,6 +234,7 @@ export async function findProductByBarcode(barcode: string): Promise<POSProduct 
             id: true,
             name: true,
             sku: true,
+            upc: true,
             price: true,
             offerPrice: true,
             costPrice: true,
@@ -339,20 +348,15 @@ export async function completeSale(input: CompleteSaleInput): Promise<SaleResult
         : Promise.resolve([]),
     ]);
 
-    const productStockMap = new Map(stockProducts.map((p: any) => [p.id, p]));
-    const variantStockMap = new Map(stockVariants.map((v: any) => [v.id, v]));
+    const productStockMap = new Map(stockProducts.map((p) => [p.id, p]));
+    const variantStockMap = new Map(stockVariants.map((v) => [v.id, v]));
 
     for (const item of input.items) {
       if (item.variantId) {
         const variant = variantStockMap.get(item.variantId);
         const product = productStockMap.get(item.productId);
         
-        let availableStock = variant?.stock || 0;
-        
-        // Fallback: if variant stock is 0 but product stock is > 0 (happens when out of sync)
-        if (variant && availableStock <= 0 && product && product.stock > 0) {
-          availableStock = product.stock;
-        }
+        const availableStock = variant?.stock || 0;
 
         if (!variant || availableStock < item.quantity) {
           return {
@@ -609,7 +613,6 @@ export async function getDailySalesSummary(targetDate?: Date | string) {
     prisma.order.aggregate({
       where: {
         isPos: true,
-        paymentStatus: 'PAID',
         createdAt: { gte: startOfDay, lt: endOfDay },
       },
       _sum: { grandTotal: true },
@@ -617,7 +620,6 @@ export async function getDailySalesSummary(targetDate?: Date | string) {
     prisma.order.count({
       where: {
         isPos: true,
-        paymentStatus: 'PAID',
         createdAt: { gte: startOfDay, lt: endOfDay },
       },
     }),
@@ -625,7 +627,6 @@ export async function getDailySalesSummary(targetDate?: Date | string) {
       where: {
         order: {
           isPos: true,
-          paymentStatus: 'PAID',
           createdAt: { gte: startOfDay, lt: endOfDay },
         },
       },
@@ -642,7 +643,7 @@ export async function getDailySalesSummary(targetDate?: Date | string) {
 
 export async function getPOSSalesDates() {
   const dates = await prisma.order.findMany({
-    where: { isPos: true, paymentStatus: 'PAID' },
+    where: { isPos: true },
     select: { createdAt: true },
   });
 
@@ -661,7 +662,6 @@ export async function getDailyPOSOrders(targetDate?: Date | string) {
   const orders = await prisma.order.findMany({
     where: {
       isPos: true,
-      paymentStatus: 'PAID',
       createdAt: { gte: startOfDay, lt: endOfDay },
     },
     include: {
@@ -700,7 +700,6 @@ export async function getRecentPOSOrders(limit = 10) {
 export async function getPOSSalesReport(startDate?: Date, endDate?: Date) {
   const where: any = {
     isPos: true,
-    paymentStatus: 'PAID',
   };
 
   if (startDate || endDate) {
