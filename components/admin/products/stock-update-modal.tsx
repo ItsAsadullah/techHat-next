@@ -66,7 +66,7 @@ export function StockUpdateModal({ isOpen, onClose, product }: StockUpdateModalP
         form.reset();
       } else {
         // toast.error(result.error || "Failed to update stock");
-        console.error(result.error);
+        console.error((result as any).error);
       }
     } catch (error) {
       console.error(error);

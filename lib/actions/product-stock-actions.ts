@@ -130,92 +130,87 @@ export async function updateStock(
   userId?: string
 ) {
   try {
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
-      select: {
-        id: true,
-        stock: true,
-        productVariantType: true,
-        variants: {
-          select: {
-            id: true,
-            stock: true,
-          }
-        }
-      },
-    });
-
-    if (!product) throw new Error('Product not found');
-
-    let currentStock = 0;
-    let newStock = 0;
-    
-    // Determine target (Product or Variant)
-    if (variantId) {
-        const variant = product.variants.find(v => v.id === variantId);
-        if (!variant) throw new Error('Variant not found');
-        currentStock = variant.stock;
-    } else {
-        currentStock = product.stock;
-    }
-
-    // Calculate new stock
-    if (action === 'ADD') {
-        newStock = currentStock + quantity;
-    } else if (action === 'REDUCE') {
-        newStock = currentStock - quantity;
-    } else if (action === 'ADJUST') {
-        newStock = quantity;
-    }
-
-    if (newStock < 0) throw new Error('Stock cannot be negative');
-
-    // Update DB
-    if (variantId) {
-        await prisma.variant.update({
-            where: { id: variantId },
-            data: { stock: newStock }
-        });
-        
-        // Also update parent product total stock if it aggregates variants? 
-        // Usually systems either track stock at parent OR variant. 
-        // If variable product, stock is usually sum of variants.
-        // Let's update parent stock as sum of variants if it's a variable product.
-        if (product.productVariantType === 'variable') {
-             const allVariants = await prisma.variant.findMany({ where: { productId } });
-             // We need to use the NEW stock for the current variant
-             const totalStock = allVariants.reduce((sum, v) => sum + (v.id === variantId ? newStock : v.stock), 0);
-             await prisma.product.update({
-                 where: { id: productId },
-                 data: { stock: totalStock }
-             });
-        }
-
-    } else {
-        await prisma.product.update({
+    const result = await prisma.$transaction(async (tx) => {
+        // Fetch current state
+        const product = await tx.product.findUnique({
             where: { id: productId },
-            data: { stock: newStock }
+            select: {
+                id: true,
+                stock: true,
+                productVariantType: true,
+                variants: { select: { id: true, stock: true } }
+            },
         });
-    }
 
-    // Create History Record
-    await prisma.stockHistory.create({
-        data: {
-            productId,
-            variantId,
-            action,
-            quantity: Math.abs(action === 'ADJUST' ? newStock - currentStock : quantity),
-            previousStock: currentStock,
-            newStock,
-            reason,
-            note,
-            source: 'Manual',
-            createdBy: userId
+        if (!product) throw new Error('Product not found');
+
+        let previousStock = 0;
+        let newStock = 0;
+        let delta = 0;
+
+        // Determine target and delta
+        if (variantId) {
+            const variant = product.variants.find(v => v.id === variantId);
+            if (!variant) throw new Error('Variant not found');
+            previousStock = variant.stock;
+        } else {
+            previousStock = product.stock;
         }
+
+        if (action === 'ADD') {
+            delta = quantity;
+            newStock = previousStock + delta;
+        } else if (action === 'REDUCE') {
+            delta = -quantity;
+            newStock = previousStock + delta;
+        } else if (action === 'ADJUST') {
+            delta = quantity - previousStock;
+            newStock = quantity;
+        }
+
+        if (newStock < 0) throw new Error('Stock cannot be negative');
+
+        // Apply ATOMIC Updates
+        if (variantId) {
+            await tx.variant.update({
+                where: { id: variantId },
+                data: action === 'ADJUST' ? { stock: newStock } : { stock: { increment: delta } }
+            });
+            
+            if (product.productVariantType === 'variable') {
+                await tx.product.update({
+                    where: { id: productId },
+                    data: { stock: { increment: delta } }
+                });
+            }
+        } else {
+            await tx.product.update({
+                where: { id: productId },
+                data: action === 'ADJUST' ? { stock: newStock } : { stock: { increment: delta } }
+            });
+        }
+
+        // Create History Record
+        await tx.stockHistory.create({
+            data: {
+                productId,
+                variantId,
+                action,
+                quantity: Math.abs(delta),
+                previousStock,
+                newStock,
+                reason,
+                note,
+                source: 'Manual',
+                createdBy: userId
+            }
+        });
+
+        return { success: true, newStock };
     });
 
     revalidatePath('/admin/products');
-    return { success: true, newStock };
+    return result;
   } catch (error: any) {
     return { success: false, error: (error as any)?.message };
   }

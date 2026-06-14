@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Package, PackagePlus, PackageMinus, Archive, Trash2, CheckSquare, Loader2, ArrowUpRight, ArrowDownRight, History, MoreVertical, Plus, Minus } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Package, PackagePlus, PackageMinus, Archive, Trash2, CheckSquare, Loader2, ArrowUpRight, ArrowDownRight, History, MoreVertical, Plus, Minus, X } from "lucide-react";
 import { BulkActionModal, BulkActionType } from "./bulk-action-modal";
 import { getProducts, updateStock } from "@/lib/actions/product-stock-actions";
 import {
@@ -71,7 +71,7 @@ export function UnifiedProductTable<TData, TValue>({
       setUpdatingStockId(productId);
       const res = await updateStock(productId, null, action, qty, "Quick Update", `Inline ${action} ${qty}`);
       if (res.success) {
-         setLocalData(prev => prev.map(p => (p as any).id === productId ? { ...p, stock: res.newStock } : p));
+         setLocalData(prev => prev.map(p => (p as any).id === productId ? { ...p, stock: (res as any).newStock } : p));
       }
       setUpdatingStockId(null);
   };
@@ -406,7 +406,7 @@ export function UnifiedProductTable<TData, TValue>({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-32 rounded-md">
                             <DropdownMenuItem asChild className="rounded font-medium cursor-pointer text-sm">
-                              <Link href={`/admin/products/${product.id}/edit`}>Edit Product</Link>
+                              <Link href={`/admin/products/edit/${product.id}`}>Edit Product</Link>
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

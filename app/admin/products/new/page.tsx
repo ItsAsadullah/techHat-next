@@ -15,7 +15,7 @@ export default async function NewProductPage() {
   const rootCategories = categories.filter(c => c.parentId === null);
 
   return (
-    <div className="p-8 min-h-screen bg-gray-50/50 dark:bg-gray-950">
+    <div className="p-0 md:p-8 min-h-screen bg-gray-50/50 dark:bg-gray-950">
       <div className="max-w-6xl mx-auto">
         <ProductForm 
           categories={rootCategories} 

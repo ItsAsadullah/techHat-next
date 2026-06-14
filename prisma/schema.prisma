@@ -244,16 +244,28 @@ model Product {
   videoUrl    String?
 
   // Pricing
-  price      Float
-  offerPrice Float?
-  costPrice  Float   @default(0)
-  model      String?
+  price          Float
+  offerPrice     Float?
+  onlinePrice    Float?
+  wholesalePrice Float?
+  taxClass       String?
+  costPrice      Float   @default(0)
+  model          String?
 
   // Inventory
-  sku      String? @unique
-  barcode  String?
-  stock    Int     @default(0)
-  minStock Int     @default(5) // Low stock alert
+  sku            String? @unique
+  barcode        String?
+  stock          Int     @default(0)
+  trackInventory Boolean @default(true)
+  trackSerials   Boolean @default(false)
+  trackExpiry    Boolean @default(false)
+  trackBatch     Boolean @default(false)
+  trackWarranty  Boolean @default(false)
+  minStock       Int     @default(5) // Low stock alert
+  maxStock       Int     @default(100)
+  reorderPoint   Int     @default(10)
+  defaultWarehouseId String?
+  defaultSupplierId  String?
 
   // Attributes
   type               ProductType @default(PHYSICAL)

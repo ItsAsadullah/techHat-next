@@ -35,7 +35,7 @@ export function POSCustomersClient({ customers, invoiceSettings }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState('');
   
-  const currencySymbol = invoiceSettings?.currencySymbol || '৳';
+  const currencySymbol = (invoiceSettings as any)?.currencySymbol || '৳';
   const fmt = (n: number) =>
     `${currencySymbol}${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   

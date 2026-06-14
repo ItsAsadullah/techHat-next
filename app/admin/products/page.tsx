@@ -8,8 +8,8 @@ import Link from 'next/link';
 import { PackageSearch, AlertTriangle, Plus } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: 'Product Inventory Management',
-  description: 'Manage products and stock levels',
+  title: 'Product Master Data',
+  description: 'Manage master product records, pricing, and configurations',
 };
 
 export default async function ProductsPage({
@@ -79,7 +79,7 @@ export default async function ProductsPage({
       <header className="hidden md:flex items-center justify-between px-4 md:px-6 py-3 border-b border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 sticky top-0 z-40">
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-            Inventory Management
+            Product Master Data
           </h1>
           {inventoryStats.lowStock > 0 && (
              <Link href="/admin/products?stock_status=low" className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-400 px-2.5 py-1 rounded-md text-xs font-semibold hover:bg-amber-100 transition-colors">
@@ -110,8 +110,6 @@ export default async function ProductsPage({
             columns={columns} 
             data={formattedProducts} 
             pageCount={totalPages}
-            brands={brands}
-            categories={categories}
           />
         </div>
       </div>

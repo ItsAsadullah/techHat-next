@@ -24,6 +24,22 @@ export async function createProduct(formData: FormData) {
     const descriptionRaw = formData.get('description') as string;
     const isActive = formData.get('isActive') === 'true';
     const isFlashSale = formData.get('isFlashSale') === 'true';
+    const isFeatured = formData.get('isFeatured') === 'true';
+    const isBestSeller = formData.get('isBestSeller') === 'true';
+    const trackInventory = formData.get('trackInventory') !== 'false';
+    const trackSerials = formData.get('trackSerials') === 'true';
+    const trackExpiry = formData.get('trackExpiry') === 'true';
+    const trackBatch = formData.get('trackBatch') === 'true';
+    const trackWarranty = formData.get('trackWarranty') === 'true';
+    const maxStock = parseInt(formData.get('maxStock') as string) || 100;
+    const minStock = parseInt(formData.get('minStock') as string) || 5;
+    const reorderPoint = parseInt(formData.get('reorderPoint') as string) || 10;
+    const defaultWarehouseId = formData.get('defaultWarehouseId') as string || null;
+    const defaultSupplierId = formData.get('defaultSupplierId') as string || null;
+    const onlinePrice = formData.get('onlinePrice') ? parseFloat(formData.get('onlinePrice') as string) : null;
+    const wholesalePrice = formData.get('wholesalePrice') ? parseFloat(formData.get('wholesalePrice') as string) : null;
+    const taxClass = formData.get('taxClass') as string || null;
+    const shortDesc = formData.get('shortDesc') as string || null;
     const unit = formData.get('unit') as string;
     const warrantyMonths = parseInt(formData.get('warrantyMonths') as string) || 0;
     const videoUrl = formData.get('videoUrl') as string;
@@ -175,11 +191,27 @@ export async function createProduct(formData: FormData) {
                 type: 'PHYSICAL',
                 price: parseFloat(firstVariation.price) || 0,
                 offerPrice: parseFloat(firstVariation.offerPrice) || null,
+                onlinePrice,
+                wholesalePrice,
+                taxClass,
                 costPrice: parseFloat(firstVariation.cost) || 0,
                 stock: totalStock,
+                trackInventory,
+                trackSerials,
+                trackExpiry,
+                trackBatch,
+                trackWarranty,
+                minStock,
+                maxStock,
+                reorderPoint,
+                defaultWarehouseId,
+                defaultSupplierId,
                 description,
+                shortDesc,
                 isActive,
                 isFlashSale,
+                isFeatured,
+                isBestSeller,
                 unit,
                 warrantyMonths,
                 videoUrl: videoUrl || undefined,
@@ -316,6 +348,19 @@ export async function getProduct(id: string) {
         unit: true,
         warrantyMonths: true,
         videoUrl: true,
+        trackInventory: true,
+        trackSerials: true,
+        trackExpiry: true,
+        trackBatch: true,
+        trackWarranty: true,
+        maxStock: true,
+        reorderPoint: true,
+        defaultWarehouseId: true,
+        defaultSupplierId: true,
+        onlinePrice: true,
+        wholesalePrice: true,
+        taxClass: true,
+        shortDesc: true,
         productVariantType: true,
         type: true,
         specifications: true,
@@ -421,6 +466,22 @@ export async function updateProduct(id: string, formData: FormData) {
     const descriptionRaw = formData.get('description') as string;
     const isActive = formData.get('isActive') === 'true';
     const isFlashSale = formData.get('isFlashSale') === 'true';
+    const isFeatured = formData.get('isFeatured') === 'true';
+    const isBestSeller = formData.get('isBestSeller') === 'true';
+    const trackInventory = formData.get('trackInventory') !== 'false';
+    const trackSerials = formData.get('trackSerials') === 'true';
+    const trackExpiry = formData.get('trackExpiry') === 'true';
+    const trackBatch = formData.get('trackBatch') === 'true';
+    const trackWarranty = formData.get('trackWarranty') === 'true';
+    const maxStock = parseInt(formData.get('maxStock') as string) || 100;
+    const minStock = parseInt(formData.get('minStock') as string) || 5;
+    const reorderPoint = parseInt(formData.get('reorderPoint') as string) || 10;
+    const defaultWarehouseId = formData.get('defaultWarehouseId') as string || null;
+    const defaultSupplierId = formData.get('defaultSupplierId') as string || null;
+    const onlinePrice = formData.get('onlinePrice') ? parseFloat(formData.get('onlinePrice') as string) : null;
+    const wholesalePrice = formData.get('wholesalePrice') ? parseFloat(formData.get('wholesalePrice') as string) : null;
+    const taxClass = formData.get('taxClass') as string || null;
+    const shortDesc = formData.get('shortDesc') as string || null;
     const unit = formData.get('unit') as string;
     const warrantyMonths = parseInt(formData.get('warrantyMonths') as string) || 0;
     const videoUrl = formData.get('videoUrl') as string;
@@ -563,11 +624,27 @@ export async function updateProduct(id: string, formData: FormData) {
                 productVariantType: productType,
                 price: parseFloat(firstVariation.price) || 0,
                 offerPrice: parseFloat(firstVariation.offerPrice) || null,
+                onlinePrice,
+                wholesalePrice,
+                taxClass,
                 costPrice: parseFloat(firstVariation.cost) || 0,
                 stock: totalStock,
+                trackInventory,
+                trackSerials,
+                trackExpiry,
+                trackBatch,
+                trackWarranty,
+                minStock,
+                maxStock,
+                reorderPoint,
+                defaultWarehouseId,
+                defaultSupplierId,
                 description,
+                shortDesc,
                 isActive,
                 isFlashSale,
+                isFeatured,
+                isBestSeller,
                 unit,
                 warrantyMonths,
                 videoUrl: videoUrl || undefined,
