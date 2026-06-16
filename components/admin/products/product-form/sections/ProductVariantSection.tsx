@@ -1,6 +1,6 @@
 'use client';
 
-import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useFormContext, useFieldArray, Controller } from 'react-hook-form';
 import { ProductFormValues } from '../schemas/product.schema';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -118,7 +118,7 @@ const VariantRow = memo(({
 VariantRow.displayName = 'VariantRow';
 
 export function ProductVariantSection({ attributesList }: Props) {
-  const { control, watch, register, setValue } = useFormContext<ProductFormValues>();
+  const { control, watch, register, setValue, getValues } = useFormContext<ProductFormValues>();
 
   const productVariantType = watch('productVariantType');
   const basePrice          = watch('price') || 0;
@@ -148,12 +148,13 @@ export function ProductVariantSection({ attributesList }: Props) {
    * - Only blank-fill truly new combinations.
    */
   const generateVariations = useCallback(() => {
-    if (attributes.length === 0) return;
+    const currentAttributes = getValues('attributes') || [];
+    if (currentAttributes.length === 0) return;
 
     const cartesian = (args: string[][]): string[][] =>
       args.reduce<string[][]>((a, b) => a.flatMap(d => b.map(e => [...(Array.isArray(d) ? d : [d]), e])), [[]]);
 
-    const activeAttributes = attributes.filter(a => a.values && a.values.length > 0);
+    const activeAttributes = currentAttributes.filter(a => a.values && a.values.length > 0);
     const attrValues = activeAttributes.map(a => a.values);
     if (attrValues.length === 0) return;
 
@@ -244,8 +245,7 @@ export function ProductVariantSection({ attributesList }: Props) {
               <div className="flex items-center gap-2">
                 <Input
                   placeholder="Attribute name (e.g., Color, Size)"
-                  value={attr.name || ''}
-                  onChange={(e) => updateAttr(index, { ...attr, name: e.target.value })}
+                  {...register(`attributes.${index}.name`)}
                   className="h-9 flex-1 font-medium bg-white dark:bg-gray-900"
                 />
                 <Button
@@ -261,9 +261,15 @@ export function ProductVariantSection({ attributesList }: Props) {
 
               <div className="pl-1">
                 <Label className="text-xs text-muted-foreground mb-1.5 block">Attribute Values</Label>
-                <TagInput 
-                  values={attr.values || []} 
-                  onChange={(newValues) => updateAttr(index, { ...attr, values: newValues })} 
+                <Controller
+                  control={control}
+                  name={`attributes.${index}.values`}
+                  render={({ field }) => (
+                    <TagInput 
+                      values={field.value || []} 
+                      onChange={field.onChange} 
+                    />
+                  )}
                 />
               </div>
             </div>
