@@ -15,7 +15,7 @@ export default async function DebitNotePage({ params }: { params: { id: string }
       warehouse: true,
       purchaseOrder: true,
       items: {
-        include: { product: true, productVariant: true }
+        include: { product: true, variant: true }
       }
     }
   });

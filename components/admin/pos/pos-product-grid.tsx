@@ -16,6 +16,7 @@ interface POSProductGridProps {
   onProductSelect: (product: POSProduct, variantId?: string) => void;
   searchInputRef: React.RefObject<HTMLInputElement | null>;
   initialProducts?: POSProduct[];
+  cartItems?: CartItem[];
 }
 
 export function POSProductGrid({ categories, onProductSelect, searchInputRef, initialProducts = [], cartItems = [] }: POSProductGridProps) {

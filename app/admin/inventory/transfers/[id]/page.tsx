@@ -22,7 +22,7 @@ export default async function TransferDetailPage({ params }: { params: Promise<{
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Transfer {transfer.transferNumber}</h1>
-          <p className="text-muted-foreground">Created on {format(new Date(transfer.date), 'dd MMM yyyy, hh:mm a')}</p>
+          <p className="text-muted-foreground">Created on {format(new Date(transfer.createdAt), 'dd MMM yyyy, hh:mm a')}</p>
         </div>
         <TransferStatusActions transfer={transfer} />
       </div>
@@ -100,8 +100,8 @@ export default async function TransferDetailPage({ params }: { params: Promise<{
                 <div className="relative">
                   <div className="absolute -left-[31px] top-1 bg-background border-2 border-emerald-500 w-4 h-4 rounded-full"></div>
                   <div className="text-sm font-medium text-muted-foreground">Destination</div>
-                  <div className="font-medium">{transfer.destinationWarehouse.name}</div>
-                  <div className="text-xs text-muted-foreground">{transfer.destinationWarehouse.code}</div>
+                  <div className="font-medium">{transfer.destWarehouse.name}</div>
+                  <div className="text-xs text-muted-foreground">{transfer.destWarehouse.code}</div>
                 </div>
               </div>
             </CardContent>

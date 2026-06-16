@@ -8,19 +8,18 @@ import { toast } from 'sonner';
 
 interface LedgerEntry {
   id: string;
-  date: Date;
+  createdAt: Date;
   referenceType: string;
   referenceId: string;
   warehouse: { id: string; name: string; code: string };
   product: { id: string; name: string; sku: string | null };
-  productVariant: { id: string; name: string; sku: string | null } | null;
-  openingQty: number;
+  variant: { id: string; name: string; sku: string | null } | null;
   inQty: number;
   outQty: number;
-  closingQty: number;
+  balanceQty: number;
   unitCost: number;
   totalValue: number;
-  remarks: string | null;
+  note: string | null;
 }
 
 interface LedgerTableProps {
@@ -109,7 +108,7 @@ export function LedgerTable({ entries, totalPages, currentPage, filter }: Ledger
               entries.map((entry) => (
                 <tr key={entry.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 whitespace-nowrap text-xs">
-                    {format(new Date(entry.date), 'dd MMM yyyy, HH:mm')}
+                    {format(new Date(entry.createdAt), 'dd MMM yyyy, HH:mm')}
                   </td>
                   <td className="px-4 py-3">
                     <span className="bg-muted px-2 py-0.5 rounded text-xs font-medium">
@@ -130,9 +129,9 @@ export function LedgerTable({ entries, totalPages, currentPage, filter }: Ledger
                     <p className="font-medium text-foreground line-clamp-1" title={entry.product.name}>
                       {entry.product.name}
                     </p>
-                    {(entry.productVariant || entry.product.sku) && (
+                    {(entry.variant || entry.product.sku) && (
                       <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
-                        {entry.productVariant && <span>{entry.productVariant.name}</span>}
+                        {entry.variant && <span>{entry.variant.name}</span>}
                         {entry.product.sku && <span className="font-mono bg-muted/50 px-1 rounded">{entry.product.sku}</span>}
                       </p>
                     )}
@@ -158,7 +157,7 @@ export function LedgerTable({ entries, totalPages, currentPage, filter }: Ledger
                     )}
                   </td>
                   <td className="px-4 py-3 text-right font-mono font-medium">
-                    {entry.closingQty}
+                    {entry.balanceQty}
                   </td>
                   <td className="px-4 py-3 text-right text-xs">
                     ৳ {entry.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}

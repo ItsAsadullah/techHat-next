@@ -82,9 +82,9 @@ async function run() {
         status: 'APPROVED',
         items: {
           create: [
-            { productId: simpleProduct.id, quantity: 0, quantity: 100, adjustedQty: 100, unitCost: 500 },
-            { productId: varProduct.id, variantId: varProduct.variants[0].id, quantity: 0, quantity: 48, adjustedQty: 48, unitCost: 300 },
-            { productId: varProduct.id, variantId: varProduct.variants[1].id, quantity: 0, quantity: 50, adjustedQty: 50, unitCost: 320 },
+            { productId: simpleProduct.id, quantity: 100, unitCost: 500 },
+            { productId: varProduct.id, variantId: varProduct.variants[0].id, quantity: 48, unitCost: 300 },
+            { productId: varProduct.id, variantId: varProduct.variants[1].id, quantity: 50, unitCost: 320 },
           ]
         }
       },
@@ -96,15 +96,15 @@ async function run() {
       data: [
         {
           productId: simpleProduct.id, warehouseId: warehouse.id, referenceType: 'ADJUSTMENT', referenceId: adjustment.adjustmentNumber,
-          inQty: 0, inQty: 100, outQty: 0, balanceQty: 100, unitCost: 500, totalValue: 50000
+          inQty: 100, outQty: 0, balanceQty: 100, unitCost: 500, totalValue: 50000
         },
         {
           productId: varProduct.id, variantId: varProduct.variants[0].id, warehouseId: warehouse.id, referenceType: 'ADJUSTMENT', referenceId: adjustment.adjustmentNumber,
-          inQty: 0, inQty: 48, outQty: 0, balanceQty: 48, unitCost: 300, totalValue: 14400
+          inQty: 48, outQty: 0, balanceQty: 48, unitCost: 300, totalValue: 14400
         },
         {
           productId: varProduct.id, variantId: varProduct.variants[1].id, warehouseId: warehouse.id, referenceType: 'ADJUSTMENT', referenceId: adjustment.adjustmentNumber,
-          inQty: 0, inQty: 50, outQty: 0, balanceQty: 50, unitCost: 320, totalValue: 16000
+          inQty: 50, outQty: 0, balanceQty: 50, unitCost: 320, totalValue: 16000
         }
       ]
     });

@@ -671,7 +671,7 @@ export async function getDailyPOSOrders(targetDate?: Date | string) {
       createdAt: { gte: startOfDay, lt: endOfDay },
     },
     include: {
-      variants: {
+      items: {
         include: {
           product: {
             select: {
@@ -718,7 +718,7 @@ export async function getPOSSalesReport(startDate?: Date, endDate?: Date) {
     prisma.order.findMany({
       where,
       include: {
-        variants: {
+        items: {
           include: {
             product: { select: { name: true } },
             variant: { select: { name: true } },

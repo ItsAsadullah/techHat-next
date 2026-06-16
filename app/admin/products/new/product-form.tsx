@@ -564,8 +564,8 @@ export default function ProductForm({ categories, brands, attributesList, initia
                           productId={initialData?.id}
                           slug={initialData?.slug}
                           productName={productName}
-                          sku={sku}
-                          barcode={barcode}
+                          sku={sku || undefined}
+                          barcode={barcode || undefined}
                         />
                       </div>
                     </SidebarCard>
@@ -801,8 +801,8 @@ export default function ProductForm({ categories, brands, attributesList, initia
                   productId={initialData?.id}
                   slug={initialData?.slug}
                   productName={productName}
-                  sku={sku}
-                  barcode={barcode}
+                  sku={sku || undefined}
+                  barcode={barcode || undefined}
                 />
               </MobileAccordion>
             )}

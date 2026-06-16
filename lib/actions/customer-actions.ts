@@ -23,7 +23,7 @@ export async function getCustomerById(id: string) {
           take: 10,
           orderBy: { createdAt: 'desc' }
         },
-        ledgers: {
+        customerLedgers: {
           take: 50,
           orderBy: { date: 'desc' }
         }

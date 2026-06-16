@@ -20,25 +20,8 @@ export async function generateSKU(prefix: string): Promise<{ success: boolean; s
       .toUpperCase()
       .substring(0, 10);
 
-    const sequence = await prisma.$transaction(async (tx) => {
-      // Upsert the sequence row and increment atomically
-      const existing = await tx.skuSequence.findUnique({
-        where: { prefix: cleanPrefix },
-      });
-
-      if (existing) {
-        return tx.skuSequence.update({
-          where: { prefix: cleanPrefix },
-          data: { lastValue: { increment: 1 } },
-        });
-      } else {
-        return tx.skuSequence.create({
-          data: { prefix: cleanPrefix, lastValue: 1 },
-        });
-      }
-    });
-
-    const paddedNum = String(sequence.lastValue).padStart(6, '0');
+    const count = await prisma.product.count();
+    const paddedNum = String(count + 1).padStart(6, '0');
     const sku = `${cleanPrefix}-${paddedNum}`;
 
     return { success: true, sku };
@@ -276,7 +259,7 @@ export async function getProductFullTimeline(productId: string) {
       where: { productId },
       orderBy: { createdAt: 'desc' },
       take: 100,
-      include: { warehouseId: { select: { name: true } } }
+      include: { warehouse: { select: { name: true } } }
     });
 
     // We can also fetch StockHistory (deprecated but still holds old data)
@@ -307,7 +290,7 @@ export async function getProductFullTimeline(productId: string) {
       
       events.push({
         id: l.id,
-        date: l.date,
+        date: l.createdAt,
         type: 'STOCK_LEDGER',
         action: l.referenceType,
         user: 'System',

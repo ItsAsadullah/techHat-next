@@ -29,9 +29,9 @@ export async function getStockLedger(filter: LedgerFilter = {}) {
   const where: Prisma.StockLedgerWhereInput = {};
 
   if (dateFrom || dateTo) {
-    where.date = {};
-    if (dateFrom) (where.date as any).gte = new Date(dateFrom);
-    if (dateTo) (where.date as any).lte = new Date(dateTo + 'T23:59:59.999Z');
+    where.createdAt = {};
+    if (dateFrom) (where.createdAt as any).gte = new Date(dateFrom);
+    if (dateTo) (where.createdAt as any).lte = new Date(dateTo + 'T23:59:59.999Z');
   }
   if (warehouseId) where.warehouseId = warehouseId;
   if (productId) where.productId = productId;
@@ -56,7 +56,7 @@ export async function getStockLedger(filter: LedgerFilter = {}) {
       include: {
         warehouse: { select: { id: true, name: true, code: true } },
         product: { select: { id: true, name: true, sku: true } },
-        productVariant: { select: { id: true, name: true, sku: true } },
+        variant: { select: { id: true, name: true, sku: true } },
       },
     }),
     prisma.stockLedger.count({ where }),
@@ -111,7 +111,7 @@ export async function getLedgerForProduct(productId: string, variantId: string, 
 
   return prisma.stockLedger.findMany({
     where,
-    orderBy: { date: 'desc' },
+    orderBy: { createdAt: 'desc' },
     take: limit,
     include: {
       warehouse: { select: { name: true } },
@@ -130,20 +130,20 @@ export async function exportLedgerCSV(filter: LedgerFilter = {}) {
   ];
 
   const rows = entries.map((e) => [
-    new Date(e.date).toLocaleDateString('en-BD'),
+    new Date(e.createdAt).toLocaleDateString('en-BD'),
     e.warehouseId,
     e.referenceType,
     e.referenceId,
     e.product.name,
     e.product.sku || '',
-    e.productVariant?.name || '',
-    e.openingQty,
+    e.variant?.name || '',
+    '', // openingQty placeholder
     e.inQty,
     e.outQty,
     e.balanceQty,
     e.unitCost.toFixed(2),
     e.totalValue.toFixed(2),
-    e.remarks || '',
+    e.note || '',
   ]);
 
   const csvContent = [

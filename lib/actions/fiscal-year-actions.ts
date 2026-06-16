@@ -8,7 +8,7 @@ export async function getFiscalYears() {
   try {
     const years = await prisma.fiscalYear.findMany({
       include: {
-        accountingPeriods: {
+        periods: {
           orderBy: { startDate: 'asc' }
         }
       },

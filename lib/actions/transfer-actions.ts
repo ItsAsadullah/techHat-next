@@ -17,7 +17,7 @@ export async function getTransfers(params?: { status?: string, sourceId?: string
         destWarehouse: { select: { name: true, code: true } },
         _count: { select: { items: true } }
       },
-      orderBy: { date: 'desc' }
+      orderBy: { createdAt: 'desc' }
     });
     return { success: true, data: transfers };
   } catch (error: any) {
@@ -72,7 +72,6 @@ export async function createTransfer(data: {
           transferNumber,
           sourceId: data.sourceId,
           destinationId: data.destinationId,
-          quantity: data.unitCost || 0,
           note: data.note,
           status: 'DRAFT',
           items: {

@@ -101,7 +101,7 @@ export async function getPurchaseOrderById(id: string) {
             variant: { select: { id: true, name: true, sku: true, stock: true } }
           }
         },
-        grns: {
+        goodsReceiveNotes: {
           orderBy: { receivedDate: 'desc' },
           select: { id: true, grnNumber: true, receivedDate: true, status: true }
         }

@@ -62,7 +62,7 @@ export function TransferForm({ warehouses, products }: { warehouses: any[], prod
     const res = await createTransfer({
       sourceId,
       destinationId,
-      transferCost: parseFloat(transferCost),
+      unitCost: parseFloat(transferCost),
       note,
       items: validItems
     });

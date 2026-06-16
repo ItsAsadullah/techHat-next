@@ -114,7 +114,7 @@ export default async function CustomerDetailsPage({ params }: { params: { id: st
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {customer.ledgers.map((l: any) => (
+                {customer.customerLedgers.map((l: any) => (
                   <TableRow key={l.id}>
                     <TableCell className="whitespace-nowrap">{format(new Date(l.date), 'dd MMM yyyy')}</TableCell>
                     <TableCell>
@@ -133,7 +133,7 @@ export default async function CustomerDetailsPage({ params }: { params: { id: st
                     </TableCell>
                   </TableRow>
                 ))}
-                {customer.ledgers.length === 0 && (
+                {customer.customerLedgers.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
                       No ledger history found.

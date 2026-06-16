@@ -41,7 +41,7 @@ export default async function SupplierDetailsPage({ params }: { params: { id: st
         }
       },
       _count: {
-        select: { purchaseOrders: true, grns: true, purchaseReturns: true }
+        select: { purchaseOrders: true, grns: true, PurchaseReturn: true }
       }
     }
   });

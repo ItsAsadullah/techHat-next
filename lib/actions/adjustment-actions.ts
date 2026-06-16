@@ -115,9 +115,7 @@ export async function createAdjustment(data: AdjustmentFormData) {
             create: data.items.map(item => ({
               productId: item.productId,
               variantId: item.variantId || null,
-              systemQty: item.systemQty,
-              actualQty: item.actualQty,
-              adjustedQty: item.adjustedQty,
+              quantity: item.adjustedQty,
               unitCost: item.unitCost,
             }))
           }
@@ -176,7 +174,7 @@ export async function approveAdjustment(id: string) {
 
       // Process each Item using canonical Ledger Engine
       for (const item of adj.items) {
-        if (item.adjustedQty === 0) continue;
+        if (item.quantity === 0) continue;
 
         // Use createStockLedgerEntry — handles MAC calculation, stock cache update
         // and immutable ledger creation in one atomic step.
@@ -187,8 +185,8 @@ export async function approveAdjustment(id: string) {
             warehouseId: adj.warehouseId,
             productId: item.productId,
             variantId: item.variantId || null,
-            inQty: item.adjustedQty > 0 ? item.adjustedQty : 0,
-            outQty: item.adjustedQty < 0 ? Math.abs(item.adjustedQty) : 0,
+            inQty: item.quantity > 0 ? item.quantity : 0,
+            outQty: item.quantity < 0 ? Math.abs(item.quantity) : 0,
             unitCost: item.unitCost,
             remarks: `Adjustment ${adj.adjustmentNumber} - ${adj.reason}`,
           },
