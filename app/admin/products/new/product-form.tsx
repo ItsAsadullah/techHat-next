@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FormProvider } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -148,6 +148,19 @@ export default function ProductForm({ categories, brands, attributesList, initia
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>(initialData?.images || []);
   const isEditMode = !!initialData?.id;
 
+  // Fix RHF ref collision by not rendering duplicate fields
+  const [isMobile, setIsMobile] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    const mql = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
+
   // Clean up invalid attributes that might have been saved accidentally
   const cleanInitialData = useMemo(() => {
     if (!initialData) return initialData;
@@ -273,6 +286,7 @@ export default function ProductForm({ categories, brands, attributesList, initia
         )}
 
         {/* ═══════════════════════════════════════ DESKTOP ══════════════════════════════════════ */}
+        {(!isMounted || !isMobile) && (
         <div className="hidden md:block">
 
           {/* ── Shopify-quality Sticky Header ── */}
@@ -694,8 +708,10 @@ export default function ProductForm({ categories, brands, attributesList, initia
             )}
           </Tabs>
         </div>
+        )}
 
         {/* ═══════════════════════════════════════ MOBILE ═══════════════════════════════════════ */}
+        {isMounted && isMobile && (
         <div className="md:hidden min-h-screen bg-muted/10 pb-20">
 
           {/* Mobile Sticky Header */}
@@ -808,6 +824,7 @@ export default function ProductForm({ categories, brands, attributesList, initia
             )}
           </div>
         </div>
+        )}
 
       </form>
     </FormProvider>
