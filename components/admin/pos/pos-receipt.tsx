@@ -46,6 +46,9 @@ interface POSReceiptProps {
   onClose: () => void;
   receipt: ReceiptData | null;
   invoiceSettings?: InvoiceSettings;
+  status?: 'success' | 'error' | 'loading' | 'idle';
+  errorMessage?: string;
+  onRetry?: () => void;
 }
 
 export function POSReceipt({ isOpen, onClose, receipt, invoiceSettings, status = 'success', errorMessage, onRetry }: POSReceiptProps) {

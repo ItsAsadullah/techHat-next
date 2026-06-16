@@ -116,8 +116,11 @@ const Toolbar = ({ editor, isFullScreen, toggleFullScreen }: { editor: Editor | 
     }
   };
 
-  const handleImageSelect = (url: string) => {
-      editor.chain().focus().setImage({ src: url }).run();
+  const handleImageSelect = (urls: string | string[]) => {
+      const urlArray = Array.isArray(urls) ? urls : [urls];
+      urlArray.forEach(url => {
+         editor.chain().focus().setImage({ src: url }).run();
+      });
       setIsMediaLibraryOpen(false);
   };
 

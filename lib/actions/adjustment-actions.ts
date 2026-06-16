@@ -81,7 +81,7 @@ export async function getAdjustmentById(id: string) {
         items: {
           include: {
             product: { select: { id: true, name: true, sku: true, stock: true } },
-            productVariant: { select: { id: true, name: true, sku: true, stock: true } }
+            variant: { select: { id: true, name: true, sku: true, stock: true } }
           }
         }
       },

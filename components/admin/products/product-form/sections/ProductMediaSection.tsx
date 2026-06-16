@@ -56,15 +56,13 @@ export function ProductMediaSection({ images, setImages }: Props) {
   const handleLibrarySelect = useCallback((urls: string | string[]) => {
     const urlArray = Array.isArray(urls) ? urls : [urls];
     
-    setImages((prev) => {
-      const newImages = urlArray.map((url, i) => ({
-        id: Math.random().toString(36).substring(2, 11) + i,
-        url,
-        isThumbnail: prev.length === 0 && i === 0,
-      }));
-      return [...prev, ...newImages];
-    });
-  }, [setImages]);
+    const newImages = urlArray.map((url, i) => ({
+      id: Math.random().toString(36).substring(2, 11) + i,
+      url,
+      isThumbnail: images.length === 0 && i === 0,
+    }));
+    setImages([...images, ...newImages]);
+  }, [images, setImages]);
 
   const handleDragOver = (e: React.DragEvent, id: string) => {
     e.preventDefault();
@@ -125,10 +123,8 @@ export function ProductMediaSection({ images, setImages }: Props) {
                   // Using a functional state update to ensure isThumbnail is correct
                   isThumbnail: false, // We'll handle this inside setImages
                 };
-                setImages((prev) => {
-                  const isThumbnail = prev.length === 0;
-                  return [...prev, { ...newImage, isThumbnail }];
-                });
+                const isThumbnail = images.length === 0;
+                setImages([...images, { ...newImage, isThumbnail }]);
               }
             }}
             options={{
@@ -245,10 +241,8 @@ export function ProductMediaSection({ images, setImages }: Props) {
                   url: result.info.secure_url,
                   isThumbnail: false,
                 };
-                setImages((prev) => {
-                  const isThumbnail = prev.length === 0;
-                  return [...prev, { ...newImage, isThumbnail }];
-                });
+                const isThumbnail = images.length === 0;
+                setImages([...images, { ...newImage, isThumbnail }]);
               }
             }}
             options={{ 
@@ -294,10 +288,8 @@ export function ProductMediaSection({ images, setImages }: Props) {
                   url: result.info.secure_url,
                   isThumbnail: false,
                 };
-                setImages((prev) => {
-                  const isThumbnail = prev.length === 0;
-                  return [...prev, { ...newImage, isThumbnail }];
-                });
+                const isThumbnail = images.length === 0;
+                setImages([...images, { ...newImage, isThumbnail }]);
               }
             }}
             options={{ 
