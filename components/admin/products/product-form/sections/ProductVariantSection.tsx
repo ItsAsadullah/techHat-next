@@ -6,12 +6,57 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, RefreshCw, Layers, Package, ShieldAlert } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Layers, Package, ShieldAlert, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useState } from 'react';
 
 interface Props {
-  attributesList: any[];
+  attributesList: any[]; // Kept for backwards compatibility but not strictly needed anymore
+}
+
+function TagInput({ values, onChange }: { values: string[], onChange: (newValues: string[]) => void }) {
+  const [input, setInput] = useState('');
+
+  const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const val = input.trim();
+      if (val && !values.includes(val)) {
+        onChange([...values, val]);
+      }
+      setInput('');
+    }
+  };
+
+  const removeTag = (index: number) => {
+    onChange(values.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1.5">
+        {values.map((v, i) => (
+          <Badge key={i} variant="secondary" className="flex items-center gap-1 px-2 py-0.5 font-normal">
+            {v}
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground focus:outline-none ml-1"
+              onClick={() => removeTag(i)}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        ))}
+      </div>
+      <Input
+        placeholder="Type a value and press Enter or Comma..."
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={addTag}
+        className="h-8 text-xs bg-white dark:bg-gray-900"
+      />
+    </div>
+  );
 }
 
 // Memoized variant row — prevents full table re-render when editing one cell
@@ -91,14 +136,7 @@ export function ProductVariantSection({ attributesList }: Props) {
 
   if (productVariantType === 'simple') return null;
 
-  const handleValueSelect = useCallback((index: number, value: string) => {
-    const current = attributes[index];
-    const currentValues = current.values || [];
-    const newValues = currentValues.includes(value)
-      ? currentValues.filter((v: string) => v !== value)
-      : [...currentValues, value];
-    updateAttr(index, { ...current, values: newValues });
-  }, [attributes, updateAttr]);
+
 
   /**
    * Smart Merge Variant Generation.
@@ -202,58 +240,32 @@ export function ProductVariantSection({ attributesList }: Props) {
 
         <div className="space-y-3">
           {attributes.map((attr, index) => (
-            <div key={attr.id} className="p-3 border rounded-lg space-y-2.5 bg-muted/10">
+            <div key={attr.id} className="p-4 border rounded-xl space-y-3 bg-muted/10">
               <div className="flex items-center gap-2">
-                <Select
-                  value={attr.attributeId?.toString() || ''}
-                  onValueChange={(val) => {
-                    const selected = attributesList.find(a => a.id.toString() === val);
-                    if (selected) {
-                      updateAttr(index, { id: attr.id, attributeId: selected.id, name: selected.name, values: [] });
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-9 flex-1">
-                    <SelectValue placeholder="Select Attribute" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {attributesList.map(a => (
-                      <SelectItem key={a.id} value={a.id.toString()}>{a.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  placeholder="Attribute name (e.g., Color, Size)"
+                  value={attr.name || ''}
+                  onChange={(e) => updateAttr(index, { ...attr, name: e.target.value })}
+                  className="h-9 flex-1 font-medium bg-white dark:bg-gray-900"
+                />
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 text-red-500 shrink-0"
+                  className="h-9 w-9 text-red-500 shrink-0 hover:bg-red-50 dark:hover:bg-red-950/30"
                   onClick={() => removeAttr(index)}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
 
-              {attr.attributeId && (
-                <div className="flex flex-wrap gap-1.5">
-                  {attributesList.find(a => a.id === attr.attributeId)?.values?.map((v: any) => {
-                    const isSelected = attr.values?.includes(v.value);
-                    return (
-                      <Badge
-                        key={v.id || v.value}
-                        variant={isSelected ? 'default' : 'outline'}
-                        className={`cursor-pointer transition-all text-xs select-none ${
-                          isSelected
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600'
-                            : 'hover:bg-muted'
-                        }`}
-                        onClick={() => handleValueSelect(index, v.value)}
-                      >
-                        {v.value}
-                      </Badge>
-                    );
-                  })}
-                </div>
-              )}
+              <div className="pl-1">
+                <Label className="text-xs text-muted-foreground mb-1.5 block">Attribute Values</Label>
+                <TagInput 
+                  values={attr.values || []} 
+                  onChange={(newValues) => updateAttr(index, { ...attr, values: newValues })} 
+                />
+              </div>
             </div>
           ))}
         </div>
