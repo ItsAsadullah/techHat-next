@@ -1,6 +1,6 @@
 'use client';
 
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, Controller } from 'react-hook-form';
 import { ProductFormValues } from '../schemas/product.schema';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +15,7 @@ interface ProductBasicSectionProps {
 }
 
 export function ProductBasicSection({ categories, brands }: ProductBasicSectionProps) {
-  const { register, setValue, watch, formState: { errors } } = useFormContext<ProductFormValues>();
+  const { register, control, setValue, watch, formState: { errors } } = useFormContext<ProductFormValues>();
   const categoryId = watch('categoryId');
   const brandId    = watch('brandId');
   const unit       = watch('unit');
@@ -34,11 +34,17 @@ export function ProductBasicSection({ categories, brands }: ProductBasicSectionP
             {nameLength} chars
           </span>
         </div>
-        <Input
-          id="name"
-          placeholder="e.g. Hoco EQ33 Wireless Earbuds"
-          className={`h-10 ${errors.name ? 'border-red-500' : ''}`}
-          {...register('name')}
+        <Controller
+          control={control}
+          name="name"
+          render={({ field }) => (
+            <Input
+              id="name"
+              placeholder="e.g. Hoco EQ33 Wireless Earbuds"
+              className={`h-10 ${errors.name ? 'border-red-500' : ''}`}
+              {...field}
+            />
+          )}
         />
         {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
         <p className="text-[11px] text-muted-foreground">

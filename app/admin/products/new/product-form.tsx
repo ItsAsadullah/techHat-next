@@ -254,7 +254,7 @@ export default function ProductForm({ categories, brands, attributesList, initia
   const costPrice     = initialData?.costPrice      ?? null;
 
   const onError = (errors: any) => {
-    console.error("Form errors:", errors);
+    console.warn("Form validation failed:", errors);
     const errorKeys = Object.keys(errors);
     if (errorKeys.length > 0) {
       toast.error("Validation failed: " + errorKeys.join(', '));

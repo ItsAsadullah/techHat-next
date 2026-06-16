@@ -118,7 +118,7 @@ const VariantRow = memo(({
 VariantRow.displayName = 'VariantRow';
 
 export function ProductVariantSection({ attributesList }: Props) {
-  const { control, watch, register, setValue, getValues } = useFormContext<ProductFormValues>();
+  const { control, watch, register, setValue, getValues, formState: { errors } } = useFormContext<ProductFormValues>();
 
   const productVariantType = watch('productVariantType');
   const basePrice          = watch('price') || 0;
@@ -243,11 +243,16 @@ export function ProductVariantSection({ attributesList }: Props) {
           {attributes.map((attr, index) => (
             <div key={attr.id} className="p-4 border rounded-xl space-y-3 bg-muted/10">
               <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Attribute name (e.g., Color, Size)"
-                  {...register(`attributes.${index}.name`)}
-                  className="h-9 flex-1 font-medium bg-white dark:bg-gray-900"
-                />
+                <div className="flex-1">
+                  <Input
+                    placeholder="Attribute name (e.g., Color, Size)"
+                    {...register(`attributes.${index}.name` as const)}
+                    className={`h-9 w-full font-medium bg-white dark:bg-gray-900 ${errors?.attributes?.[index]?.name ? 'border-red-500' : ''}`}
+                  />
+                  {errors?.attributes?.[index]?.name && (
+                    <p className="text-red-500 text-[10px] mt-1">{errors.attributes[index]?.name?.message}</p>
+                  )}
+                </div>
                 <Button
                   type="button"
                   variant="ghost"
@@ -265,10 +270,15 @@ export function ProductVariantSection({ attributesList }: Props) {
                   control={control}
                   name={`attributes.${index}.values`}
                   render={({ field }) => (
-                    <TagInput 
-                      values={field.value || []} 
-                      onChange={field.onChange} 
-                    />
+                    <div>
+                      <TagInput 
+                        values={field.value || []} 
+                        onChange={field.onChange} 
+                      />
+                      {errors?.attributes?.[index]?.values && (
+                        <p className="text-red-500 text-[10px] mt-1">{errors.attributes[index]?.values?.message}</p>
+                      )}
+                    </div>
                   )}
                 />
               </div>
