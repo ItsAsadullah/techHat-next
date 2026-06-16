@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import {
   Settings,
@@ -40,6 +40,7 @@ const settingsNav = [
     items: [
       { name: 'Categories', href: '/admin/settings/categories', icon: Layers },
       { name: 'Brands', href: '/admin/settings/brands', icon: Tags },
+      { name: 'Attributes', href: '/admin/settings/attributes', icon: ListChecks },
       { name: 'Spec Templates', href: '/admin/settings/spec-templates', icon: ListChecks },
     ],
   },
