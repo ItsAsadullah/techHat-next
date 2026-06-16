@@ -114,12 +114,15 @@ export async function createCategory(formData: FormData) {
     const parentId = formData.get('parentId') as string;
     const description = formData.get('description') as string;
     const image = formData.get('image') as string;
+    const customSlug = formData.get('slug') as string;
     
     if (!name || name.trim() === '') {
       return { success: false, error: 'Category name is required' };
     }
 
-    const slug = slugify(name, { lower: true, strict: true });
+    const slug = customSlug && customSlug.trim() !== '' 
+                 ? slugify(customSlug, { lower: true, strict: true })
+                 : slugify(name, { lower: true, strict: true });
     
     // Check if slug exists
     let uniqueSlug = slug;
@@ -156,14 +159,16 @@ export async function updateCategory(id: string, formData: FormData) {
     const parentId = formData.get('parentId') as string;
     const description = formData.get('description') as string;
     const image = formData.get('image') as string;
+    const customSlug = formData.get('slug') as string;
 
     if (!id) return { success: false, error: 'Category ID is required' };
 
     const data: Record<string, string | null> = {};
     if (name) {
        data.name = name.trim();
-       // We might want to update slug too, but usually it's better to keep slugs stable for SEO
-       // data.slug = slugify(name, { lower: true, strict: true }); 
+    }
+    if (customSlug && customSlug.trim() !== '') {
+       data.slug = slugify(customSlug, { lower: true, strict: true });
     }
     if (parentId !== undefined) data.parentId = parentId || null;
     if (shortCodeRaw !== undefined) data.shortCode = shortCodeRaw ? shortCodeRaw.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) : null;

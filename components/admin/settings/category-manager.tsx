@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, type ElementType } from 'react';
+import React, { useState, useRef, useEffect, type ElementType } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import * as Icons from 'lucide-react';
@@ -98,11 +98,16 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
     const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
     const [formData, setFormData] = useState({
         name: '',
+        slug: '',
         shortCode: '',
         parentId: 'root',
         description: '',
         image: ''
     });
+
+    useEffect(() => {
+        setCategories(initialCategories);
+    }, [initialCategories]);
 
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -175,6 +180,7 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
                                     onClick={() => {
                                         setFormData({
                                             name: '',
+                                            slug: '',
                                             shortCode: '',
                                             parentId: cat.id,
                                             description: '',
@@ -191,6 +197,7 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
                                         setCurrentCategory(cat);
                                         setFormData({
                                             name: cat.name,
+                                            slug: cat.slug || '',
                                             shortCode: cat.shortCode || '',
                                             parentId: cat.parentId || 'root',
                                             description: cat.description || '',
@@ -229,6 +236,7 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
         try {
             const formDataObj = new FormData();
             formDataObj.append('name', formData.name);
+            formDataObj.append('slug', formData.slug);
             formDataObj.append('shortCode', formData.shortCode);
             if (formData.parentId !== 'root') {
                 formDataObj.append('parentId', formData.parentId);
@@ -240,7 +248,7 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
             if (res.success) {
                 toast.success('Category created successfully');
                 setIsCreateOpen(false);
-                setFormData({ name: '', shortCode: '', parentId: 'root', description: '', image: '' });
+                setFormData({ name: '', slug: '', shortCode: '', parentId: 'root', description: '', image: '' });
                 router.refresh();
             } else {
                 toast.error(res.error || 'Failed to create category');
@@ -258,6 +266,7 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
         try {
             const formDataObj = new FormData();
             formDataObj.append('name', formData.name);
+            formDataObj.append('slug', formData.slug);
             formDataObj.append('shortCode', formData.shortCode);
             if (formData.parentId !== 'root') {
                 formDataObj.append('parentId', formData.parentId);
@@ -311,7 +320,7 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
                 </div>
                 <Button 
                     onClick={() => {
-                        setFormData({ name: '', shortCode: '', parentId: 'root', description: '', image: '' });
+                        setFormData({ name: '', slug: '', shortCode: '', parentId: 'root', description: '', image: '' });
                         setIsCreateOpen(true);
                     }}
                     className="rounded-xl bg-gray-900 hover:bg-gray-800 text-white shadow-md font-medium px-5"
@@ -377,6 +386,18 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
                                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                                 placeholder="e.g. Smartphones"
                                 className="h-11 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium"
+                            />
+                        </div>
+                        <div className="grid gap-2.5">
+                            <Label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-cyan-500"></div>
+                                Slug <span className="text-gray-400 font-normal text-xs">(optional, auto-generated if empty)</span>
+                            </Label>
+                            <Input 
+                                value={formData.slug} 
+                                onChange={(e) => setFormData({...formData, slug: e.target.value})}
+                                placeholder="e.g. smartphones"
+                                className="h-11 rounded-lg border-2 border-gray-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 font-medium"
                             />
                         </div>
                         <div className="grid gap-2.5">
@@ -471,6 +492,17 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
                                 value={formData.name} 
                                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                                 className="h-11 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium"
+                            />
+                        </div>
+                        <div className="grid gap-2.5">
+                            <Label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-cyan-500"></div>
+                                Slug
+                            </Label>
+                            <Input 
+                                value={formData.slug} 
+                                onChange={(e) => setFormData({...formData, slug: e.target.value})}
+                                className="h-11 rounded-lg border-2 border-gray-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 font-medium"
                             />
                         </div>
                         <div className="grid gap-2.5">
