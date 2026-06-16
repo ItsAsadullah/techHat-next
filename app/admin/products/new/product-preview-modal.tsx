@@ -1,6 +1,7 @@
-﻿'use client';
+'use client';
 
 import { useState, useRef } from 'react';
+import Image from 'next/image';
 import {
   X, Star, Zap, Package, ChevronLeft, ChevronRight, Eye,
   Heart, ShoppingCart, MessageCircle, Phone, Share2,
@@ -75,7 +76,7 @@ interface PreviewData {
   upc: string;
   unit: string;
   warrantyMonths: number;
-  isActive: boolean;
+  status: string;
   isFlashSale: boolean;
   productType: string;
   galleryImages: GalleryImage[];
@@ -128,10 +129,10 @@ function getColorCode(colorName: string): string | null {
 export function ProductPreviewModal({ open, onClose, data }: Props) {
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
   const [selectedVariationId, setSelectedVariationId] = useState<string | null>(
-    data.variations.length > 0 ? data.variations[0].id : null
+    data?.variations?.length > 0 ? data.variations[0].id : null
   );
   const [selectedAttrs, setSelectedAttrs] = useState<Record<string, string>>(() => {
-    const first = data.variations[0];
+    const first = data?.variations?.[0];
     if (first?.attributes) return { ...first.attributes };
     return {};
   });
@@ -141,14 +142,14 @@ export function ProductPreviewModal({ open, onClose, data }: Props) {
   const [zoomPos, setZoomPos] = useState({ x: 0, y: 0, show: false });
   const imageRef = useRef<HTMLDivElement>(null);
 
-  if (!open) return null;
+  if (!open || !data) return null;
 
-  const images = data.galleryImages.filter(img => img.url);
+  const images = (data.galleryImages || []).filter(img => img.url);
   const sortedImages = [...images].sort((a, b) => (b.isThumbnail ? 1 : 0) - (a.isThumbnail ? 1 : 0));
   const currentImage = sortedImages[selectedImageIdx];
   const displayImage = currentImage?.url ?? '';
 
-  const selectedVariation = data.variations.find(v => v.id === selectedVariationId) ?? null;
+  const selectedVariation = (data.variations || []).find(v => v.id === selectedVariationId) ?? null;
   const effectivePrice = selectedVariation ? selectedVariation.price : data.price;
   const effectiveOffer = selectedVariation ? selectedVariation.offerPrice : data.offerPrice;
   const effectiveStock = selectedVariation ? selectedVariation.stock : data.stock;
@@ -161,7 +162,7 @@ export function ProductPreviewModal({ open, onClose, data }: Props) {
   const handleAttrSelect = (attrName: string, value: string) => {
     const next = { ...selectedAttrs, [attrName]: value };
     setSelectedAttrs(next);
-    const matched = data.variations.find(v => {
+    const matched = (data.variations || []).find(v => {
       if (!v.attributes) return false;
       return Object.entries(next).every(([k, val]) => v.attributes![k] === val);
     });
@@ -229,7 +230,7 @@ export function ProductPreviewModal({ open, onClose, data }: Props) {
                 >
                   {displayImage ? (
                     <>
-                      <img src={displayImage} alt={data.name || 'Product'} className="w-full h-full object-contain pointer-events-none select-none" />
+                      <Image src={displayImage} alt={data.name || 'Product'} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-contain pointer-events-none select-none" />
                       {zoomPos.show && (
                         <div
                           className="absolute inset-0 pointer-events-none"
@@ -301,7 +302,7 @@ export function ProductPreviewModal({ open, onClose, data }: Props) {
                             : 'border-gray-200 hover:border-gray-300 opacity-70 hover:opacity-100'
                         )}
                       >
-                        <img src={img.url} alt="" className="w-full h-full object-cover" />
+                        <Image src={img.url} alt="" width={80} height={80} className="w-full h-full object-cover" />
                       </button>
                     ))}
                   </div>

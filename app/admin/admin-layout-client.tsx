@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useBranding } from '@/lib/context/branding-context';
 import { supabase } from '@/lib/supabase';
@@ -22,6 +23,9 @@ import {
   Sun,
   Moon,
   ChevronRight,
+  Warehouse,
+  Users,
+  BookOpen,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -226,24 +230,65 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
     return () => { subscription.unsubscribe(); };
   }, [router]);
 
-  const ALL_MENU_ITEMS = [
-    { name: 'Dashboard',   href: '/admin/dashboard', icon: LayoutDashboard, roles: ['ADMIN','MANAGER','CASHIER','STAFF'] },
-    { name: 'Products',    href: '/admin/products',  icon: Package,         roles: ['ADMIN','MANAGER','CASHIER','STAFF'] },
-    { name: 'Reviews',     href: '/admin/reviews',   icon: Star,            roles: ['ADMIN','MANAGER'] },
-    { name: 'Sales (POS)', href: '/admin/pos',        icon: ShoppingCart,    roles: ['ADMIN','MANAGER','CASHIER'] },
-    { name: 'Orders',      href: '/admin/orders',    icon: CreditCard,      roles: ['ADMIN','MANAGER','CASHIER'] },
-    { name: 'Expenses',    href: '/admin/expenses',  icon: Wallet,          roles: ['ADMIN','MANAGER'] },
-    { name: 'Vendors',     href: '/admin/vendors',   icon: Store,           roles: ['ADMIN','MANAGER'] },
-    { name: 'Reports',     href: '/admin/reports',   icon: BarChart3,       roles: ['ADMIN','MANAGER'] },
-    { name: 'Settings',    href: '/admin/settings',  icon: Settings,        roles: ['ADMIN'] },
+  const MENU_GROUPS = [
+    {
+      category: "Main",
+      items: [
+        { name: 'Dashboard',   href: '/admin/dashboard', icon: LayoutDashboard, roles: ['ADMIN','MANAGER','CASHIER','STAFF'] },
+      ]
+    },
+    {
+      category: "Sales & POS",
+      items: [
+        { name: 'Sales (POS)', href: '/admin/pos',        icon: ShoppingCart,    roles: ['ADMIN','MANAGER','CASHIER'] },
+        { name: 'Orders',      href: '/admin/orders',    icon: CreditCard,      roles: ['ADMIN','MANAGER','CASHIER'] },
+        { name: 'Customers',   href: '/admin/customers', icon: Users,           roles: ['ADMIN','MANAGER','CASHIER','STAFF'] },
+      ]
+    },
+    {
+      category: "Product Management",
+      items: [
+        { name: 'Products',    href: '/admin/products',  icon: Package,         roles: ['ADMIN','MANAGER','CASHIER','STAFF'] },
+        { name: 'Inventory',   href: '/admin/inventory', icon: Warehouse,    roles: ['ADMIN','MANAGER','STAFF'] },
+        { name: 'Reviews',     href: '/admin/reviews',   icon: Star,            roles: ['ADMIN','MANAGER'] },
+      ]
+    },
+    {
+      category: "Procurement",
+      items: [
+        { name: 'Purchases',   href: '/admin/purchases', icon: ShoppingCart, roles: ['ADMIN','MANAGER','STAFF'] },
+        { name: 'Suppliers',   href: '/admin/suppliers', icon: Store,           roles: ['ADMIN','MANAGER','STAFF'] },
+      ]
+    },
+    {
+      category: "Finance & Accounting",
+      items: [
+        { name: 'Expenses',    href: '/admin/expenses',  icon: Wallet,          roles: ['ADMIN','MANAGER'] },
+        { name: 'Receivables', href: '/admin/reports/receivables', icon: Wallet, roles: ['ADMIN','MANAGER'] },
+        { name: 'Payables',    href: '/admin/reports/payables', icon: Wallet,   roles: ['ADMIN','MANAGER'] },
+        { name: 'Accounting',  href: '/admin/accounting',icon: BookOpen,        roles: ['ADMIN'] },
+      ]
+    },
+    {
+      category: "Analytics & Settings",
+      items: [
+        { name: 'Reports',     href: '/admin/reports',   icon: BarChart3,       roles: ['ADMIN','MANAGER'] },
+        { name: 'Settings',    href: '/admin/settings',  icon: Settings,        roles: ['ADMIN'] },
+      ]
+    }
   ];
-  
-  const menuItems = ALL_MENU_ITEMS.filter(i => i.roles.includes(staffRole));
+
+  const allowedGroups = MENU_GROUPS.map(group => ({
+    ...group,
+    items: group.items.filter(i => i.roles.includes(staffRole))
+  })).filter(group => group.items.length > 0);
+
+  const flatMenuItems = allowedGroups.flatMap(group => group.items);
 
   const BOTTOM_HREFS = ['/admin/dashboard', '/admin/orders', '/admin/products', '/admin/pos'];
-  const bottomItems = menuItems.filter(i => BOTTOM_HREFS.includes(i.href));
+  const bottomItems = flatMenuItems.filter(i => BOTTOM_HREFS.includes(i.href));
 
-  const currentPage = menuItems.find(i => pathname.startsWith(i.href));
+  const currentPage = flatMenuItems.find(i => pathname.startsWith(i.href));
   const initials = staffName.charAt(0).toUpperCase();
 
   const handleLogout = async () => { 
@@ -288,7 +333,7 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
           <div className="h-14 flex items-center justify-between px-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
             <div className="flex items-center gap-2.5 min-w-0">
               {siteLogo ? (
-                <img src={siteLogo} alt="Logo" style={{ maxHeight: '1.75rem', width: 'auto' }} className="object-contain" />
+                <Image src={siteLogo} alt="Logo" width={140} height={28} style={{ maxHeight: '1.75rem', width: 'auto' }} className="object-contain" />
               ) : (
                 <>
                   <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
@@ -317,24 +362,35 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
           </div>
 
           {/* Nav */}
-          <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
-            {menuItems.map((item) => {
-              const active = pathname.startsWith(item.href);
-              return (
-                <Link key={item.href} href={item.href} prefetch
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
-                    active
-                      ? "bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400"
-                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
-                  )}
-                >
-                  <item.icon className="w-4.5 h-4.5 shrink-0" />
-                  <span className="flex-1">{item.name}</span>
-                  {active && <ChevronRight className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
-                </Link>
-              );
-            })}
+          <nav className="flex-1 overflow-y-auto p-3 space-y-6">
+            {allowedGroups.map((group, idx) => (
+              <div key={idx} className="space-y-1">
+                {group.category !== 'Main' && (
+                  <h3 className="px-3 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+                    {group.category}
+                  </h3>
+                )}
+                <div className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const active = pathname.startsWith(item.href);
+                    return (
+                      <Link key={item.href} href={item.href} prefetch={false}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                          active
+                            ? "bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400"
+                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+                        )}
+                      >
+                        <item.icon className="w-4.5 h-4.5 shrink-0" />
+                        <span className="flex-1">{item.name}</span>
+                        {active && <ChevronRight className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
 
           {/* Logout */}

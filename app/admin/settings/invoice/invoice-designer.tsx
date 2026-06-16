@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -332,7 +333,7 @@ export function InvoiceDesigner({ settings, onSave }: InvoiceDesignerProps) {
                       className="hover:bg-blue-50/20 transition-colors"
                    >
                       {el.type === 'logo' && el.content ? (
-                          <img src={el.content} alt="Logo" className="w-full h-full object-contain pointer-events-none select-none" draggable={false} />
+                          <Image src={el.content} alt="Logo" fill className="object-contain pointer-events-none select-none" draggable={false} />
                       ) : (el.type === 'text' || el.type === 'company_details') ? (
                           <div className="pointer-events-none select-none w-full h-full text-zinc-900 leading-normal">{el.content}</div>
                       ) : null}

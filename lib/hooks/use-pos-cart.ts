@@ -67,7 +67,7 @@ export function usePOSCart() {
   const addItem = useCallback((product: POSProduct, variantId?: string) => {
     setCart((prev) => {
       const variant = variantId
-        ? product.variants.find((v) => v.id === variantId)
+        ? product.variants.find((v: any) => v.id === variantId)
         : null;
 
       const itemId = variantId || product.id;

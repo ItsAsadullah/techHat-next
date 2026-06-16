@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma, ProductLifecycleStatus } from '@prisma/client';
 import { unstable_cache } from 'next/cache';
 import type {
   CategoryPageData,
@@ -23,6 +23,7 @@ const PRODUCT_SELECT = {
   offerPrice: true,
   discountPercentage: true,
   stock: true,
+  reservedStock: true,
   minStock: true,
   isFeatured: true,
   isFlashSale: true,
@@ -73,7 +74,7 @@ function mapProduct(raw: any): CategoryProduct {
     price: r.price,
     offerPrice: r.offerPrice ?? null,
     discountPercentage: effectiveDiscount,
-    stock: r.stock,
+    stock: Math.max(0, (r.stock || 0) - (r.reservedStock || 0)),
     minStock: r.minStock ?? 5,
     isFeatured: r.isFeatured,
     isFlashSale: r.isFlashSale,
@@ -99,7 +100,7 @@ function mapProduct(raw: any): CategoryProduct {
 
 async function getAllDescendantIds(categoryId: string): Promise<string[]> {
   const allCategories = await prisma.category.findMany({
-    where: { isActive: true },
+    where: { status: 'ACTIVE' },
     select: { id: true, parentId: true },
   });
 
@@ -134,8 +135,8 @@ function buildProductWhere(
   excludePrice = false
 ): Prisma.ProductWhereInput {
   const where: Prisma.ProductWhereInput = {
-    isActive: true,
     categoryId: { in: categoryIds },
+    status: ProductLifecycleStatus.ACTIVE,
   };
 
   if (!excludePrice) {
@@ -202,7 +203,7 @@ function buildOrderBy(sort: string): Prisma.ProductOrderByWithRelationInput[] {
 
 async function buildBreadcrumbs(categoryId: string): Promise<{ id: string; name: string; slug: string }[]> {
   const allCategories = await prisma.category.findMany({
-    where: { isActive: true },
+    where: { status: 'ACTIVE' },
     select: { id: true, name: true, slug: true, parentId: true },
   });
 
@@ -256,7 +257,7 @@ async function _getCategoryPageData(
 ): Promise<CategoryPageData | null> {
   // 1. Fetch category
   const category = await prisma.category.findUnique({
-    where: { slug, isActive: true },
+    where: { slug, status: 'ACTIVE' },
     select: {
       id: true,
       name: true,
@@ -265,7 +266,7 @@ async function _getCategoryPageData(
       image: true,
       parentId: true,
       children: {
-        where: { isActive: true },
+        where: { status: 'ACTIVE' },
         select: { id: true, name: true, slug: true, image: true },
         orderBy: { sortOrder: 'asc' },
       },
@@ -425,7 +426,7 @@ export const getCategoryPageData = unstable_cache(
 
 async function _getCategoryMeta(slug: string) {
   return prisma.category.findUnique({
-    where: { slug, isActive: true },
+    where: { slug, status: 'ACTIVE' },
     select: { id: true, name: true, description: true, image: true, slug: true },
   });
 }
@@ -444,7 +445,7 @@ export async function getCategoryTree() {
     select: {
       id: true, name: true, slug: true, image: true, sortOrder: true,
       children: {
-        where: { isActive: true },
+        where: { status: 'ACTIVE' },
         select: { id: true, name: true, slug: true, image: true, sortOrder: true },
         orderBy: { sortOrder: 'asc' },
       },

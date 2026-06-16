@@ -605,7 +605,7 @@ async function main() {
     let parentCat = await prisma.category.findUnique({ where: { slug: parent.slug } });
     if (!parentCat) {
       parentCat = await prisma.category.create({
-        data: { name: parent.name, slug: parent.slug, image: parent.image, isActive: true, sortOrder: CATEGORY_TREE.indexOf(parent) },
+        data: { name: parent.name, slug: parent.slug, image: parent.image,  sortOrder: CATEGORY_TREE.indexOf(parent) },
       });
       console.log(`  ✅ [parent] ${parent.name}`);
     } else {
@@ -617,7 +617,7 @@ async function main() {
       let childCat = await prisma.category.findUnique({ where: { slug: child.slug } });
       if (!childCat) {
         childCat = await prisma.category.create({
-          data: { name: child.name, slug: child.slug, image: child.image, parentId: parentCat.id, isActive: true, sortOrder: (parent.children ?? []).indexOf(child) },
+          data: { name: child.name, slug: child.slug, image: child.image, parentId: parentCat.id,  sortOrder: (parent.children ?? []).indexOf(child) },
         });
         console.log(`    ✅ ${child.name}`);
       } else {
@@ -680,7 +680,7 @@ async function main() {
         description: p.description,
         images: p.images,
         isFeatured: p.isFeatured ?? false,
-        isActive: true,
+        
         isFlashSale: p.isFlashSale ?? false,
         isBestSeller: p.isBestSeller ?? false,
         soldCount: p.soldCount ?? 0,

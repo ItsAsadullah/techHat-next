@@ -144,7 +144,7 @@ export async function POST(req: Request) {
       case 'স্টক লিস্ট': {
         // Find simple products with low stock
         const lowStockProducts = await prisma.product.findMany({
-          where: { productVariantType: 'simple', isActive: true, stock: { lte: prisma.product.fields.minStock } },
+          where: { productVariantType: 'simple', status: 'ACTIVE', stock: { lte: prisma.product.fields.minStock } },
           select: { name: true, stock: true },
           take: 15,
         });

@@ -3,7 +3,7 @@
 import { useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Printer, X, CheckCircle2, Download } from 'lucide-react';
+import { Printer, X, CheckCircle2, Download, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import type { CartItem } from '@/lib/actions/pos-actions';
 import type { InvoiceSettings } from '@/lib/actions/invoice-settings-actions';
 
@@ -48,12 +48,13 @@ interface POSReceiptProps {
   invoiceSettings?: InvoiceSettings;
 }
 
-export function POSReceipt({ isOpen, onClose, receipt, invoiceSettings }: POSReceiptProps) {
+export function POSReceipt({ isOpen, onClose, receipt, invoiceSettings, status = 'success', errorMessage, onRetry }: POSReceiptProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
 
   if (!receipt) return null;
 
   const handlePrint = () => {
+    if (status !== 'success') return;
     const printWindow = window.open('', '_blank', 'width=800,height=1123');
     if (!printWindow) return;
 
@@ -618,7 +619,7 @@ export function POSReceipt({ isOpen, onClose, receipt, invoiceSettings }: POSRec
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-md p-0 overflow-hidden">
         <DialogTitle className="sr-only">Sale Receipt</DialogTitle>
         {/* Success Header */}
         <div className="bg-gradient-to-br from-green-500 to-emerald-600 px-6 py-8 text-center text-white">

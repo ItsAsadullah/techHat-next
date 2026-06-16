@@ -30,8 +30,7 @@ async function getCategoryProductSections(): Promise<CategorySection[]> {
       slug: true,
       parentId: true,
       parent: { select: { name: true } },
-      products: {
-        where: { isActive: true },
+      products: { where: { status: 'ACTIVE' },
         select: {
           id: true,
           name: true,

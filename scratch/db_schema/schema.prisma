@@ -1,0 +1,1305 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model AccountingPeriod {
+  id             String   @id
+  fiscal_year_id String
+  name           String
+  start_date     DateTime
+  end_date       DateTime
+  is_closed      Boolean  @default(false)
+  created_at     DateTime @default(now())
+
+  @@map("accounting_periods")
+}
+
+model attribute_values {
+  id            Int        @id @default(autoincrement())
+  attribute_id  Int
+  value         String
+  color_code    String?
+  is_active     Boolean    @default(true)
+  display_order Int        @default(0)
+  attributes    attributes @relation(fields: [attribute_id], references: [id], onDelete: Cascade)
+}
+
+model attributes {
+  id                  Int                   @id @default(autoincrement())
+  name                String
+  slug                String?
+  type                String?
+  is_active           Boolean               @default(true)
+  attribute_values    attribute_values[]
+  category_attributes category_attributes[]
+}
+
+model audit_logs {
+  id           String   @id
+  entity       String
+  entity_id    String?
+  action       String
+  changes      String
+  performed_by String?
+  ip_address   String?
+  user_agent   String?
+  created_at   DateTime @default(now())
+
+  @@index([entity, entity_id])
+  @@index([performed_by])
+}
+
+model brands {
+  id          String     @id
+  name        String
+  short_code  String?
+  slug        String     @unique
+  logo        String?
+  is_featured Boolean    @default(false)
+  products    products[]
+
+  @@index([name])
+}
+
+model campaigns {
+  id           String     @id
+  title        String
+  subtitle     String?
+  banner_image String?
+  cta_link     String?
+  is_active    Boolean    @default(true)
+  priority     Int        @default(0)
+  start_date   DateTime?
+  end_date     DateTime?
+  created_at   DateTime   @default(now())
+  updated_at   DateTime
+  products     products[]
+}
+
+model categories {
+  id                  String                @id
+  name                String
+  short_code          String?
+  slug                String                @unique
+  image               String?
+  description         String?
+  parentId            String?
+  isActive            Boolean               @default(true)
+  sort_order          Int                   @default(0)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  categories          categories?           @relation("categoriesTocategories", fields: [parentId], references: [id])
+  other_categories    categories[]          @relation("categoriesTocategories")
+  category_attributes category_attributes[]
+  products            products[]
+  spec_templates      spec_templates[]
+
+  @@index([name])
+  @@index([parentId, isActive])
+}
+
+model category_attributes {
+  category_id   String
+  attribute_id  Int
+  is_required   Boolean    @default(false)
+  display_order Int        @default(0)
+  attributes    attributes @relation(fields: [attribute_id], references: [id], onDelete: Cascade)
+  categories    categories @relation(fields: [category_id], references: [id], onDelete: Cascade)
+
+  @@id([category_id, attribute_id])
+}
+
+model ChartOfAccount {
+  id                String             @id
+  code              String             @unique
+  name              String
+  type              AccountType
+  is_system         Boolean            @default(false)
+  balance           Float              @default(0)
+  journalEntryItems JournalEntryItem[]
+
+  @@map("chart_of_accounts")
+}
+
+model CustomerLedger {
+  id              String   @id
+  customer_id     String
+  type            String
+  debit           Float    @default(0)
+  credit          Float    @default(0)
+  running_balance Float
+  reference_id    String?
+  note            String?
+  date            DateTime @default(now())
+  customer        Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+
+  @@index([customer_id])
+  @@map("customer_ledgers")
+}
+
+model Customer {
+  id              String           @id
+  customer_code   String           @unique
+  name            String
+  phone           String?
+  email           String?
+  address         String?
+  company_name    String?
+  tax_id          String?
+  customerGroup   String           @default("RETAIL")
+  opening_balance Float            @default(0)
+  balance         Float            @default(0)
+  credit_limit    Float            @default(0)
+  status          String           @default("ACTIVE")
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @default(now())
+  customerLedgers CustomerLedger[]
+  orders          orders[]
+
+  @@map("customers")
+}
+
+model due_payments {
+  id         String   @id
+  order_id   String
+  amount     Float
+  paid_by    String?
+  note       String?
+  created_at DateTime @default(now())
+}
+
+model expense_categories {
+  id          String     @id
+  name        String     @unique
+  slug        String     @unique
+  icon        String?
+  color       String?
+  description String?
+  is_active   Boolean    @default(true)
+  created_at  DateTime   @default(now())
+  updated_at  DateTime
+  expenses    expenses[]
+}
+
+model expenses {
+  id                 String             @id
+  vendor_id          String?
+  category_id        String
+  title              String
+  amount             Float
+  date               DateTime           @default(now())
+  note               String?
+  attachment         String?
+  reference          String?
+  payment_method     String             @default("CASH")
+  paid_to            String?
+  is_recurring       Boolean            @default(false)
+  created_at         DateTime           @default(now())
+  updated_at         DateTime
+  expense_categories expense_categories @relation(fields: [category_id], references: [id])
+  vendors            vendors?           @relation(fields: [vendor_id], references: [id])
+}
+
+model FiscalYear {
+  id         String   @id
+  name       String   @unique
+  start_date DateTime
+  end_date   DateTime
+  is_closed  Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
+  @@map("fiscal_years")
+}
+
+model GoodsReceiveNoteItem {
+  id               String            @id
+  grn_id           String
+  product_id       String
+  variant_id       String?
+  received_qty     Int
+  rejected_qty     Int               @default(0)
+  accepted_qty     Int
+  unit_cost        Float             @default(0)
+  batch_number     String?
+  imei             String?
+  serial_number    String?
+  created_at       DateTime          @default(now())
+  goodsReceiveNote GoodsReceiveNote  @relation(fields: [grn_id], references: [id], onDelete: Cascade)
+  products         products          @relation(fields: [product_id], references: [id])
+  product_variants product_variants? @relation(fields: [variant_id], references: [id])
+
+  @@map("goods_receive_note_items")
+}
+
+model GoodsReceiveNote {
+  id                    String                 @id
+  grn_number            String                 @unique
+  purchase_order_id     String
+  supplier_id           String
+  warehouse_id          String
+  received_date         DateTime               @default(now())
+  status                GRNStatus              @default(DRAFT)
+  note                  String?
+  attachment            String?
+  created_at            DateTime               @default(now())
+  updated_at            DateTime
+  goodsReceiveNoteItems GoodsReceiveNoteItem[]
+  purchaseOrder         PurchaseOrder          @relation(fields: [purchase_order_id], references: [id])
+  suppliers             suppliers              @relation(fields: [supplier_id], references: [id])
+  warehouse             Warehouse              @relation(fields: [warehouse_id], references: [id])
+
+  @@map("goods_receive_notes")
+}
+
+model guarantors {
+  id         String   @id
+  order_id   String   @unique
+  name       String
+  phone      String
+  relation   String?
+  address    String?
+  created_at DateTime @default(now())
+  updated_at DateTime
+  orders     orders   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+}
+
+model ip_rate_limits {
+  id            String    @id
+  ip_address    String
+  action        String
+  count         Int       @default(1)
+  window_start  DateTime  @default(now())
+  blocked_until DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime
+
+  @@unique([ip_address, action])
+}
+
+model JournalEntry {
+  id                   String             @id
+  entry_number         String             @unique
+  date                 DateTime           @default(now())
+  reference            String?
+  note                 String?
+  created_at           DateTime           @default(now())
+  accounting_period_id String?
+  journalEntryItems    JournalEntryItem[]
+
+  @@map("journal_entries")
+}
+
+model JournalEntryItem {
+  id               String         @id
+  journal_entry_id String
+  account_id       String
+  debit            Float          @default(0)
+  credit           Float          @default(0)
+  description      String?
+  chartOfAccount   ChartOfAccount @relation(fields: [account_id], references: [id])
+  journalEntry     JournalEntry   @relation(fields: [journal_entry_id], references: [id], onDelete: Cascade)
+
+  @@map("journal_entry_items")
+}
+
+model order_events {
+  id                 String   @id
+  order_id           String
+  event_type         String
+  old_status         String?
+  new_status         String?
+  old_payment_status String?
+  new_payment_status String?
+  changed_by         String?
+  note               String?
+  metadata           Json?
+  created_at         DateTime @default(now())
+  orders             orders   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([order_id])
+}
+
+model order_items {
+  id               String            @id
+  order_id         String
+  product_id       String
+  variant_id       String?
+  product_name     String
+  quantity         Int
+  unit_price       Float
+  cost_price       Float             @default(0)
+  total            Float
+  created_at       DateTime          @default(now())
+  orders           orders            @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  products         products          @relation(fields: [product_id], references: [id])
+  product_variants product_variants? @relation(fields: [variant_id], references: [id])
+}
+
+model order_payments {
+  id             String        @id
+  order_id       String
+  method         PaymentMethod
+  amount         Float
+  provider       String?
+  transaction_id String?
+  phone_number   String?
+  note           String?
+  created_at     DateTime      @default(now())
+  orders         orders        @relation(fields: [order_id], references: [id], onDelete: Cascade)
+}
+
+model orders {
+  id                 String            @id
+  order_number       String            @unique
+  user_id            String?
+  tracking_token     String            @unique
+  customer_name      String?
+  customer_phone     String?
+  customer_email     String?
+  shipping_address   String?
+  division           String?
+  district           String?
+  upazila            String?
+  order_note         String?
+  estimated_delivery DateTime?
+  shipped_at         DateTime?
+  delivered_at       DateTime?
+  cancelled_at       DateTime?
+  cancel_reason      String?
+  sub_total          Float             @default(0)
+  total_amount       Float             @default(0)
+  discount           Float             @default(0)
+  coupon_code        String?
+  coupon_discount    Float             @default(0)
+  tax                Float             @default(0)
+  shipping_cost      Float             @default(0)
+  grand_total        Float             @default(0)
+  payment_method     PaymentMethod
+  payment_status     PaymentStatus     @default(UNPAID)
+  transaction_id     String?
+  mobile_provider    String?
+  mobile_number      String?
+  refund_amount      Float?
+  refund_note        String?
+  status             OrderStatus       @default(PENDING)
+  internal_note      String?
+  ip_address         String?
+  is_pos             Boolean           @default(false)
+  cashier_id         String?
+  cash_payment       Float?
+  card_payment       Float?
+  mobile_payment     Float?
+  pos_payment_status POSPaymentStatus?
+  paid_amount        Float?            @default(0)
+  due_amount         Float?            @default(0)
+  pos_customer_id    String?
+  created_at         DateTime          @default(now())
+  updated_at         DateTime
+  customer_id        String?
+  guarantors         guarantors?
+  order_events       order_events[]
+  order_items        order_items[]
+  order_payments     order_payments[]
+  customer           Customer?         @relation(fields: [customer_id], references: [id])
+  pos_customers      pos_customers?    @relation(fields: [pos_customer_id], references: [id])
+  users              users?            @relation(fields: [user_id], references: [id])
+  returns            returns[]
+
+  @@index([created_at])
+  @@index([customer_phone])
+  @@index([is_pos, payment_status, created_at])
+  @@index([status])
+  @@index([tracking_token])
+}
+
+model payouts {
+  id            String   @id
+  vendorId      String
+  amount        Float
+  status        String   @default("PENDING")
+  transactionId String?
+  note          String?
+  createdAt     DateTime @default(now())
+  vendors       vendors  @relation(fields: [vendorId], references: [id])
+}
+
+model pos_customers {
+  id             String   @id
+  name           String
+  phone          String   @unique
+  email          String?
+  address        String?
+  total_purchase Float    @default(0)
+  total_due      Float    @default(0)
+  created_at     DateTime @default(now())
+  updated_at     DateTime
+  orders         orders[]
+}
+
+model ProductAuditLog {
+  id             String   @id
+  product_id     String
+  action         String
+  changed_by     String?
+  changed_fields Json?
+  note           String?
+  created_at     DateTime @default(now())
+  products       products @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id, created_at])
+  @@map("product_audit_logs")
+}
+
+model product_images {
+  id               String             @id
+  product_id       String
+  url              String
+  public_id        String?
+  is_thumbnail     Boolean            @default(false)
+  display_order    Int                @default(0)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  products         products           @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  product_variants product_variants[]
+
+  @@index([product_id, display_order])
+  @@index([product_id, is_thumbnail])
+}
+
+model product_serials {
+  id               String           @id
+  variantId        String
+  serialNumber     String
+  imei             String?
+  activation_date  DateTime?
+  warranty_status  String?
+  status           SerialStatus     @default(AVAILABLE)
+  isSold           Boolean          @default(false)
+  soldAt           DateTime?
+  orderId          String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime
+  product_variants product_variants @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, serialNumber])
+}
+
+model product_specs {
+  id         String   @id
+  product_id String
+  name       String
+  value      String
+  products   products @relation(fields: [product_id], references: [id], onDelete: Cascade)
+}
+
+model product_variants {
+  id                     String                  @id
+  productId              String
+  name                   String
+  sku                    String?
+  upc                    String?
+  barcode                String?
+  price                  Float
+  costPrice              Float                   @default(0)
+  last_purchase_cost     Float                   @default(0)
+  landed_cost            Float                   @default(0)
+  expense                Float                   @default(0)
+  offerPrice             Float?
+  stock                  Int                     @default(0)
+  reserved_stock         Int                     @default(0)
+  minStock               Int                     @default(5)
+  hasSerial              Boolean                 @default(false)
+  image                  String?
+  weight                 Float?
+  width                  Float?
+  height                 Float?
+  depth                  Float?
+  product_image_id       String?
+  attributes             Json?
+  goodsReceiveNoteItems  GoodsReceiveNoteItem[]
+  order_items            order_items[]
+  product_serials        product_serials[]
+  products               products                @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product_images         product_images?         @relation(fields: [product_image_id], references: [id])
+  purchaseOrderItems     PurchaseOrderItem[]
+  purchaseReturnItems    PurchaseReturnItem[]
+  return_items           return_items[]
+  stockAdjustmentItems   StockAdjustmentItem[]
+  stock_history          stock_history[]
+  stockLedgers           StockLedger[]
+  warehouseTransferItems WarehouseTransferItem[]
+}
+
+model products {
+  id                     String                  @id
+  vendorId               String?
+  categoryId             String
+  brandId                String?
+  name                   String
+  slug                   String                  @unique
+  description            String?
+  shortDesc              String?
+  images                 String[]
+  videoUrl               String?
+  price                  Float
+  offerPrice             Float?
+  onlinePrice            Float?
+  wholesalePrice         Float?
+  taxClass               String?
+  costPrice              Float                   @default(0)
+  last_purchase_cost     Float                   @default(0)
+  landed_cost            Float                   @default(0)
+  model                  String?
+  sku                    String?                 @unique
+  barcode                String?
+  stock                  Int                     @default(0)
+  reserved_stock         Int                     @default(0)
+  trackInventory         Boolean                 @default(true)
+  trackSerials           Boolean                 @default(false)
+  trackExpiry            Boolean                 @default(false)
+  trackBatch             Boolean                 @default(false)
+  trackWarranty          Boolean                 @default(false)
+  minStock               Int                     @default(5)
+  maxStock               Int                     @default(100)
+  reorderPoint           Int                     @default(10)
+  defaultWarehouseId     String?
+  defaultSupplierId      String?
+  type                   ProductType             @default(PHYSICAL)
+  productVariantType     String                  @default("simple")
+  isFeatured             Boolean                 @default(false)
+  isFlashSale            Boolean                 @default(false)
+  is_best_seller         Boolean                 @default(false)
+  view_count             Int                     @default(0)
+  sold_count             Int                     @default(0)
+  discount_percentage    Float?
+  flash_sale_end_time    DateTime?
+  campaign_id            String?
+  unit                   String?
+  warrantyMonths         Int?                    @default(0)
+  warrantyType           String?
+  status                 ProductLifecycleStatus  @default(DRAFT)
+  seoTitle               String?
+  metaDescription        String?
+  safetyStock            Int                     @default(0)
+  reorderQty             Int                     @default(0)
+  leadTimeDays           Int                     @default(0)
+  tags                   String[]
+  specifications         Json?
+  attributes             Json?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime
+  goodsReceiveNoteItems  GoodsReceiveNoteItem[]
+  order_items            order_items[]
+  productAuditLogs       ProductAuditLog[]
+  product_images         product_images[]
+  product_specs          product_specs[]
+  product_variants       product_variants[]
+  brands                 brands?                 @relation(fields: [brandId], references: [id])
+  campaigns              campaigns?              @relation(fields: [campaign_id], references: [id])
+  categories             categories              @relation(fields: [categoryId], references: [id])
+  vendors                vendors?                @relation(fields: [vendorId], references: [id])
+  purchaseOrderItems     PurchaseOrderItem[]
+  purchaseReturnItems    PurchaseReturnItem[]
+  return_items           return_items[]
+  reviews                reviews[]
+  stockAdjustmentItems   StockAdjustmentItem[]
+  stock_history          stock_history[]
+  stockLedgers           StockLedger[]
+  supplierProducts       SupplierProduct[]
+  warehouseTransferItems WarehouseTransferItem[]
+  wishlist               wishlist[]
+
+  @@index([brandId])
+  @@index([categoryId, status])
+  @@index([name])
+  @@index([status, createdAt])
+  @@index([status, isFeatured])
+  @@index([status, isFlashSale])
+  @@index([status, is_best_seller])
+  @@index([status, offerPrice])
+  @@index([status, price])
+  @@index([status, sold_count])
+  @@index([status, view_count])
+}
+
+model Profile {
+  id String @id @db.Uuid
+
+  @@map("profiles")
+}
+
+model PurchaseOrderItem {
+  id                String            @id
+  purchase_order_id String
+  product_id        String
+  variant_id        String?
+  quantity          Int
+  received_qty      Int               @default(0)
+  unit_cost         Float
+  discount          Float             @default(0)
+  tax               Float             @default(0)
+  subtotal          Float
+  created_at        DateTime          @default(now())
+  products          products          @relation(fields: [product_id], references: [id])
+  purchaseOrder     PurchaseOrder     @relation(fields: [purchase_order_id], references: [id], onDelete: Cascade)
+  product_variants  product_variants? @relation(fields: [variant_id], references: [id])
+
+  @@map("purchase_order_items")
+}
+
+model PurchaseOrder {
+  id                     String              @id
+  po_number              String              @unique
+  supplier_id            String
+  warehouse_id           String?
+  date                   DateTime            @default(now())
+  expected_delivery_date DateTime?
+  total_amount           Float               @default(0)
+  discount               Float               @default(0)
+  tax                    Float               @default(0)
+  shipping_cost          Float               @default(0)
+  other_cost             Float               @default(0)
+  grand_total            Float               @default(0)
+  status                 PurchaseOrderStatus @default(DRAFT)
+  note                   String?
+  attachment             String?
+  created_at             DateTime            @default(now())
+  updated_at             DateTime
+  goodsReceiveNotes      GoodsReceiveNote[]
+  purchaseOrderItems     PurchaseOrderItem[]
+  suppliers              suppliers           @relation(fields: [supplier_id], references: [id])
+  warehouse              Warehouse?          @relation(fields: [warehouse_id], references: [id])
+  purchaseReturns        PurchaseReturn[]
+
+  @@map("purchase_orders")
+}
+
+model PurchaseReturnItem {
+  id                 String            @id
+  purchase_return_id String
+  product_id         String
+  variant_id         String?
+  return_qty         Int
+  unit_cost          Float
+  products           products          @relation(fields: [product_id], references: [id])
+  purchaseReturn     PurchaseReturn    @relation(fields: [purchase_return_id], references: [id], onDelete: Cascade)
+  product_variants   product_variants? @relation(fields: [variant_id], references: [id])
+
+  @@map("purchase_return_items")
+}
+
+model PurchaseReturn {
+  id                  String               @id
+  return_number       String               @unique
+  supplier_id         String
+  purchase_order_id   String
+  warehouse_id        String
+  date                DateTime             @default(now())
+  status              PurchaseReturnStatus @default(DRAFT)
+  reason              String?
+  created_at          DateTime             @default(now())
+  updated_at          DateTime
+  purchaseReturnItems PurchaseReturnItem[]
+  purchaseOrder       PurchaseOrder        @relation(fields: [purchase_order_id], references: [id])
+  suppliers           suppliers            @relation(fields: [supplier_id], references: [id])
+  warehouse           Warehouse            @relation(fields: [warehouse_id], references: [id])
+
+  @@map("purchase_returns")
+}
+
+model return_items {
+  id               String            @id
+  return_id        String
+  product_id       String
+  variant_id       String?
+  quantity         Int
+  unit_price       Float
+  total            Float
+  products         products          @relation(fields: [product_id], references: [id])
+  returns          returns           @relation(fields: [return_id], references: [id], onDelete: Cascade)
+  product_variants product_variants? @relation(fields: [variant_id], references: [id])
+}
+
+model returns {
+  id            String         @id
+  return_number String         @unique
+  order_id      String
+  reason        String
+  status        ReturnStatus   @default(PENDING)
+  refund_amount Float
+  processed_by  String?
+  note          String?
+  created_at    DateTime       @default(now())
+  updated_at    DateTime
+  return_items  return_items[]
+  orders        orders         @relation(fields: [order_id], references: [id])
+}
+
+model review_helpful {
+  id        String   @id
+  review_id String
+  user_ip   String
+  createdAt DateTime @default(now())
+  reviews   reviews  @relation(fields: [review_id], references: [id], onDelete: Cascade)
+
+  @@unique([review_id, user_ip])
+}
+
+model review_images {
+  id        String  @id
+  review_id String
+  image_url String
+  reviews   reviews @relation(fields: [review_id], references: [id], onDelete: Cascade)
+}
+
+model reviews {
+  id             String           @id
+  productId      String
+  userId         String?
+  orderId        String?
+  name           String
+  email          String?
+  rating         Int
+  review_text    String
+  status         ReviewStatus     @default(PENDING)
+  is_verified    Boolean          @default(false)
+  helpful_count  Int              @default(0)
+  admin_note     String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime
+  review_helpful review_helpful[]
+  review_images  review_images[]
+  products       products         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  users          users?           @relation(fields: [userId], references: [id])
+
+  @@index([productId, status])
+  @@index([userId])
+}
+
+model saved_spec_templates {
+  id        String   @id
+  name      String   @unique
+  keys      String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+}
+
+model settings {
+  id          String   @id
+  key         String   @unique
+  value       String
+  category    String   @default("general")
+  description String?
+  updated_by  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+
+  @@index([category])
+}
+
+model SkuSequence {
+  id        String   @id
+  prefix    String   @unique
+  lastValue Int      @default(0)
+  updatedAt DateTime
+
+  @@map("sku_sequences")
+}
+
+model spec_templates {
+  id          String     @id
+  category_id String
+  name        String
+  sort_order  Int        @default(0)
+  categories  categories @relation(fields: [category_id], references: [id], onDelete: Cascade)
+}
+
+model staff_members {
+  id                String           @id
+  name              String
+  phone             String           @unique
+  email             String?
+  role              String?          @default("Cashier")
+  permissions       String?
+  joining_date      DateTime         @default(now())
+  base_salary       Float            @default(0)
+  is_active         Boolean          @default(true)
+  address           String?
+  nid_number        String?
+  emergency_contact String?
+  created_at        DateTime         @default(now())
+  updated_at        DateTime
+  staff_salaries    staff_salaries[]
+}
+
+model staff_salaries {
+  id             String        @id
+  staff_id       String
+  month          Int
+  year           Int
+  basic_salary   Float
+  overtime       Float         @default(0)
+  bonus          Float         @default(0)
+  deduction      Float         @default(0)
+  advance        Float         @default(0)
+  net_salary     Float
+  paid_amount    Float         @default(0)
+  due_amount     Float         @default(0)
+  payment_method String?
+  payment_date   DateTime?
+  status         String        @default("PENDING")
+  note           String?
+  created_at     DateTime      @default(now())
+  updated_at     DateTime
+  staff_members  staff_members @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+
+  @@unique([staff_id, month, year])
+}
+
+model StockAdjustmentItem {
+  id               String            @id
+  adjustment_id    String
+  product_id       String
+  variant_id       String?
+  system_qty       Int
+  actual_qty       Int
+  adjusted_qty     Int
+  unit_cost        Float
+  stockAdjustment  StockAdjustment   @relation(fields: [adjustment_id], references: [id], onDelete: Cascade)
+  products         products          @relation(fields: [product_id], references: [id])
+  product_variants product_variants? @relation(fields: [variant_id], references: [id])
+
+  @@map("stock_adjustment_items")
+}
+
+model StockAdjustment {
+  id                   String                @id
+  adjustment_number    String                @unique
+  date                 DateTime              @default(now())
+  warehouse_id         String
+  reason               StockAdjustmentReason
+  note                 String?
+  status               StockAdjustmentStatus @default(DRAFT)
+  approved_by          String?
+  created_at           DateTime              @default(now())
+  updated_at           DateTime
+  stockAdjustmentItems StockAdjustmentItem[]
+  warehouse            Warehouse             @relation(fields: [warehouse_id], references: [id])
+
+  @@map("stock_adjustments")
+}
+
+model stock_history {
+  id               String            @id
+  product_id       String
+  variant_id       String?
+  action           StockAction
+  quantity         Int
+  previous_stock   Int
+  new_stock        Int
+  reason           String?
+  note             String?
+  source           String?
+  created_by       String?
+  createdAt        DateTime          @default(now())
+  products         products          @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  product_variants product_variants? @relation(fields: [variant_id], references: [id], onDelete: Cascade)
+}
+
+model StockLedger {
+  id               String             @id
+  date             DateTime           @default(now())
+  reference_type   StockLedgerRefType
+  reference_id     String
+  warehouse_id     String
+  product_id       String
+  variant_id       String?
+  opening_qty      Int
+  in_qty           Int                @default(0)
+  out_qty          Int                @default(0)
+  closing_qty      Int
+  unit_cost        Float
+  total_value      Float
+  remarks          String?
+  created_by       String?
+  created_at       DateTime           @default(now())
+  products         products           @relation(fields: [product_id], references: [id])
+  product_variants product_variants?  @relation(fields: [variant_id], references: [id])
+  warehouse        Warehouse          @relation(fields: [warehouse_id], references: [id])
+
+  @@index([date])
+  @@index([product_id, warehouse_id])
+  @@index([reference_type, reference_id])
+  @@index([warehouse_id, date])
+  @@map("stock_ledgers")
+}
+
+model StockReservation {
+  id            String   @id
+  product_id    String
+  variant_id    String?
+  referenceType String
+  reference_id  String
+  quantity      Int
+  expires_at    DateTime
+  created_at    DateTime @default(now())
+
+  @@index([product_id, variant_id])
+  @@index([reference_id])
+  @@map("stock_reservations")
+}
+
+model SupplierLedger {
+  id              String    @id
+  supplier_id     String
+  type            String
+  debit           Float     @default(0)
+  credit          Float     @default(0)
+  running_balance Float
+  reference_id    String?
+  note            String?
+  date            DateTime  @default(now())
+  suppliers       suppliers @relation(fields: [supplier_id], references: [id], onDelete: Cascade)
+
+  @@index([supplier_id])
+  @@map("supplier_ledgers")
+}
+
+model supplier_payments {
+  id             String    @id
+  supplier_id    String
+  amount         Float
+  payment_method String    @default("CASH")
+  note           String?
+  created_at     DateTime  @default(now())
+  suppliers      suppliers @relation(fields: [supplier_id], references: [id])
+}
+
+model SupplierProduct {
+  id             String     @id
+  product_id     String
+  supplier_id    String?
+  supplier_name  String
+  supplier_sku   String?
+  lead_time_days Int        @default(7)
+  moq            Int        @default(1)
+  unit_cost      Float      @default(0)
+  is_primary     Boolean    @default(false)
+  created_at     DateTime   @default(now())
+  updated_at     DateTime
+  products       products   @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  suppliers      suppliers? @relation(fields: [supplier_id], references: [id])
+
+  @@index([product_id])
+  @@index([supplier_id])
+  @@map("supplier_products")
+}
+
+model suppliers {
+  id                String              @id
+  supplier_code     String?             @unique
+  name              String
+  company_name      String?
+  contact_person    String?
+  phone             String
+  mobile_number     String?
+  whatsapp          String?
+  email             String?
+  address           String?
+  district          String?
+  country           String?
+  trade_license_no  String?
+  bin_number        String?
+  tin_number        String?
+  opening_balance   Float               @default(0)
+  status            SupplierStatus      @default(ACTIVE)
+  notes             String?
+  created_at        DateTime            @default(now())
+  updated_at        DateTime
+  goodsReceiveNotes GoodsReceiveNote[]
+  purchaseOrders    PurchaseOrder[]
+  purchaseReturns   PurchaseReturn[]
+  supplierLedgers   SupplierLedger[]
+  supplier_payments supplier_payments[]
+  supplierProducts  SupplierProduct[]
+}
+
+model users {
+  id        String     @id
+  email     String     @unique
+  fullName  String?
+  phone     String?
+  avatarUrl String?
+  role      Role       @default(USER)
+  status    Boolean    @default(true)
+  vendorId  String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime
+  orders    orders[]
+  reviews   reviews[]
+  vendors   vendors?   @relation(fields: [vendorId], references: [id])
+  wishlist  wishlist[]
+}
+
+model vendors {
+  id             String     @id
+  name           String
+  slug           String     @unique
+  logo           String?
+  banner         String?
+  description    String?
+  email          String
+  phone          String
+  address        String
+  commissionRate Float      @default(0)
+  balance        Float      @default(0)
+  isVerified     Boolean    @default(false)
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime
+  expenses       expenses[]
+  payouts        payouts[]
+  products       products[]
+  users          users[]
+}
+
+model WarehouseTransferItem {
+  id                    String            @id
+  warehouse_transfer_id String
+  product_id            String
+  variant_id            String?
+  quantity              Int
+  received_qty          Int               @default(0)
+  products              products          @relation(fields: [product_id], references: [id])
+  product_variants      product_variants? @relation(fields: [variant_id], references: [id])
+  warehouseTransfer     WarehouseTransfer @relation(fields: [warehouse_transfer_id], references: [id], onDelete: Cascade)
+
+  @@map("warehouse_transfer_items")
+}
+
+model WarehouseTransfer {
+  id                                                   String                  @id
+  transfer_number                                      String                  @unique
+  source_id                                            String
+  destination_id                                       String
+  date                                                 DateTime                @default(now())
+  status                                               TransferStatus          @default(DRAFT)
+  transfer_cost                                        Float                   @default(0)
+  note                                                 String?
+  created_at                                           DateTime                @default(now())
+  updated_at                                           DateTime
+  warehouseTransferItems                               WarehouseTransferItem[]
+  warehousesWarehouseTransfersDestinationIdToWarehouse Warehouse               @relation("warehouseTransfersDestinationIdToWarehouse", fields: [destination_id], references: [id])
+  warehousesWarehouseTransfersSourceIdToWarehouse      Warehouse               @relation("warehouseTransfersSourceIdToWarehouse", fields: [source_id], references: [id])
+
+  @@map("warehouse_transfers")
+}
+
+model Warehouse {
+  id                                                           String              @id
+  name                                                         String
+  code                                                         String              @unique
+  type                                                         WarehouseType       @default(MAIN)
+  address                                                      String?
+  is_active                                                    Boolean             @default(true)
+  created_at                                                   DateTime            @default(now())
+  updated_at                                                   DateTime
+  goodsReceiveNotes                                            GoodsReceiveNote[]
+  purchaseOrders                                               PurchaseOrder[]
+  purchaseReturns                                              PurchaseReturn[]
+  stockAdjustments                                             StockAdjustment[]
+  stockLedgers                                                 StockLedger[]
+  warehouseTransfersWarehouseTransfersDestinationIdToWarehouse WarehouseTransfer[] @relation("warehouseTransfersDestinationIdToWarehouse")
+  warehouseTransfersWarehouseTransfersSourceIdToWarehouse      WarehouseTransfer[] @relation("warehouseTransfersSourceIdToWarehouse")
+
+  @@map("warehouses")
+}
+
+model wishlist {
+  id        String   @id
+  userId    String
+  productId String
+  products  products @relation(fields: [productId], references: [id], onDelete: Cascade)
+  users     users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum GRNStatus {
+  DRAFT
+  RECEIVED
+  REJECTED
+  PARTIAL
+}
+
+enum OrderStatus {
+  DRAFT
+  PENDING_PAYMENT
+  PENDING
+  CONFIRMED
+  PROCESSING
+  PACKED
+  SHIPPED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  REFUND_REQUESTED
+  REFUNDED
+  FAILED
+  RETURNED
+}
+
+enum POSPaymentStatus {
+  PAID
+  PARTIAL
+  DUE
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  MOBILE_BANKING
+  ONLINE
+  MIXED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+  FAILED
+  PARTIALLY_PAID
+  REFUNDED
+}
+
+enum ProductLifecycleStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+  DISCONTINUED
+}
+
+enum ProductType {
+  PHYSICAL
+  DIGITAL
+  SERVICE
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CLOSED
+  CANCELLED
+}
+
+enum PurchaseReturnStatus {
+  DRAFT
+  APPROVED
+  RETURNED
+  CLOSED
+  CANCELLED
+}
+
+enum ReturnStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum Role {
+  SUPER_ADMIN
+  VENDOR
+  STAFF
+  USER
+}
+
+enum SerialStatus {
+  AVAILABLE
+  SOLD
+  DEFECTIVE
+  RETURNED
+  TRANSFERRED
+}
+
+enum StockAction {
+  ADD
+  REDUCE
+  ADJUST
+}
+
+enum StockAdjustmentReason {
+  DAMAGE
+  COUNT
+  THEFT
+  EXPIRED
+}
+
+enum StockAdjustmentStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+enum StockLedgerRefType {
+  PO
+  SALE
+  GRN
+  TRANSFER
+  ADJUSTMENT
+  RETURN
+}
+
+enum StockStatus {
+  IN_STOCK
+  OUT_OF_STOCK
+  LOW_STOCK
+}
+
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum TransferStatus {
+  DRAFT
+  APPROVED
+  IN_TRANSIT
+  RECEIVED
+  CANCELLED
+}
+
+enum WarehouseType {
+  MAIN
+  STORE
+  TRANSIT
+  DAMAGE
+}

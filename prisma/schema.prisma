@@ -271,7 +271,7 @@ model Product {
   type               ProductType @default(PHYSICAL)
   productVariantType String      @default("simple") // "simple" or "variable"
   isFeatured         Boolean     @default(false)
-  isActive           Boolean     @default(true)
+  status ProductLifecycleStatus @default(ACTIVE)
   isFlashSale        Boolean     @default(false)
   isBestSeller       Boolean     @default(false) @map("is_best_seller")
 
@@ -311,16 +311,16 @@ model Product {
   updatedAt DateTime @updatedAt
 
   @@index([name])
-  @@index([categoryId, isActive])
-  @@index([isActive, isFlashSale])
-  @@index([isActive, isBestSeller])
-  @@index([isActive, isFeatured])
-  @@index([isActive, soldCount])
-  @@index([isActive, viewCount])
-  @@index([isActive, createdAt])
+  @@index([categoryId, status])
+  @@index([status, isFlashSale])
+  @@index([status, isBestSeller])
+  @@index([status, isFeatured])
+  @@index([status, soldCount])
+  @@index([status, viewCount])
+  @@index([status, createdAt])
   @@index([brandId])
-  @@index([isActive, price])
-  @@index([isActive, offerPrice])
+  @@index([status, price])
+  @@index([status, offerPrice])
   @@map("products")
 }
 
@@ -1051,4 +1051,16 @@ model SupplierPayment {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("supplier_payments")
+}
+
+
+enum ProductLifecycleStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  ACTIVE
+  ARCHIVED
+  DISCONTINUED
+  COMING_SOON
+  OUT_OF_STOCK
 }

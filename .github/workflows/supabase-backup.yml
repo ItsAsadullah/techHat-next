@@ -1,0 +1,42 @@
+name: Daily Supabase Database Backup
+
+on:
+  schedule:
+    # Runs at 00:00 UTC every day
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    # Allows you to trigger backup manually from GitHub Actions UI
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL Tools
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Backup Supabase Database
+        env:
+          # Your direct Supabase connection URL
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          # The connection string without the password part (we pass password via env var to be safe)
+          # Format: postgresql://postgres.xkqzlwhkagsrqpmfuhzp@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres
+          
+          TIMESTAMP=$(date +'%Y-%m-%d_%H-%M-%S')
+          BACKUP_FILE="backup_${TIMESTAMP}.sql"
+          
+          echo "Starting pg_dump..."
+          pg_dump -h aws-1-ap-southeast-2.pooler.supabase.com -p 5432 -U postgres.xkqzlwhkagsrqpmfuhzp -d postgres -F c -f $BACKUP_FILE
+          
+          echo "Backup successful! File: $BACKUP_FILE"
+          
+      - name: Upload Backup to GitHub Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-database-backup
+          path: backup_*.sql
+          retention-days: 7 # Keeps backups for 7 days

@@ -246,7 +246,7 @@ export async function getFlashSaleProducts(limit = 12): Promise<HomepageProduct[
           const products = await prisma.product.findMany({
             where: {
               isFlashSale: true,
-              isActive: true,
+              status: 'ACTIVE',
               OR: [
                 { flashSaleEndTime: { gte: new Date() } },
                 { flashSaleEndTime: null },
@@ -279,7 +279,7 @@ export async function getBestSellerProducts(limit = 12): Promise<HomepageProduct
       async () => {
         try {
           const products = await prisma.product.findMany({
-            where: { isActive: true, soldCount: { gt: 0 } },
+            where: { status: 'ACTIVE', soldCount: { gt: 0 } },
             select: {
               ...PRODUCT_SELECT,
               images: true,
@@ -291,7 +291,7 @@ export async function getBestSellerProducts(limit = 12): Promise<HomepageProduct
 
           if (products.length === 0) {
             const flagged = await prisma.product.findMany({
-              where: { isActive: true, OR: [{ isBestSeller: true }, { isFeatured: true }] },
+              where: { status: 'ACTIVE', OR: [{ isBestSeller: true }, { isFeatured: true }] },
               select: {
                 ...PRODUCT_SELECT,
                 images: true,
@@ -322,7 +322,7 @@ export async function getNewArrivalProducts(limit = 12): Promise<HomepageProduct
       async () => {
         try {
           const products = await prisma.product.findMany({
-            where: { isActive: true },
+            where: { status: 'ACTIVE' },
             select: {
               ...PRODUCT_SELECT,
               images: true,
@@ -350,7 +350,7 @@ export async function getTrendingProducts(limit = 12): Promise<HomepageProduct[]
       async () => {
         try {
           const products = await prisma.product.findMany({
-            where: { isActive: true, viewCount: { gt: 0 } },
+            where: { status: 'ACTIVE', viewCount: { gt: 0 } },
             select: {
               ...PRODUCT_SELECT,
               images: true,
@@ -383,7 +383,7 @@ export async function getFeaturedProducts(limit = 12): Promise<HomepageProduct[]
       async () => {
         try {
           const products = await prisma.product.findMany({
-            where: { isFeatured: true, isActive: true },
+            where: { isFeatured: true, status: 'ACTIVE' },
             select: {
               ...PRODUCT_SELECT,
               images: true,
@@ -413,7 +413,7 @@ export async function getDealsUnderAmount(amount: number, limit = 12): Promise<H
         try {
           const products = await prisma.product.findMany({
             where: {
-              isActive: true,
+              status: 'ACTIVE',
               OR: [
                 { offerPrice: { not: null, lte: amount } },
                 { AND: [{ offerPrice: null }, { price: { lte: amount } }] },
@@ -444,7 +444,7 @@ export async function getProductsByIds(ids: string[]): Promise<HomepageProduct[]
   if (!ids.length) return [];
   try {
     const products = await prisma.product.findMany({
-      where: { id: { in: ids }, isActive: true },
+      where: { id: { in: ids }, status: 'ACTIVE' },
       select: {
         ...PRODUCT_SELECT,
         images: true,
@@ -474,7 +474,7 @@ const _getTopCategoriesCache = unstable_cache(
           image: true,
           _count: { select: { products: true } },
           children: {
-            where: { isActive: true },
+            where: { status: 'ACTIVE' },
             select: {
               id: true,
               name: true,
@@ -482,7 +482,7 @@ const _getTopCategoriesCache = unstable_cache(
               image: true,
               _count: { select: { products: true } },
               children: {
-                where: { isActive: true },
+                where: { status: 'ACTIVE' },
                 select: {
                   id: true,
                   name: true,
@@ -542,7 +542,7 @@ const _getFeaturedBrandsCache = unstable_cache(
         where: {
           OR: [
             { isFeatured: true },
-            { products: { some: { isActive: true } } },
+            { products: { some: { status: 'ACTIVE' } } },
           ],
         },
         select: {
@@ -628,7 +628,7 @@ export async function searchProducts(query: string, limit = 20) {
     const [products, categories] = await Promise.all([
       prisma.product.findMany({
         where: {
-          isActive: true,
+          status: 'ACTIVE',
           OR: [
             { name: { contains: term, mode: 'insensitive' } },
             { sku: { contains: term, mode: 'insensitive' } },

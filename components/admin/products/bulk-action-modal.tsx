@@ -23,9 +23,9 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2, AlertTriangle, CheckCircle2, Trash2, Archive, PackagePlus, PackageMinus } from "lucide-react";
 import { toast } from "sonner";
-import { bulkUpdateStock, bulkUpdateStatus, bulkDeleteProducts } from "@/lib/actions/product-stock-actions";
+import { bulkUpdateStatus, bulkDeleteProducts } from "@/lib/actions/product-stock-actions";
 
-export type BulkActionType = 'add_stock' | 'reduce_stock' | 'change_status' | 'delete' | null;
+export type BulkActionType = 'change_status' | 'delete' | null;
 
 interface BulkActionModalProps {
   open: boolean;
@@ -43,12 +43,6 @@ export function BulkActionModal({
   onSuccess 
 }: BulkActionModalProps) {
   const [loading, setLoading] = useState(false);
-  
-  // Stock State
-  const [stockQuantity, setStockQuantity] = useState<number>(0);
-  const [stockReason, setStockReason] = useState<string>("");
-  const [stockNote, setStockNote] = useState<string>("");
-  
   // Status State
   const [statusValue, setStatusValue] = useState<string>("active");
   
@@ -56,9 +50,6 @@ export function BulkActionModal({
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
   const resetForm = () => {
-    setStockQuantity(0);
-    setStockReason("");
-    setStockNote("");
     setStatusValue("active");
     setDeleteConfirmation("");
   };
@@ -73,20 +64,7 @@ export function BulkActionModal({
     setLoading(true);
     try {
       let result;
-
-      if (actionType === 'add_stock') {
-        if (stockQuantity <= 0) throw new Error("Quantity must be greater than 0");
-        if (!stockReason) throw new Error("Please select a reason");
-        
-        result = await bulkUpdateStock(selectedIds, 'ADD', stockQuantity, stockReason, stockNote);
-      } 
-      else if (actionType === 'reduce_stock') {
-        if (stockQuantity <= 0) throw new Error("Quantity must be greater than 0");
-        if (!stockReason) throw new Error("Please select a reason");
-
-        result = await bulkUpdateStock(selectedIds, 'REDUCE', stockQuantity, stockReason, stockNote);
-      } 
-      else if (actionType === 'change_status') {
+      if (actionType === 'change_status') {
         const isActive = statusValue === 'active';
         result = await bulkUpdateStatus(selectedIds, isActive);
       } 
@@ -111,109 +89,7 @@ export function BulkActionModal({
 
   const getModalContent = () => {
     switch (actionType) {
-      case 'add_stock':
-        return (
-          <div className="space-y-4 py-4">
-            <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-3">
-              <PackagePlus className="h-5 w-5 text-blue-600 mt-0.5" />
-              <div>
-                <h4 className="text-sm font-semibold text-blue-900">Adding Stock</h4>
-                <p className="text-xs text-blue-700">This will increase inventory for {selectedIds.length} products.</p>
-              </div>
-            </div>
-            
-            <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Quantity to Add</Label>
-                  <Input 
-                    type="number" 
-                    min="1"
-                    value={stockQuantity || ''} 
-                    onChange={(e) => setStockQuantity(parseInt(e.target.value) || 0)}
-                    placeholder="e.g. 10" 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Reason</Label>
-                  <Select value={stockReason} onValueChange={setStockReason}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select reason" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Purchase">New Purchase</SelectItem>
-                      <SelectItem value="Return">Customer Return</SelectItem>
-                      <SelectItem value="Adjustment">Inventory Adjustment</SelectItem>
-                      <SelectItem value="Found">Stock Found</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Notes (Optional)</Label>
-                <Textarea 
-                  value={stockNote} 
-                  onChange={(e) => setStockNote(e.target.value)}
-                  placeholder="Reference number, supplier info, etc." 
-                  rows={2}
-                />
-              </div>
-            </div>
-          </div>
-        );
 
-      case 'reduce_stock':
-        return (
-          <div className="space-y-4 py-4">
-            <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 flex items-start gap-3">
-              <PackageMinus className="h-5 w-5 text-amber-600 mt-0.5" />
-              <div>
-                <h4 className="text-sm font-semibold text-amber-900">Reducing Stock</h4>
-                <p className="text-xs text-amber-700">This will decrease inventory for {selectedIds.length} products.</p>
-              </div>
-            </div>
-            
-            <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Quantity to Remove</Label>
-                  <Input 
-                    type="number" 
-                    min="1"
-                    value={stockQuantity || ''} 
-                    onChange={(e) => setStockQuantity(parseInt(e.target.value) || 0)}
-                    placeholder="e.g. 5" 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Reason</Label>
-                  <Select value={stockReason} onValueChange={setStockReason}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select reason" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Sale">Manual Sale</SelectItem>
-                      <SelectItem value="Damage">Damaged/Expired</SelectItem>
-                      <SelectItem value="Theft">Loss/Theft</SelectItem>
-                      <SelectItem value="Correction">Correction</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Notes (Optional)</Label>
-                <Textarea 
-                  value={stockNote} 
-                  onChange={(e) => setStockNote(e.target.value)}
-                  placeholder="Reason details..." 
-                  rows={2}
-                />
-              </div>
-            </div>
-          </div>
-        );
 
       case 'change_status':
         return (
@@ -284,8 +160,7 @@ export function BulkActionModal({
 
   const getTitle = () => {
     switch(actionType) {
-      case 'add_stock': return 'Bulk Add Stock';
-      case 'reduce_stock': return 'Bulk Reduce Stock';
+
       case 'change_status': return 'Change Product Status';
       case 'delete': return 'Delete Products';
       default: return 'Bulk Action';
@@ -296,8 +171,7 @@ export function BulkActionModal({
     if (loading) return <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>;
     
     switch(actionType) {
-      case 'add_stock': return 'Add Stock';
-      case 'reduce_stock': return 'Reduce Stock';
+
       case 'change_status': return 'Update Status';
       case 'delete': return 'Delete Permanently';
       default: return 'Apply';

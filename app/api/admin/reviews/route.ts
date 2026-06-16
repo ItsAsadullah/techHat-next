@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminReviews } from '@/lib/actions/review-actions';
-import { requireAdmin } from '@/lib/auth/require-role';
+import { requireStaff } from '@/lib/auth/require-role';
 
 export async function GET(request: NextRequest) {
-  const authError = await requireAdmin();
+  const authError = await requireStaff();
   if (authError) return authError;
 
   try {

@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
 
     const products = await prisma.product.findMany({
       where: {
-        isActive: true,
+        status: 'ACTIVE',
         OR: [
           { productImages: { some: {} } },
           { images: { isEmpty: false } },

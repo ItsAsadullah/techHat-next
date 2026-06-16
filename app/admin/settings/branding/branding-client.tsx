@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import Image from 'next/image';
 import {
   Palette, Save, Loader2, Upload, Image as ImageIcon,
   Phone, Truck, X, Eye, Globe2,
@@ -92,7 +93,7 @@ export function BrandingClient({ initial }: { initial: BrandingSettings }) {
           {/* Preview */}
           <div className="w-36 h-16 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
             {form.siteLogo ? (
-              <img src={form.siteLogo} alt="Logo preview" style={{ maxHeight: '3.5rem', width: 'auto' }} className="object-contain" />
+              <Image src={form.siteLogo} alt="Logo preview" width={160} height={56} style={{ maxHeight: '3.5rem', width: 'auto' }} className="object-contain" />
             ) : (
               <ImageIcon className="w-8 h-8 text-gray-300" />
             )}
@@ -166,7 +167,7 @@ export function BrandingClient({ initial }: { initial: BrandingSettings }) {
           {/* Preview */}
           <div className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
             {form.siteFavicon ? (
-              <img src={form.siteFavicon} alt="Favicon preview" style={{ maxHeight: '2rem', width: 'auto' }} className="object-contain" />
+              <Image src={form.siteFavicon} alt="Favicon preview" width={32} height={32} style={{ maxHeight: '2rem', width: 'auto' }} className="object-contain" />
             ) : (
               <Globe2 className="w-6 h-6 text-gray-300" />
             )}

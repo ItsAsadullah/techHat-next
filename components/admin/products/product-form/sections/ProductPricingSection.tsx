@@ -4,73 +4,145 @@ import { useFormContext } from 'react-hook-form';
 import { ProductFormValues } from '../schemas/product.schema';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { TrendingUp, TrendingDown, Minus, Lock } from 'lucide-react';
 
-export function ProductPricingSection() {
+interface Props {
+  isEditMode?: boolean;
+}
+
+export function ProductPricingSection({ isEditMode = false }: Props) {
   const { register, watch, formState: { errors } } = useFormContext<ProductFormValues>();
 
-  const costPrice = watch('costPrice') || 0;
-  const price = watch('price') || 0;
-  
-  // Calculate margin/profit
+  // costPrice comes from form default (initialData) — display only, never submitted
+  const costPrice = watch('costPrice') ?? 0;
+  const price     = watch('price')     || 0;
+
   const profit = price - costPrice;
   const margin = price > 0 ? (profit / price) * 100 : 0;
 
   return (
     <div className="space-y-4">
-      {/* Cost & Selling Price */}
+      {/* ── Retail Price + Offer Price ── */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <Label htmlFor="costPrice" className="text-sm font-medium">Cost Price</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="price" className="text-sm font-medium">
+            Retail Price <span className="text-red-500">*</span>
+          </Label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">৳</span>
-            <Input id="costPrice" type="number" step="0.01" className="pl-8" {...register('costPrice', { valueAsNumber: true })} />
-          </div>
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="price" className="text-sm font-medium">Selling Price <span className="text-red-500">*</span></Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">৳</span>
-            <Input 
-              id="price" 
-              type="number" 
-              step="0.01" 
-              className={`pl-8 ${errors.price ? 'border-red-500' : ''}`}
-              {...register('price', { valueAsNumber: true })} 
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">৳</span>
+            <Input
+              id="price"
+              type="number"
+              step="0.01"
+              min={0}
+              className={`pl-7 h-10 ${errors.price ? 'border-red-500' : ''}`}
+              {...register('price', { valueAsNumber: true })}
             />
           </div>
-          {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price.message}</p>}
+          {errors.price && <p className="text-red-500 text-xs">{errors.price.message}</p>}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="offerPrice" className="text-sm font-medium">Offer Price</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">৳</span>
+            <Input
+              id="offerPrice"
+              type="number"
+              step="0.01"
+              min={0}
+              className="pl-7 h-10"
+              {...register('offerPrice', { valueAsNumber: true })}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Margin / Profit Display */}
+      {/* ── Online Price + Wholesale Price ── */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="onlinePrice" className="text-xs font-medium text-muted-foreground">Online Price</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">৳</span>
+            <Input
+              id="onlinePrice"
+              type="number"
+              step="0.01"
+              min={0}
+              className="pl-7 h-9"
+              {...register('onlinePrice', { valueAsNumber: true })}
+            />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="wholesalePrice" className="text-xs font-medium text-muted-foreground">Wholesale Price</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">৳</span>
+            <Input
+              id="wholesalePrice"
+              type="number"
+              step="0.01"
+              min={0}
+              className="pl-7 h-9"
+              {...register('wholesalePrice', { valueAsNumber: true })}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Tax Class ── */}
+      <div className="space-y-1.5">
+        <Label htmlFor="taxClass" className="text-xs font-medium text-muted-foreground">Tax Class</Label>
+        <Input
+          id="taxClass"
+          placeholder="e.g. VAT 15%"
+          className="h-9"
+          {...register('taxClass')}
+        />
+      </div>
+
+      {/* ── Purchase Cost (read-only from Purchase Module) ── */}
+      <div className="border-t pt-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-muted-foreground">Average Cost</span>
+          <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold">
+            <Lock className="h-2.5 w-2.5" />
+            Purchase Module
+          </span>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/40 border border-dashed">
+          <span className="text-muted-foreground text-sm">৳</span>
+          <span className="font-mono text-sm font-medium">
+            {costPrice > 0 ? costPrice.toFixed(2) : '—'}
+          </span>
+          <span className="text-xs text-muted-foreground ml-auto">
+            Automatically calculated from purchases
+          </span>
+        </div>
+      </div>
+
+      {/* ── Profit / Margin Indicator ── */}
       {price > 0 && costPrice > 0 && (
-        <div className="flex items-center gap-4 text-xs text-muted-foreground p-2 bg-muted/50 rounded-md">
-          <div>Profit: <span className={profit > 0 ? 'text-green-600' : 'text-red-600'}>৳{profit.toFixed(2)}</span></div>
-          <div>Margin: <span className={margin > 0 ? 'text-green-600' : 'text-red-600'}>{margin.toFixed(1)}%</span></div>
+        <div className="flex items-center gap-4 px-3 py-2 rounded-md bg-muted/40 text-sm">
+          {profit > 0 ? (
+            <TrendingUp className="h-4 w-4 text-emerald-600 shrink-0" />
+          ) : profit < 0 ? (
+            <TrendingDown className="h-4 w-4 text-red-600 shrink-0" />
+          ) : (
+            <Minus className="h-4 w-4 text-gray-400 shrink-0" />
+          )}
+          <div className="flex items-center gap-4 text-xs">
+            <span className="text-muted-foreground">Est. Profit:</span>
+            <span className={`font-mono font-semibold tabular-nums ${profit > 0 ? 'text-emerald-600' : profit < 0 ? 'text-red-600' : ''}`}>
+              ৳{profit.toFixed(0)}
+            </span>
+            <span className="text-muted-foreground">Margin:</span>
+            <span className={`font-mono font-semibold tabular-nums ${margin > 0 ? 'text-emerald-600' : margin < 0 ? 'text-red-600' : ''}`}>
+              {margin.toFixed(1)}%
+            </span>
+          </div>
         </div>
       )}
-
-      {/* Other prices (Online, Wholesale, Offer) */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="space-y-2">
-          <Label htmlFor="offerPrice" className="text-xs font-medium text-muted-foreground">Offer Price</Label>
-          <Input id="offerPrice" type="number" step="0.01" {...register('offerPrice', { valueAsNumber: true })} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="onlinePrice" className="text-xs font-medium text-muted-foreground">Online Price</Label>
-          <Input id="onlinePrice" type="number" step="0.01" {...register('onlinePrice', { valueAsNumber: true })} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="wholesalePrice" className="text-xs font-medium text-muted-foreground">Wholesale Price</Label>
-          <Input id="wholesalePrice" type="number" step="0.01" {...register('wholesalePrice', { valueAsNumber: true })} />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="taxClass" className="text-sm font-medium">Tax Class</Label>
-        <Input id="taxClass" placeholder="e.g. VAT 15%" {...register('taxClass')} />
-      </div>
     </div>
   );
 }

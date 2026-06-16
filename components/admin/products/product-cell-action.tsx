@@ -4,8 +4,6 @@ import { useState } from "react";
 import { MoreHorizontal, Edit, History, Copy, Trash, BoxSelect } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { StockUpdateModal } from "./stock-update-modal";
-import { StockHistoryModal } from "./stock-history-modal";
 import Link from "next/link";
 import { toast } from "sonner";
 import { duplicateProduct } from "@/lib/actions/product-actions";
@@ -96,18 +94,9 @@ export function ProductCellAction({ data }: ProductCellActionProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <StockUpdateModal 
-        isOpen={showStockUpdate} 
-        onClose={() => setShowStockUpdate(false)}
-        product={data}
-      />
       
-      <StockHistoryModal
-        isOpen={showHistory}
-        onClose={() => setShowHistory(false)}
-        productId={data.id}
-        productName={data.name}
-      />
+      
+      
     </div>
   );
 }

@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     if (categoryIds.length > 0) {
       const products = await prisma.product.findMany({
         where: {
-          isActive: true,
+          status: 'ACTIVE',
           categoryId: { in: categoryIds },
           id: { notIn: viewedIds },
         },
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 
     // Fallback: featured/popular products
     const products = await prisma.product.findMany({
-      where: { isActive: true, OR: [{ isFeatured: true }, { soldCount: { gt: 0 } }] },
+      where: { status: 'ACTIVE', OR: [{ isFeatured: true }, { soldCount: { gt: 0 } }] },
       select: PRODUCT_FIELDS,
       orderBy: { soldCount: 'desc' },
       take: 10,

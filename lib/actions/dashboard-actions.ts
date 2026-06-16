@@ -46,7 +46,7 @@ const getDashboardStatsCached = unstable_cache(
           SUM(CASE WHEN stock <= 5 AND stock > 0 THEN 1 ELSE 0 END) as "lowStockProducts",
           SUM(CASE WHEN stock = 0 THEN 1 ELSE 0 END) as "outOfStockProducts"
         FROM products
-        WHERE "isActive" = true
+        WHERE status = 'ACTIVE'
       `,
       
       // Consolidated review stats

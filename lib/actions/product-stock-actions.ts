@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { revalidatePath, unstable_cache } from 'next/cache';
 import { StockAction } from '@prisma/client';
+import { InventoryService } from '@/lib/services/inventory-service';
 
 export type ProductFilterParams = {
   page?: number;
@@ -42,21 +43,24 @@ export async function getProducts(params: ProductFilterParams) {
   if (categoryId) where.categoryId = categoryId;
   if (brandId) where.brandId = brandId;
 
-  // Status mapping (schema has isActive: Boolean; draft = inactive)
-  if (status === 'active') where.isActive = true;
-  if (status === 'inactive' || status === 'draft') where.isActive = false;
+  // Status mapping (schema uses ProductLifecycleStatus; active = ACTIVE, draft/inactive = DRAFT)
+  if (status === 'active') where.status = 'ACTIVE';
+  if (status === 'inactive' || status === 'draft') where.status = 'DRAFT';
 
   // Stock Status Logic
   if (stockStatus) {
     if (stockStatus === 'out') {
       where.stock = { lte: 0 };
     } else if (stockStatus === 'low') {
-      // Compare stock against each product's own minStock (default 5)
-      // Prisma doesn't support field-to-field comparison in where, so use raw query for IDs
-      const lowStockRows = await prisma.$queryRaw<{ id: string }[]>`
+      // For low stock, we need stock > 0 AND stock <= minStock
+      // Since minStock is a column, Prisma where syntax doesn't support comparing two columns directly in standard findMany without raw or extensions.
+      // But we can fetch products and filter in JS if needed, OR just approximate low stock as <= 5.
+      // Let's use a raw query just to get IDs for low stock, or just approximate.
+      const lowStockProducts = await prisma.$queryRaw<any[]>`
         SELECT id FROM "products" WHERE stock > 0 AND stock <= COALESCE("minStock", 5)
       `;
-      where.id = { in: lowStockRows.map((r) => r.id) };
+      const matchedIds = lowStockProducts.map(p => p.id);
+      where.id = { in: matchedIds.length > 0 ? matchedIds : ['NONE'] };
     } else if (stockStatus === 'in') {
       where.stock = { gt: 0 };
     }
@@ -71,9 +75,8 @@ export async function getProducts(params: ProductFilterParams) {
         sku: true,
         price: true,
         costPrice: true,
-        stock: true,
         minStock: true,
-        isActive: true,
+        status: true,
         updatedAt: true,
         category: {
           select: {
@@ -101,7 +104,6 @@ export async function getProducts(params: ProductFilterParams) {
             id: true,
             name: true,
             sku: true,
-            stock: true,
           },
           take: 5,
         }
@@ -113,120 +115,37 @@ export async function getProducts(params: ProductFilterParams) {
     prisma.product.count({ where }),
   ]);
 
+  const stockQueries = [];
+  for (const p of products) {
+    stockQueries.push({ productId: p.id, variantId: null });
+    for (const v of p.variants) {
+      stockQueries.push({ productId: p.id, variantId: v.id });
+    }
+  }
+  const stockMap = await InventoryService.getBulkAvailableStock(stockQueries);
+
+  const mappedProducts = products.map((p) => {
+    const pStock = stockMap.get(p.id)?.availableStock || 0;
+    return {
+      ...p,
+      stock: pStock, // Replaced cached stock with Ledger Available Stock
+      variants: p.variants.map((v) => ({
+        ...v,
+        stock: stockMap.get(`${p.id}-${v.id}`)?.availableStock || 0
+      }))
+    };
+  });
+
   return {
-    products,
+    products: mappedProducts,
     total,
     totalPages: Math.ceil(total / limit),
   };
 }
 
-export async function updateStock(
-  productId: string,
-  variantId: string | null,
-  action: StockAction,
-  quantity: number,
-  reason: string,
-  note?: string,
-  userId?: string
-) {
-  try {
-    const result = await prisma.$transaction(async (tx) => {
-        // Fetch current state
-        const product = await tx.product.findUnique({
-            where: { id: productId },
-            select: {
-                id: true,
-                stock: true,
-                productVariantType: true,
-                variants: { select: { id: true, stock: true } }
-            },
-        });
 
-        if (!product) throw new Error('Product not found');
 
-        let previousStock = 0;
-        let newStock = 0;
-        let delta = 0;
 
-        // Determine target and delta
-        if (variantId) {
-            const variant = product.variants.find(v => v.id === variantId);
-            if (!variant) throw new Error('Variant not found');
-            previousStock = variant.stock;
-        } else {
-            previousStock = product.stock;
-        }
-
-        if (action === 'ADD') {
-            delta = quantity;
-            newStock = previousStock + delta;
-        } else if (action === 'REDUCE') {
-            delta = -quantity;
-            newStock = previousStock + delta;
-        } else if (action === 'ADJUST') {
-            delta = quantity - previousStock;
-            newStock = quantity;
-        }
-
-        if (newStock < 0) throw new Error('Stock cannot be negative');
-
-        // Apply ATOMIC Updates
-        if (variantId) {
-            await tx.variant.update({
-                where: { id: variantId },
-                data: action === 'ADJUST' ? { stock: newStock } : { stock: { increment: delta } }
-            });
-            
-            if (product.productVariantType === 'variable') {
-                await tx.product.update({
-                    where: { id: productId },
-                    data: { stock: { increment: delta } }
-                });
-            }
-        } else {
-            await tx.product.update({
-                where: { id: productId },
-                data: action === 'ADJUST' ? { stock: newStock } : { stock: { increment: delta } }
-            });
-        }
-
-        // Create History Record
-        await tx.stockHistory.create({
-            data: {
-                productId,
-                variantId,
-                action,
-                quantity: Math.abs(delta),
-                previousStock,
-                newStock,
-                reason,
-                note,
-                source: 'Manual',
-                createdBy: userId
-            }
-        });
-
-        return { success: true, newStock };
-    });
-
-    revalidatePath('/admin/products');
-    return result;
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
-  }
-}
-
-export async function getStockHistory(productId: string) {
-    return await prisma.stockHistory.findMany({
-        where: { productId },
-        include: {
-            variant: true,
-            // user: true // If we had a relation to User for createdBy
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 50
-    });
-}
 
 export async function bulkDeleteProducts(ids: string[]) {
     try {
@@ -241,140 +160,13 @@ export async function bulkDeleteProducts(ids: string[]) {
     }
 }
 
-export async function bulkUpdateStockIndividual(
-  products: { id: string; quantity: number }[], 
-  action: 'ADD' | 'REDUCE', 
-  reason: string,
-  note?: string
-) {
-    try {
-        const validItems = products.filter(({ quantity }) => quantity > 0);
-        if (validItems.length === 0) return { success: true };
 
-        // Batch-fetch all products in a single query instead of N sequential queries
-        const dbProducts = await prisma.product.findMany({
-            where: { id: { in: validItems.map(({ id }) => id) } },
-            select: {
-                id: true,
-                stock: true,
-                productVariantType: true,
-                variants: { select: { id: true, stock: true }, take: 1 },
-            },
-        });
-        const productMap = new Map(dbProducts.map(p => [p.id, p]));
-
-        // Build ALL operations, then run a single transaction
-        const operations: any[] = [];
-        for (const { id, quantity } of validItems) {
-            const product = productMap.get(id);
-            if (!product) continue;
-
-            const newStock = action === 'ADD'
-                ? product.stock + quantity
-                : Math.max(0, product.stock - quantity);
-
-            operations.push(
-                prisma.product.update({ where: { id }, data: { stock: newStock } }),
-                prisma.stockHistory.create({
-                    data: {
-                        productId: id,
-                        action: action as StockAction,
-                        quantity,
-                        previousStock: product.stock,
-                        newStock,
-                        reason,
-                        source: 'Bulk Action (Individual)',
-                        note: note || `Bulk ${action} ${quantity} units`,
-                    },
-                }),
-            );
-
-            if (product.productVariantType === 'variable' && product.variants.length > 0) {
-                const firstVar = product.variants[0];
-                const newVarStock = action === 'ADD'
-                    ? firstVar.stock + quantity
-                    : Math.max(0, firstVar.stock - quantity);
-                operations.push(
-                    prisma.variant.update({ where: { id: firstVar.id }, data: { stock: newVarStock } }),
-                );
-            }
-        }
-
-        if (operations.length > 0) await prisma.$transaction(operations);
-        revalidatePath('/admin/products');
-        return { success: true };
-    } catch (error: any) {
-        console.error("Bulk individual update error:", error);
-        return { success: false, error: (error as any)?.message };
-    }
-}
-
-export async function bulkUpdateStock(
-  ids: string[], 
-  action: 'ADD' | 'REDUCE', 
-  quantity: number, 
-  reason: string,
-  note?: string
-) {
-    try {
-        const products = await prisma.product.findMany({
-            where: { id: { in: ids } },
-            select: {
-                id: true,
-                stock: true,
-                productVariantType: true,
-                variants: { select: { id: true, stock: true }, take: 1 },
-            },
-        });
-
-        // Build ALL operations first, then run a single transaction
-        const operations: any[] = [];
-        for (const product of products) {
-            const newStock = action === 'ADD'
-                ? product.stock + quantity
-                : Math.max(0, product.stock - quantity);
-
-            operations.push(
-                prisma.product.update({ where: { id: product.id }, data: { stock: newStock } }),
-                prisma.stockHistory.create({
-                    data: {
-                        productId: product.id,
-                        action: action as StockAction,
-                        quantity,
-                        previousStock: product.stock,
-                        newStock,
-                        reason,
-                        source: 'Bulk Action',
-                        note: note || `Bulk ${action} ${quantity}`,
-                    },
-                }),
-            );
-
-            if (product.productVariantType === 'variable' && product.variants.length > 0) {
-                const firstVar = product.variants[0];
-                const newVarStock = action === 'ADD'
-                    ? firstVar.stock + quantity
-                    : Math.max(0, firstVar.stock - quantity);
-                operations.push(
-                    prisma.variant.update({ where: { id: firstVar.id }, data: { stock: newVarStock } }),
-                );
-            }
-        }
-        if (operations.length > 0) await prisma.$transaction(operations);
-        
-        revalidatePath('/admin/products');
-        return { success: true };
-    } catch (error: any) {
-        console.error("Bulk update error:", error);
-        return { success: false, error: (error as any)?.message };
-    }
-}
 
 export async function bulkUpdateStatus(ids: string[], isActive: boolean) {
     try {
         await prisma.product.updateMany({
             where: { id: { in: ids } },
-            data: { isActive }
+            data: { status: isActive ? 'ACTIVE' : 'DRAFT' }
         });
 
         revalidatePath('/admin/products');

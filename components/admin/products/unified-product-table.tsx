@@ -21,7 +21,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Package, PackagePlus, PackageMinus, Archive, Trash2, CheckSquare, Loader2, ArrowUpRight, ArrowDownRight, History, MoreVertical, Plus, Minus, X } from "lucide-react";
 import { BulkActionModal, BulkActionType } from "./bulk-action-modal";
-import { getProducts, updateStock } from "@/lib/actions/product-stock-actions";
+import { getProducts } from "@/lib/actions/product-stock-actions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,16 +65,7 @@ export function UnifiedProductTable<TData, TValue>({
   const [hasMore, setHasMore] = useState(page < pageCount);
   const [currentPage, setCurrentPage] = useState(page);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
-  const [updatingStockId, setUpdatingStockId] = useState<string | null>(null);
 
-  const handleInlineStockUpdate = async (productId: string, action: 'ADD' | 'REDUCE', qty: number) => {
-      setUpdatingStockId(productId);
-      const res = await updateStock(productId, null, action, qty, "Quick Update", `Inline ${action} ${qty}`);
-      if (res.success) {
-         setLocalData(prev => prev.map(p => (p as any).id === productId ? { ...p, stock: (res as any).newStock } : p));
-      }
-      setUpdatingStockId(null);
-  };
 
   // Sync data when props change
   useEffect(() => {
@@ -106,7 +97,7 @@ export function UnifiedProductTable<TData, TValue>({
           costPrice: p.costPrice,
           stock: p.stock,
           category: p.category?.name || '',
-          status: p.isActive,
+          status: p.status,
           images: p.productImages || [],
           variants: p.variants || [],
           minStock: p.minStock,
@@ -219,14 +210,7 @@ export function UnifiedProductTable<TData, TValue>({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48 rounded-md p-1 font-medium">
-                      <DropdownMenuLabel className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide px-2 py-1">Inventory</DropdownMenuLabel>
-                      <DropdownMenuItem onSelect={() => openBulkAction('add_stock')} className="rounded focus:bg-slate-50 dark:focus:bg-zinc-800 cursor-pointer text-sm">
-                        <PackagePlus className="mr-2 h-3.5 w-3.5 text-indigo-500" /> Add Stock
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => openBulkAction('reduce_stock')} className="rounded focus:bg-slate-50 dark:focus:bg-zinc-800 cursor-pointer text-sm">
-                        <PackageMinus className="mr-2 h-3.5 w-3.5 text-amber-500" /> Reduce Stock
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator className="my-1" />
+
                       <DropdownMenuLabel className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide px-2 py-1">Status</DropdownMenuLabel>
                       <DropdownMenuItem onSelect={() => openBulkAction('change_status')} className="rounded focus:bg-slate-50 dark:focus:bg-zinc-800 cursor-pointer text-sm">
                         <Archive className="mr-2 h-3.5 w-3.5 text-emerald-500" /> Update Status
@@ -368,32 +352,6 @@ export function UnifiedProductTable<TData, TValue>({
                       ৳{product.price.toLocaleString()}
                     </span>
                   </div>
-                  
-                  <div className="flex items-center justify-between mt-0.5">
-                    <div className="flex items-center gap-1.5 text-[11px]">
-                      <span className="text-slate-500 dark:text-zinc-400 truncate max-w-[80px]">
-                        {product.sku || "No SKU"}
-                      </span>
-                      <span className="text-slate-300 dark:text-zinc-600">•</span>
-                      <span className={`font-bold ${
-                        product.stock <= 0 
-                          ? 'text-red-600' 
-                          : product.stock <= (product.minStock || 5) / 2
-                            ? 'text-rose-600'
-                            : product.stock <= (product.minStock || 5)
-                              ? 'text-amber-600' 
-                              : 'text-emerald-600'
-                      }`}>
-                        {product.stock <= 0 ? 'Out of Stock' : product.stock <= (product.minStock || 5) / 2 ? 'Critical' : product.stock <= (product.minStock || 5) ? 'Low Stock' : 'Healthy'}
-                      </span>
-                    </div>
-                    <button 
-                      onClick={() => setExpandedRowId(expandedRowId === product.id ? null : product.id)}
-                      className="text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-400 px-2 py-0.5 rounded mr-1"
-                    >
-                      Adjust
-                    </button>
-                  </div>
                 </div>
 
                 {/* Dropdown Menu replacing actions */}
@@ -413,46 +371,7 @@ export function UnifiedProductTable<TData, TValue>({
                 </div>
               </div>
               
-              {/* Expandable Action Panel */}
-              {expandedRowId === product.id && (
-                <div className="bg-slate-50 dark:bg-zinc-900/50 p-2 pl-12 flex flex-col gap-2 border-t border-slate-100 dark:border-zinc-800 animate-in slide-in-from-top-2 fade-in">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">
-                    <span>Quick Adjust</span>
-                    <span className="text-slate-700 dark:text-zinc-300">Current: {product.stock}</span>
-                  </div>
-                  
-                  {updatingStockId === product.id ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => handleInlineStockUpdate(product.id, 'ADD', 10)} className="flex-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 py-1.5 rounded text-xs font-bold hover:bg-emerald-200 active:bg-emerald-300 transition-colors">
-                          +10
-                        </button>
-                        <button onClick={() => handleInlineStockUpdate(product.id, 'ADD', 20)} className="flex-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 py-1.5 rounded text-xs font-bold hover:bg-emerald-200 active:bg-emerald-300 transition-colors">
-                          +20
-                        </button>
-                        <button onClick={() => handleInlineStockUpdate(product.id, 'ADD', 50)} className="flex-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 py-1.5 rounded text-xs font-bold hover:bg-emerald-200 active:bg-emerald-300 transition-colors">
-                          +50
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => handleInlineStockUpdate(product.id, 'REDUCE', 1)} className="flex-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 py-1.5 rounded text-xs font-bold hover:bg-red-200 active:bg-red-300 transition-colors">
-                          -1
-                        </button>
-                        <button onClick={() => handleInlineStockUpdate(product.id, 'REDUCE', 5)} className="flex-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 py-1.5 rounded text-xs font-bold hover:bg-red-200 active:bg-red-300 transition-colors">
-                          -5
-                        </button>
-                        <button onClick={() => handleInlineStockUpdate(product.id, 'REDUCE', 10)} className="flex-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 py-1.5 rounded text-xs font-bold hover:bg-red-200 active:bg-red-300 transition-colors">
-                          -10
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
+
             </div>
           );
           })

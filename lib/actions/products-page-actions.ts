@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma, ProductLifecycleStatus } from '@prisma/client';
 import type { CategoryProduct, SortOption } from '@/lib/types/category-page';
 
 const PER_PAGE = 24;
@@ -14,6 +14,7 @@ const PRODUCT_SELECT = {
   offerPrice: true,
   discountPercentage: true,
   stock: true,
+  reservedStock: true,
   minStock: true,
   isFeatured: true,
   isFlashSale: true,
@@ -69,7 +70,7 @@ function mapProduct(raw: any): CategoryProduct {
     price: raw.price,
     offerPrice: raw.offerPrice ?? null,
     discountPercentage: effectiveDiscount,
-    stock: raw.stock,
+    stock: Math.max(0, (raw.stock || 0) - (raw.reservedStock || 0)),
     minStock: raw.minStock ?? 5,
     isFeatured: raw.isFeatured,
     isFlashSale: raw.isFlashSale,
@@ -124,7 +125,7 @@ export async function getAllProductsPageData(
   const page = filters.page ?? 1;
   const sort = filters.sort ?? 'newest';
 
-  const where: Prisma.ProductWhereInput = { isActive: true };
+  const where: Prisma.ProductWhereInput = { status: ProductLifecycleStatus.ACTIVE };
 
   if (filters.q && filters.q.trim()) {
     const q = filters.q.trim();

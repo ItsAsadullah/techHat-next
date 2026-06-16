@@ -128,7 +128,7 @@ export async function getSalesReport(from?: string, to?: string) {
 export async function getProductReport() {
   try {
   const products = await prisma.product.findMany({
-    where: { isActive: true },
+    where: { status: 'ACTIVE' },
     select: {
       id: true,
       name: true,
@@ -172,7 +172,7 @@ export async function getStockReport(from?: string, to?: string) {
   const range = dateRange(from, to);
 
   const products = await prisma.product.findMany({
-    where: { isActive: true },
+    where: { status: 'ACTIVE' },
     select: {
       id: true,
       name: true,
@@ -225,7 +225,7 @@ export async function getExpenseReport(from?: string, to?: string) {
   const range = dateRange(from, to);
   const expenses: any[] = await (db.expense.findMany({
     where: range ? { date: range } : undefined,
-    include: { category: { select: { name: true } } },
+    include: { categoryId: { select: { name: true } } },
     orderBy: { date: 'desc' },
   }) as Promise<any[]>);
 
@@ -282,7 +282,7 @@ export async function getCustomerDueReport() {
 export async function getVendorDueReport() {
   try {
   const suppliers = await db.supplier.findMany({
-    where: { isActive: true },
+    where: { status: 'ACTIVE' },
     select: {
       id: true,
       name: true,

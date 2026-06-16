@@ -203,8 +203,8 @@ export async function placeOrder(input: PlaceOrderInput) {
     console.time('fetch DB data');
     const [products, variants, shippingSettings, orderNumber] = await Promise.all([
       db.product.findMany({
-        where: { id: { in: productIds }, isActive: true },
-        select: { id: true, name: true, price: true, offerPrice: true, stock: true, isActive: true },
+        where: { id: { in: productIds }, status: 'ACTIVE' },
+        select: { id: true, name: true, price: true, offerPrice: true, stock: true, status: true },
       }),
       variantIds.length
         ? db.variant.findMany({
@@ -229,7 +229,7 @@ export async function placeOrder(input: PlaceOrderInput) {
 
     for (const item of input.items) {
       const product = productMap.get(item.productId);
-      if (!product || !product.isActive) {
+      if (!product || product.status !== 'ACTIVE') {
         stockErrors.push(`${item.productName} — not available`);
         continue;
       }
@@ -741,7 +741,7 @@ export async function validateOrderStock(
     const productIds = items.map((i) => i.productId);
     const variantIds = items.filter((i) => i.variantId).map((i) => i.variantId!);
     const [products, variants] = await Promise.all([
-      db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true, stock: true, isActive: true } }),
+      db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true, stock: true, status: true } }),
       variantIds.length ? db.variant.findMany({ where: { id: { in: variantIds } }, select: { id: true, stock: true } }) : Promise.resolve([]),
     ]);
     const productMap = new Map<string, any>(products.map((p: any) => [p.id, p]));
@@ -750,7 +750,7 @@ export async function validateOrderStock(
     const insufficientStock: { name: string; available: number; requested: number }[] = [];
     for (const item of items) {
       const product = productMap.get(item.productId);
-      if (!product || !product.isActive) { outOfStock.push(item.productId); continue; }
+      if (!product || product.status !== 'ACTIVE') { outOfStock.push(item.productId); continue; }
       const stock = item.variantId ? (variantMap.get(item.variantId)?.stock ?? 0) : product.stock;
       if (stock === 0) outOfStock.push(product.name);
       else if (stock < item.quantity) insufficientStock.push({ name: product.name, available: stock, requested: item.quantity });

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from '@/lib/prisma';
+import { ProductLifecycleStatus } from '@prisma/client';
 import { notFound } from 'next/navigation';
 import ProductView from './product-view';
 import Footer from '@/components/Footer';
@@ -18,8 +19,8 @@ interface Props {
 }
 
 async function _getProductBySlug(slug: string) {
-  const product = await (prisma as any).product.findUnique({
-    where: { slug, isActive: true },
+  const product = await (prisma as any).product.findFirst({
+    where: { slug, status: ProductLifecycleStatus.ACTIVE },
     include: {
       category: true,
       brand: true,
@@ -84,7 +85,7 @@ async function _getRelatedProducts(categoryId: string, currentProductId: string)
   const products = await (prisma as any).product.findMany({
     where: {
       categoryId,
-      isActive: true,
+      status: ProductLifecycleStatus.ACTIVE,
       id: { not: currentProductId }
     },
     select: {

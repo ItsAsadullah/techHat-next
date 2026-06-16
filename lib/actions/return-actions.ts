@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { createStockLedgerEntry } from '@/lib/actions/stock-ledger-actions';
 
 export interface ProcessReturnInput {
   orderId: string;
@@ -29,6 +30,12 @@ export async function processReturn(input: ProcessReturnInput) {
 
     if (!order.isPos) {
       return { success: false, error: 'Only POS orders can be returned' };
+    }
+
+    // Fetch MAIN warehouse for ledger entries
+    const mainWarehouse = await prisma.warehouse.findFirst({ where: { type: 'MAIN' } });
+    if (!mainWarehouse) {
+      return { success: false, error: 'MAIN warehouse not found. Cannot process return.' };
     }
 
     // Calculate refund amount
@@ -63,8 +70,14 @@ export async function processReturn(input: ProcessReturnInput) {
         },
       });
 
-      // Create return items and restore stock
+      // Create return items and restore stock via canonical ledger engine
       for (const item of input.items) {
+        // Get cost price from original order item for accurate ledger valuation
+        const originalOrderItem = order.items.find(
+          oi => oi.productId === item.productId &&
+            (oi.variantId ?? null) === (item.variantId ?? null)
+        );
+
         await tx.returnItem.create({
           data: {
             returnId: returnRecord.id,
@@ -76,57 +89,30 @@ export async function processReturn(input: ProcessReturnInput) {
           },
         });
 
-        // Restore stock
-        if (item.variantId) {
-          const variant = await tx.variant.findUnique({
-            where: { id: item.variantId },
-            select: { stock: true },
-          });
-
-          await tx.variant.update({
-            where: { id: item.variantId },
-            data: { stock: { increment: item.quantity } },
-          });
-
-          // Update parent product stock
-          const allVariants = await tx.variant.findMany({
-            where: { productId: item.productId },
-            select: { stock: true },
-          });
-          const totalStock = allVariants.reduce((sum, v) => sum + v.stock, 0) + item.quantity;
-          
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: totalStock },
-          });
-        } else {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { increment: item.quantity } },
-          });
-        }
-
-        // Log stock movement
-        await tx.stockHistory.create({
-          data: {
+        // createStockLedgerEntry creates RETURN ledger entry,
+        // updates Product/Variant stock cache, and handles MAC correctly.
+        await createStockLedgerEntry(
+          {
+            referenceType: 'RETURN',
+            referenceId: returnRecord.id,
+            warehouseId: mainWarehouse.id,
             productId: item.productId,
             variantId: item.variantId || null,
-            action: 'ADD',
-            quantity: item.quantity,
-            previousStock: 0, // We'd need to fetch this for accuracy
-            newStock: 0, // We'd need to fetch this for accuracy
-            reason: 'Product Return',
-            note: `Return: ${returnNumber}`,
-            source: 'POS_RETURN',
+            inQty: item.quantity,
+            outQty: 0,
+            unitCost: (originalOrderItem as any)?.costPrice || 0,
+            remarks: `POS Return: ${returnNumber} for Order ${order.orderNumber}`,
           },
-        });
+          tx
+        );
       }
 
       return returnRecord;
-    });
+    }, { timeout: 30000 });
 
     revalidatePath('/admin/pos');
     revalidatePath('/admin/pos/returns');
+    revalidatePath('/admin/inventory');
 
     return {
       success: true,
@@ -174,7 +160,7 @@ export async function rejectReturn(returnId: string, note?: string) {
   try {
     await prisma.return.update({
       where: { id: returnId },
-      data: { 
+      data: {
         status: 'REJECTED',
         note: note || null,
       },
@@ -189,8 +175,8 @@ export async function rejectReturn(returnId: string, note?: string) {
 
 export async function getReturns(status?: string) {
   try {
-    const where = status ? { status: status as any} : {};
-    
+    const where = status ? { status: status as any } : {};
+
     return await prisma.return.findMany({
       where,
       include: {

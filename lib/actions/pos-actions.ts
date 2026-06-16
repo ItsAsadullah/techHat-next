@@ -64,7 +64,7 @@ export interface POSProduct {
 export async function searchPOSProducts(query: string, categoryId?: string): Promise<POSProduct[]> {
   try {
     const where: any = {
-      isActive: true,
+      status: 'ACTIVE',
     };
 
     if (query && query.trim().length > 0) {
@@ -204,7 +204,7 @@ export async function findProductByBarcode(barcode: string): Promise<POSProduct 
     const b = sanitizeInput(barcode);
     const product = await prisma.product.findFirst({
       where: {
-        isActive: true,
+        status: 'ACTIVE',
         OR: [
           { barcode: b },
           { sku: b },
@@ -508,58 +508,57 @@ export async function completeSale(input: CompleteSaleInput): Promise<SaleResult
       }
 
       // 4. Create Order Items & Deduct Stock
+      const orderItemsData = input.items.map((item) => ({
+        orderId: order.id,
+        productId: item.productId,
+        variantId: item.variantId || null,
+        productName: item.name + (item.variantName ? ` - ${item.variantName}` : ''),
+        quantity: item.quantity,
+        unitPrice: item.price,
+        total: item.price * item.quantity,
+      }));
+      await tx.orderItem.createMany({ data: orderItemsData });
+
+      // 4b. Log stock movement
+      const stockHistoryData = input.items.map((item) => ({
+        productId: item.productId,
+        variantId: item.variantId || null,
+        action: 'REDUCE' as const,
+        quantity: item.quantity,
+        previousStock: item.maxStock,
+        newStock: item.maxStock - item.quantity,
+        reason: 'POS Sale',
+        note: `Order: ${orderNumber}`,
+        source: 'POS',
+      }));
+      await tx.stockHistory.createMany({ data: stockHistoryData });
+
+      // 4c. Deduct stock concurrently
+      const variantDecrements: Record<string, number> = {};
+      const productDecrements: Record<string, number> = {};
+
       for (const item of input.items) {
-        await tx.orderItem.create({
-          data: {
-            orderId: order.id,
-            productId: item.productId,
-            variantId: item.variantId || null,
-            productName: item.name + (item.variantName ? ` - ${item.variantName}` : ''),
-            quantity: item.quantity,
-            unitPrice: item.price,
-            total: item.price * item.quantity,
-          },
-        });
-
-        // Deduct stock
         if (item.variantId) {
-          await tx.variant.update({
-            where: { id: item.variantId },
-            data: { stock: { decrement: item.quantity } },
-          });
-
-          // Also update parent product stock
-          const allVariants = await tx.variant.findMany({
-            where: { productId: item.productId },
-            select: { stock: true },
-          });
-          const totalStock = allVariants.reduce((sum: number, v: { stock: number }) => sum + v.stock, 0);
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: totalStock },
-          });
-        } else {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { decrement: item.quantity } },
-          });
+          variantDecrements[item.variantId] = (variantDecrements[item.variantId] || 0) + item.quantity;
         }
-
-        // 4b. Log stock movement
-        await tx.stockHistory.create({
-          data: {
-            productId: item.productId,
-            variantId: item.variantId || null,
-            action: 'REDUCE',
-            quantity: item.quantity,
-            previousStock: item.maxStock,
-            newStock: item.maxStock - item.quantity,
-            reason: 'POS Sale',
-            note: `Order: ${orderNumber}`,
-            source: 'POS',
-          },
-        });
+        productDecrements[item.productId] = (productDecrements[item.productId] || 0) + item.quantity;
       }
+
+      const variantPromises = Object.entries(variantDecrements).map(([id, qty]) =>
+        tx.variant.update({
+          where: { id },
+          data: { stock: { decrement: qty } },
+        })
+      );
+
+      const productPromises = Object.entries(productDecrements).map(([id, qty]) =>
+        tx.product.update({
+          where: { id },
+          data: { stock: { decrement: qty } },
+        })
+      );
+
+      await Promise.all([...variantPromises, ...productPromises]);
 
       return order;
     }, { timeout: 30000 });
@@ -592,7 +591,7 @@ export async function getPOSCategories() {
       id: true, 
       name: true,
       _count: {
-        select: { products: { where: { isActive: true } } }
+        select: { products: { where: { status: 'ACTIVE' } } }
       }
     },
     orderBy: { name: 'asc' },
@@ -642,16 +641,23 @@ export async function getDailySalesSummary(targetDate?: Date | string) {
 }
 
 export async function getPOSSalesDates() {
-  const dates = await prisma.order.findMany({
-    where: { isPos: true },
-    select: { createdAt: true },
-  });
+  try {
+    const dates = await prisma.$queryRaw<{ date: Date }[]>`
+      SELECT DISTINCT DATE_TRUNC('day', "created_at") as date
+      FROM "orders"
+      WHERE "is_pos" = true
+      ORDER BY date DESC
+    `;
 
-  const uniqueDates = Array.from(
-    new Set(dates.map((d) => new Date(d.createdAt).toISOString().split('T')[0]))
-  );
-
-  return uniqueDates;
+    return dates.map((d) => {
+      // Handle depending on the DB driver returning Date or string
+      const dateObj = d.date instanceof Date ? d.date : new Date(d.date);
+      return dateObj.toISOString().split('T')[0];
+    });
+  } catch (error) {
+    console.error('getPOSSalesDates error:', error);
+    return [];
+  }
 }
 
 export async function getDailyPOSOrders(targetDate?: Date | string) {
@@ -665,7 +671,7 @@ export async function getDailyPOSOrders(targetDate?: Date | string) {
       createdAt: { gte: startOfDay, lt: endOfDay },
     },
     include: {
-      items: {
+      variants: {
         include: {
           product: {
             select: {
@@ -712,7 +718,7 @@ export async function getPOSSalesReport(startDate?: Date, endDate?: Date) {
     prisma.order.findMany({
       where,
       include: {
-        items: {
+        variants: {
           include: {
             product: { select: { name: true } },
             variant: { select: { name: true } },

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { toast } from 'sonner';
 import {
   Save, Plus, Trash2, GripVertical, Eye, EyeOff,
@@ -66,7 +67,7 @@ function MediaUploadField({
         <div className="relative mb-2 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 group">
           {isVideo
             ? <video src={value} className="w-full max-h-36 object-contain" muted loop playsInline controls />
-            : <img src={value} alt="preview" className="w-full max-h-36 object-contain" />}
+            : <div className="relative w-full h-36"><Image src={value} alt="preview" fill className="object-contain" /></div>}
           <button
             type="button" onClick={() => onChange('')}
             className="absolute top-1.5 right-1.5 p-1 bg-white/90 rounded-full shadow hover:bg-red-50 text-gray-500 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"

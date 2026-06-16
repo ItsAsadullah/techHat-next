@@ -56,13 +56,15 @@ export default async function ProductsPage({
     costPrice: p.costPrice,
     stock: p.stock,
     category: (p as any).category?.name || '',
-    status: p.isActive,
+    status: p.status || 'DRAFT',
+    lifecycleStatus: p.status || 'DRAFT',
     images: (p as any).productImages || [],
     variants: (p as any).variants || [],
     minStock: p.minStock,
     updatedAt: p.updatedAt,
     sku: p.sku,
   }));
+
 
   return (
     <div className="bg-slate-50 dark:bg-zinc-950 w-full max-w-full overflow-x-hidden">

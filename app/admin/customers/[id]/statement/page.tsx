@@ -1,0 +1,106 @@
+import { getCustomerStatement } from '@/lib/actions/receivables-actions';
+import { Card, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Printer, ChevronLeft } from 'lucide-react';
+import Link from 'next/link';
+import { format } from 'date-fns';
+
+export default async function CustomerStatementPage({ params, searchParams }: { params: { id: string }, searchParams: { from?: string, to?: string } }) {
+  const { id } = params;
+  const res = await getCustomerStatement(id, searchParams.from, searchParams.to);
+  
+  if (!res.success || !res.data) {
+    return <div>Error loading statement: {res.error}</div>;
+  }
+
+  const { customer, openingBalance, lines, closingBalance, fromDate, toDate } = res.data;
+
+  return (
+    <div className="space-y-6 max-w-[1000px] mx-auto print:max-w-none print:p-0">
+      <div className="flex justify-between items-center print:hidden">
+        <Link href={`/admin/customers/${id}`}>
+          <Button variant="ghost" size="sm">
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Back to Customer
+          </Button>
+        </Link>
+        <Button onClick={() => {}} className="gap-2" /* Need client component wrapper for actual print window */>
+          <Printer className="h-4 w-4" /> Print Statement
+        </Button>
+      </div>
+
+      <Card className="print:shadow-none print:border-none print:m-0">
+        <CardContent className="p-8 print:p-0">
+          {/* Header */}
+          <div className="flex justify-between items-start mb-8 pb-8 border-b">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Statement of Account</h1>
+              <p className="text-muted-foreground mt-1">TechHat Enterprise</p>
+            </div>
+            <div className="text-right">
+              <h3 className="font-bold text-lg">{customer.companyName || customer.name}</h3>
+              {customer.companyName && <p className="text-muted-foreground text-sm">{customer.name}</p>}
+              <p className="text-muted-foreground">{customer.phone}</p>
+              <p className="text-muted-foreground">{customer.email}</p>
+              <div className="mt-4 text-sm">
+                <span className="font-semibold">Period:</span> {format(new Date(fromDate), 'dd MMM yyyy')} to {format(new Date(toDate), 'dd MMM yyyy')}
+              </div>
+            </div>
+          </div>
+
+          {/* Ledger Table */}
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead>Date</TableHead>
+                <TableHead>Reference</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="text-right">Debit</TableHead>
+                <TableHead className="text-right">Credit</TableHead>
+                <TableHead className="text-right font-bold">Balance</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow className="bg-muted/10 font-medium">
+                <TableCell colSpan={5} className="text-right italic text-muted-foreground">Opening Balance</TableCell>
+                <TableCell className="text-right">
+                  ৳{openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </TableCell>
+              </TableRow>
+
+              {lines.map((l: any) => (
+                <TableRow key={l.id}>
+                  <TableCell>{format(new Date(l.date), 'dd MMM yyyy')}</TableCell>
+                  <TableCell className="font-mono text-xs">{l.referenceId || '-'}</TableCell>
+                  <TableCell>{l.type} {l.note && `- ${l.note}`}</TableCell>
+                  <TableCell className="text-right text-emerald-600">
+                    {l.debit > 0 ? `৳${l.debit.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
+                  </TableCell>
+                  <TableCell className="text-right text-destructive">
+                    {l.credit > 0 ? `৳${l.credit.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    ৳{l.runningBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </TableCell>
+                </TableRow>
+              ))}
+
+              <TableRow className="bg-muted/30 font-bold border-t-2">
+                <TableCell colSpan={5} className="text-right">Closing Balance</TableCell>
+                <TableCell className="text-right text-lg">
+                  ৳{closingBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+
+          {/* Footer */}
+          <div className="mt-12 text-center text-sm text-muted-foreground print:block hidden">
+            This is a computer generated statement and requires no signature.
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

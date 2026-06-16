@@ -29,7 +29,7 @@ async function main() {
         data: {
           name: catName,
           slug,
-          isActive: true,
+          
         },
       });
       console.log(`Created category: ${cat.name}`);
@@ -83,7 +83,7 @@ async function main() {
         sku: `SKU-${getRandomInt(10000, 99999)}`,
         description: `This is a high-quality ${name}. Perfect for your daily needs.`,
         shortDesc: `${adj} ${noun} by ${brand.name}`,
-        isActive: true,
+        
         type: ProductType.PHYSICAL,
         images: [`/placeholder-product-${getRandomInt(1, 5)}.jpg`], // Dummy images
       },

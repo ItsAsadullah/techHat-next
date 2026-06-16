@@ -308,7 +308,7 @@ export default function AdminLogin() {
 
             {/* IP warning */}
             <div className="text-center space-y-1 pt-1 border-t border-green-500/10">
-              <p className="text-red-500/50 text-[9px] tracking-widest uppercase">
+              <p className="text-red-500/50 text-[9px] tracking-widest uppercase" suppressHydrationWarning>
                 ⚠ Your IP address {ipDisplay} has been recorded
               </p>
               <p className="text-green-500/30 text-[9px] tracking-widest">

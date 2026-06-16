@@ -70,7 +70,7 @@ export function PaymentDetailsModal({ isOpen, onClose, grandTotal, paymentMethod
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {paymentMethod === 'MOBILE_BANKING' ? (

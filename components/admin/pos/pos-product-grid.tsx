@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, memo } from 'react';
+import { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import { Search, Package, Grid3X3, List, Loader2, Eye, ScanLine } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { searchPOSProducts, findProductByBarcode, type POSProduct } from '@/lib/actions/pos-actions';
+import { searchPOSProducts, findProductByBarcode, type POSProduct, type CartItem } from '@/lib/actions/pos-actions';
 import { useDebouncedCallback } from 'use-debounce';
 import Image from 'next/image';
 import { useGlobalScanner } from '@/components/admin/global-scanner-provider';
@@ -18,7 +18,7 @@ interface POSProductGridProps {
   initialProducts?: POSProduct[];
 }
 
-export function POSProductGrid({ categories, onProductSelect, searchInputRef, initialProducts = [] }: POSProductGridProps) {
+export function POSProductGrid({ categories, onProductSelect, searchInputRef, initialProducts = [], cartItems = [] }: POSProductGridProps) {
   const [products, setProducts] = useState<POSProduct[]>(initialProducts);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -188,6 +188,35 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
     }
   }, [getAutoVariantId, onProductSelect]);
 
+  // Calculate effective products with optimistic UI stock reduction
+  const effectiveProducts = useMemo(() => {
+    if (!cartItems || cartItems.length === 0) return products;
+    
+    return products.map(product => {
+      const itemsInCart = cartItems.filter(item => item.productId === product.id);
+      if (itemsInCart.length === 0) return product;
+
+      const totalQtyInCart = itemsInCart.reduce((sum, item) => sum + item.quantity, 0);
+      
+      const newProduct = { ...product };
+      newProduct.stock = Math.max(0, product.stock - totalQtyInCart);
+      
+      if (product.variants && product.variants.length > 0) {
+        newProduct.variants = product.variants.map(variant => {
+          const variantInCart = itemsInCart.find(item => item.variantId === variant.id);
+          if (!variantInCart) return variant;
+          
+          return {
+            ...variant,
+            stock: Math.max(0, variant.stock - variantInCart.quantity)
+          };
+        });
+      }
+      
+      return newProduct;
+    });
+  }, [products, cartItems]);
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* ── Sticky top: search + categories ──────────────────────────── */}
@@ -304,13 +333,13 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
-            {products.map((product) => (
+            {effectiveProducts.map((product) => (
               <ProductGridCard key={product.id} product={product} onClick={handleProductClick} />
             ))}
           </div>
         ) : (
           <div className="space-y-2">
-            {products.map((product) => (
+            {effectiveProducts.map((product) => (
               <ProductListItem key={product.id} product={product} onClick={handleProductClick} />
             ))}
           </div>

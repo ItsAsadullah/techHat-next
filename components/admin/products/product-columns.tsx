@@ -14,7 +14,8 @@ export type ProductColumn = {
   costPrice: number;
   stock: number;
   category: string;
-  status: boolean; // isActive
+  status: string; // ProductLifecycleStatus
+  lifecycleStatus?: string; // ProductLifecycleStatus
   images: any[];
   variants: any[];
   minStock: number;
@@ -166,26 +167,27 @@ export const columns: ColumnDef<ProductColumn>[] = [
     )
   },
   {
-    accessorKey: "isActive",
+    accessorKey: "status",
     header: "Status",
-    cell: ({ row }) => (
-        <div className="flex items-center">
-            {row.original.status ? (
-                <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-100">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                    </span>
-                    <span className="text-xs font-semibold">Active</span>
-                </div>
-            ) : (
-                <div className="flex items-center gap-1.5 bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full border border-gray-200">
-                    <span className="h-2 w-2 rounded-full bg-gray-400"></span>
-                    <span className="text-xs font-medium">Draft</span>
-                </div>
-            )}
-        </div>
-    )
+    cell: ({ row }) => {
+      const s = row.original.status || 'DRAFT';
+      const cfg: Record<string, { label: string; cls: string }> = {
+        DRAFT:          { label: 'Draft',         cls: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' },
+        PENDING_REVIEW: { label: 'Pending',       cls: 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400' },
+        PUBLISHED:      { label: 'Published',     cls: 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' },
+        ACTIVE:         { label: 'Active',        cls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' },
+        ARCHIVED:       { label: 'Archived',      cls: 'bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400' },
+        DISCONTINUED:   { label: 'Discontinued',  cls: 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400' },
+        COMING_SOON:    { label: 'Coming Soon',   cls: 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400' },
+        OUT_OF_STOCK:   { label: 'Out of Stock',  cls: 'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400' },
+      };
+      const c = cfg[s] ?? cfg.DRAFT;
+      return (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${c.cls}`}>
+          {c.label}
+        </span>
+      );
+    }
   },
   {
     accessorKey: "updatedAt",

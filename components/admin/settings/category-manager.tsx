@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, type ElementType } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import * as Icons from 'lucide-react';
 import {
@@ -138,7 +139,7 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
                                         const Icon = (Icons as any)[cat.image!] as ElementType | undefined;
                                         return Icon ? <Icon className="w-5 h-5 text-white" /> : <ImageIcon className="w-5 h-5 text-gray-400" />;
                                     })() : cat.image ? (
-                                        <img src={cat.image} className="w-full h-full object-cover" alt={cat.name} />
+                                        <Image src={cat.image} fill sizes="48px" className="object-cover" alt={cat.name} />
                                     ) : (
                                         <ImageIcon className="w-5 h-5 text-gray-400" />
                                     )}

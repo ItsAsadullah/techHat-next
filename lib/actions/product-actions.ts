@@ -105,7 +105,7 @@ export async function createProduct(formData: FormData) {
             }
             return imageUrl ? { id: meta.id, url: imageUrl, isThumbnail: meta.isThumbnail } : null;
         })
-    )).filter((img): img is { id: string; url: string; isThumbnail: boolean } => img !== null);
+    )).filter((img: any): img is { id: string; url: string; isThumbnail: boolean } => img !== null);
 
     // ===== STEP 1.5: Validate serial numbers for duplicates =====
     const allSerials: string[] = [];
@@ -208,7 +208,7 @@ export async function createProduct(formData: FormData) {
                 defaultSupplierId,
                 description,
                 shortDesc,
-                isActive,
+
                 isFlashSale,
                 isFeatured,
                 isBestSeller,
@@ -342,7 +342,7 @@ export async function getProduct(id: string) {
         stock: true,
         minStock: true,
         description: true,
-        isActive: true,
+        status: true,
         isFlashSale: true,
         isFeatured: true,
         unit: true,
@@ -441,8 +441,8 @@ export async function getProduct(id: string) {
       product.description = sanitizeString(product.description);
       
       // Sanitize variant fields
-      if (product.variants) {
-        product.variants.forEach((v: any) => {
+      if ((product as any).variants) {
+        (product as any).variants.forEach((v: any) => {
           v.name = sanitizeString(v.name);
           v.sku = sanitizeString(v.sku);
           v.upc = sanitizeString(v.upc);
@@ -534,7 +534,7 @@ export async function updateProduct(id: string, formData: FormData) {
             }
             return imageUrl ? { id: meta.id, url: imageUrl, isThumbnail: meta.isThumbnail } : null;
         })
-    )).filter((img): img is { id: string; url: string; isThumbnail: boolean } => img !== null);
+    )).filter((img: any): img is { id: string; url: string; isThumbnail: boolean } => img !== null);
 
     // Validate serial numbers for duplicates before transaction
     const allSerials: string[] = [];
@@ -641,7 +641,7 @@ export async function updateProduct(id: string, formData: FormData) {
                 defaultSupplierId,
                 description,
                 shortDesc,
-                isActive,
+
                 isFlashSale,
                 isFeatured,
                 isBestSeller,
@@ -812,7 +812,7 @@ export async function getProducts({
           : {},
         category ? { categoryId: category } : {},
         vendor ? { vendorId: vendor } : {},
-        status ? { isActive: status === 'PUBLISHED' } : {}, // Mapping status string to boolean
+        status ? { status: status as any } : {},
         // type ? { type: type as any} : {},
         stockStatus
           ? stockStatus === 'LOW_STOCK'
@@ -894,7 +894,7 @@ export async function duplicateProduct(id: string) {
                 minStock: product.minStock,
                 description: product.description,
                 shortDesc: product.shortDesc,
-                isActive: false, // Draft by default
+                status: 'DRAFT', // Draft by default
                 isFeatured: false,
                 isFlashSale: false,
                 unit: product.unit,
@@ -922,7 +922,7 @@ export async function duplicateProduct(id: string) {
                     }))
                 },
                 variants: {
-                    create: product.variants.map(v => ({
+                    create: (product as any).variants.map((v: any) => ({
                         name: v.name,
                         sku: v.sku ? `${v.sku}-copy-${Date.now().toString().slice(-4)}-${Math.floor(Math.random()*1000)}` : null,
                         upc: null,

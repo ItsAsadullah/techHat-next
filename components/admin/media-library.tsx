@@ -13,7 +13,8 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 interface MediaLibraryProps {
-  onSelect: (url: string) => void;
+  onSelect: (url: string | string[]) => void;
+  multiple?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   trigger?: React.ReactNode;
@@ -27,7 +28,7 @@ interface CloudinaryImage {
   format: string;
 }
 
-export function MediaLibrary({ onSelect, open: controlledOpen, onOpenChange, trigger }: MediaLibraryProps) {
+export function MediaLibrary({ onSelect, multiple = false, open: controlledOpen, onOpenChange, trigger }: MediaLibraryProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledOpen ?? internalOpen;
   const setIsOpen = onOpenChange ?? setInternalOpen;
@@ -36,7 +37,15 @@ export function MediaLibrary({ onSelect, open: controlledOpen, onOpenChange, tri
   const [loading, setLoading] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
+  const [selectedUrls, setSelectedUrls] = useState<string[]>([]);
+
+  const toggleSelection = (url: string) => {
+    if (multiple) {
+      setSelectedUrls(prev => prev.includes(url) ? prev.filter(u => u !== url) : [...prev, url]);
+    } else {
+      setSelectedUrls([url]);
+    }
+  };
 
   const fetchImages = async (cursor?: string) => {
     setLoading(true);
@@ -84,7 +93,11 @@ export function MediaLibrary({ onSelect, open: controlledOpen, onOpenChange, tri
         // Refresh list
         fetchImages();
         // Auto select uploaded image
-        setSelectedUrl(result.url);
+        if (multiple) {
+          setSelectedUrls(prev => [...prev, result.url]);
+        } else {
+          setSelectedUrls([result.url]);
+        }
       } else {
         toast.error('Failed to upload image', { id: toastId });
       }
@@ -97,10 +110,10 @@ export function MediaLibrary({ onSelect, open: controlledOpen, onOpenChange, tri
   };
 
   const handleConfirm = () => {
-    if (selectedUrl) {
-      onSelect(selectedUrl);
+    if (selectedUrls.length > 0) {
+      onSelect(multiple ? selectedUrls : selectedUrls[0]);
       setIsOpen(false);
-      setSelectedUrl(null);
+      setSelectedUrls([]);
     }
   };
 
@@ -150,11 +163,11 @@ export function MediaLibrary({ onSelect, open: controlledOpen, onOpenChange, tri
                         key={img.id}
                         className={cn(
                           "relative aspect-square rounded-lg border-2 overflow-hidden cursor-pointer group transition-all",
-                          selectedUrl === img.url 
+                          selectedUrls.includes(img.url) 
                             ? "border-blue-500 ring-2 ring-blue-200" 
                             : "border-gray-200 hover:border-blue-300"
                         )}
-                        onClick={() => setSelectedUrl(img.url)}
+                        onClick={() => toggleSelection(img.url)}
                       >
                         <Image
                           src={img.url}
@@ -163,7 +176,7 @@ export function MediaLibrary({ onSelect, open: controlledOpen, onOpenChange, tri
                           className="object-cover"
                           sizes="(max-width: 768px) 50vw, 20vw"
                         />
-                        {selectedUrl === img.url && (
+                        {selectedUrls.includes(img.url) && (
                           <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
                             <div className="bg-blue-500 text-white rounded-full p-1 shadow-sm">
                               <Check className="w-4 h-4" />
@@ -221,11 +234,11 @@ export function MediaLibrary({ onSelect, open: controlledOpen, onOpenChange, tri
 
         <div className="px-6 py-4 border-t bg-gray-50 flex justify-between items-center">
            <div className="text-xs text-gray-500">
-              {selectedUrl ? '1 image selected' : 'No image selected'}
+              {selectedUrls.length > 0 ? `${selectedUrls.length} image(s) selected` : 'No image selected'}
            </div>
            <div className="flex gap-2">
               <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-              <Button onClick={handleConfirm} disabled={!selectedUrl} className="bg-blue-600 hover:bg-blue-700">
+              <Button onClick={handleConfirm} disabled={selectedUrls.length === 0} className="bg-blue-600 hover:bg-blue-700">
                  Insert Image
               </Button>
            </div>

@@ -32,7 +32,7 @@ export function DailyOrdersModal({ isOpen, onClose, targetDate }: DailyOrdersMod
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader className="px-6 py-4 border-b border-gray-100 shrink-0 bg-gray-50/50 pr-12 sm:pr-6">
           <DialogTitle className="flex flex-wrap items-center justify-between gap-2 text-lg font-bold">
             <div className="flex items-center gap-2 text-gray-900">

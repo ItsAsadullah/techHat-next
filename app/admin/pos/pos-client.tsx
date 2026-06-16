@@ -22,7 +22,7 @@ import dynamic from 'next/dynamic';
 // PERF: Lazy-load modal components — these are heavy (~40KB combined) and only
 // rendered when explicitly triggered by user action. Loading them eagerly wastes
 // bandwidth and slows initial POS page paint.
-const POSReceipt = dynamic(() => import('@/components/admin/pos/pos-receipt').then(m => ({ default: m.POSReceipt })), { ssr: false });
+import { POSReceipt } from '@/components/admin/pos/pos-receipt';
 const MixedPaymentModal = dynamic(() => import('@/components/admin/pos/mixed-payment-modal').then(m => ({ default: m.MixedPaymentModal })), { ssr: false });
 const PaymentDetailsModal = dynamic(() => import('@/components/admin/pos/payment-details-modal').then(m => ({ default: m.PaymentDetailsModal })), { ssr: false });
 const VariantPickerModal = dynamic(() => import('@/components/admin/pos/variant-picker-modal').then(m => ({ default: m.VariantPickerModal })), { ssr: false });
@@ -102,6 +102,9 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
 
   const [receiptData, setReceiptData] = useState<any>(null);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptStatus, setReceiptStatus] = useState<'processing' | 'success' | 'error'>('processing');
+  const [receiptError, setReceiptError] = useState<string>('');
+  const [lastCheckoutBreakdown, setLastCheckoutBreakdown] = useState<any>(null);
   const [showMixedPayment, setShowMixedPayment] = useState(false);
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const [showVariantPicker, setShowVariantPicker] = useState(false);
