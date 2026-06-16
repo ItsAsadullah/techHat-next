@@ -37,7 +37,7 @@ export async function getPurchaseReturnById(id: string) {
         items: {
           include: {
             product: { select: { name: true, sku: true } },
-            productVariant: { select: { name: true, sku: true } }
+            variant: { select: { name: true, sku: true } }
           }
         }
       }

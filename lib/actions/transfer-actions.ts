@@ -14,7 +14,7 @@ export async function getTransfers(params?: { status?: string, sourceId?: string
       },
       include: {
         sourceWarehouse: { select: { name: true, code: true } },
-        destinationWarehouse: { select: { name: true, code: true } },
+        destWarehouse: { select: { name: true, code: true } },
         _count: { select: { items: true } }
       },
       orderBy: { date: 'desc' }
@@ -32,11 +32,11 @@ export async function getTransferById(id: string) {
       where: { id },
       include: {
         sourceWarehouse: true,
-        destinationWarehouse: true,
+        destWarehouse: true,
         items: {
           include: {
             product: { select: { name: true, sku: true, costPrice: true } },
-            productVariant: { select: { name: true, sku: true, costPrice: true } }
+            variant: { select: { name: true, sku: true, costPrice: true } }
           }
         }
       }
@@ -52,7 +52,7 @@ export async function getTransferById(id: string) {
 export async function createTransfer(data: {
   sourceId: string;
   destinationId: string;
-  transferCost?: number;
+  unitCost?: number;
   note?: string;
   items: { productId: string; variantId?: string; quantity: number }[];
 }) {
@@ -72,7 +72,7 @@ export async function createTransfer(data: {
           transferNumber,
           sourceId: data.sourceId,
           destinationId: data.destinationId,
-          transferCost: data.transferCost || 0,
+          quantity: data.unitCost || 0,
           note: data.note,
           status: 'DRAFT',
           items: {

@@ -17,7 +17,7 @@ export async function getProductPurchaseHistory(productId: string) {
             warehouse: { select: { name: true } },
           }
         },
-        productVariant: { select: { name: true } }
+        variant: { select: { name: true } }
       },
       orderBy: { purchaseOrder: { date: 'desc' } },
       take: 50,
@@ -44,7 +44,7 @@ export async function getProductGRNHistory(productId: string) {
             warehouse: { select: { name: true } },
           }
         },
-        productVariant: { select: { name: true } }
+        variant: { select: { name: true } }
       },
       orderBy: { goodsReceiveNote: { receivedDate: 'desc' } },
       take: 50,

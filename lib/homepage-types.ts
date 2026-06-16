@@ -154,7 +154,7 @@ export const DEFAULT_BANNERS: HomepageBanner[] = [
     id: '2',
     title: 'Smart Home Revolution',
     subtitle: 'Transform your home with intelligent devices',
-    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1600&h=600&fit=crop&q=80',
+    image: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=1600&h=600&fit=crop&q=80',
     ctaText: 'Explore',
     ctaLink: '/category/smart-devices',
     badge: 'Trending',

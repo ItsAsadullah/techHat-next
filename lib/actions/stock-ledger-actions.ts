@@ -1,8 +1,8 @@
 import { prisma } from '@/lib/prisma';
-import { StockLedgerRefType } from '@prisma/client';
+
 
 export type CreateStockLedgerParams = {
-  referenceType: StockLedgerRefType;
+  referenceType: String;
   referenceId: string;
   warehouseId: string;
   productId: string;

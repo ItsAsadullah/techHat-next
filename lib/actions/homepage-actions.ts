@@ -474,7 +474,7 @@ const _getTopCategoriesCache = unstable_cache(
           image: true,
           _count: { select: { products: true } },
           children: {
-            where: { status: 'ACTIVE' },
+            where: { isActive: true },
             select: {
               id: true,
               name: true,
@@ -482,7 +482,7 @@ const _getTopCategoriesCache = unstable_cache(
               image: true,
               _count: { select: { products: true } },
               children: {
-                where: { status: 'ACTIVE' },
+                where: { isActive: true },
                 select: {
                   id: true,
                   name: true,

@@ -96,7 +96,7 @@ export async function getWarehouseById(id: string) {
 
     const velocityStats = await prisma.stockLedger.groupBy({
       by: ['productId', 'variantId'],
-      where: { warehouseId: id, date: { gte: thirtyDaysAgo } },
+      where: { warehouseId: id, createdAt: { gte: thirtyDaysAgo } },
       _sum: { outQty: true }
     });
 
@@ -295,9 +295,9 @@ export async function getInventoryDashboardStats() {
     // 3. Damaged Stock (Adjustments)
     const stockAdjustments = await prisma.stockAdjustmentItem.aggregate({
       where: { stockAdjustment: { reason: 'DAMAGE', status: 'APPROVED' } },
-      _sum: { adjustedQty: true }
+      _sum: { quantity: true }
     });
-    const totalDamagedStock = Math.abs(stockAdjustments._sum.adjustedQty || 0);
+    const totalDamagedStock = Math.abs(stockAdjustments._sum.quantity || 0);
 
     const totalAvailableStock = Math.max(0, totalStockQty - totalReservedStock);
 

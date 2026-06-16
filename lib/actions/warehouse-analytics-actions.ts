@@ -33,7 +33,7 @@ export async function getWarehouseAnalytics(id: string): Promise<{ success: bool
 
     const velocityStats60 = await prisma.stockLedger.groupBy({
       by: ['productId', 'variantId'],
-      where: { warehouseId: id, date: { gte: sixtyDaysAgo } },
+      where: { warehouseId: id, createdAt: { gte: sixtyDaysAgo } },
       _sum: { outQty: true }
     });
 

@@ -40,6 +40,7 @@ export default function PromoBanner({ banner }: { banner: PromoBannerType }) {
               src={banner.image}
               alt={banner.title}
               fill
+              sizes="(max-width: 1024px) 100vw, 33vw"
               className="object-cover opacity-20"
               loading="lazy"
             />

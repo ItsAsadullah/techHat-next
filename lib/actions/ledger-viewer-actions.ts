@@ -39,7 +39,7 @@ export async function getStockLedger(filter: LedgerFilter = {}) {
 
   if (search) {
     where.OR = [
-      { remarks: { contains: search, mode: 'insensitive' } },
+      { note: { contains: search, mode: 'insensitive' } },
       { referenceId: { contains: search, mode: 'insensitive' } },
       { product: { name: { contains: search, mode: 'insensitive' } } },
     ];
@@ -50,7 +50,7 @@ export async function getStockLedger(filter: LedgerFilter = {}) {
   const [entries, total] = await Promise.all([
     prisma.stockLedger.findMany({
       where,
-      orderBy: { date: 'desc' },
+      orderBy: { createdAt: 'desc' },
       skip,
       take: limit,
       include: {
@@ -140,7 +140,7 @@ export async function exportLedgerCSV(filter: LedgerFilter = {}) {
     e.openingQty,
     e.inQty,
     e.outQty,
-    e.closingQty,
+    e.balanceQty,
     e.unitCost.toFixed(2),
     e.totalValue.toFixed(2),
     e.remarks || '',

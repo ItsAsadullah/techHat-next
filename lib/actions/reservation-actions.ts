@@ -96,11 +96,11 @@ export async function getDamagedStock(productId: string, variantId?: string) {
         }
       },
       _sum: {
-        adjustedQty: true // This is usually negative, so we'll take Math.abs
+        quantity: true // This is usually negative, so we'll take Math.abs
       }
     });
 
-    const damageQty = Math.abs(stockAdjustments._sum.adjustedQty || 0);
+    const damageQty = Math.abs(stockAdjustments._sum.quantity || 0);
 
     return { success: true, data: damageQty };
   } catch (error: any) {

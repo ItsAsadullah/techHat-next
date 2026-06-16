@@ -253,7 +253,7 @@ export async function getProductSuppliers(productId: string) {
   try {
     const suppliers = await prisma.supplierProduct.findMany({
       where: { productId },
-      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+      orderBy: [{ price: 'desc' }, { createdAt: 'asc' }],
     });
     return { success: true, suppliers };
   } catch (error: any) {
@@ -274,9 +274,9 @@ export async function getProductFullTimeline(productId: string) {
 
     const ledgers = await prisma.stockLedger.findMany({
       where: { productId },
-      orderBy: { date: 'desc' },
+      orderBy: { createdAt: 'desc' },
       take: 100,
-      include: { warehouse: { select: { name: true } } }
+      include: { warehouseId: { select: { name: true } } }
     });
 
     // We can also fetch StockHistory (deprecated but still holds old data)
@@ -312,7 +312,7 @@ export async function getProductFullTimeline(productId: string) {
         action: l.referenceType,
         user: 'System',
         description: desc,
-        details: { referenceId: l.referenceId, qtyChange, closing: l.closingQty }
+        details: { referenceId: l.referenceId, qtyChange, closing: l.balanceQty }
       });
     });
 

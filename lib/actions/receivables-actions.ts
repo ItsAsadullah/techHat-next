@@ -22,7 +22,7 @@ export async function getReceivablesAging() {
         id: true,
         name: true,
         balance: true,
-        ledgers: {
+        customerLedgers: {
           where: { type: 'SALE' },
           orderBy: { date: 'desc' },
           select: { debit: true, date: true } // SALE adds to debit (increases receivable)
@@ -46,7 +46,7 @@ export async function getReceivablesAging() {
 
       let remainingBalance = cus.balance;
 
-      for (const sale of cus.ledgers) {
+      for (const sale of cus.customerLedgers) {
         if (remainingBalance <= 0) break;
 
         if (sale.debit <= 0) continue;
