@@ -200,7 +200,14 @@ export function BrandManager({ initialBrands }: { initialBrands: Brand[] }) {
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden bg-white border border-gray-200 shrink-0 shadow-sm">
                       {brand.logo ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
-                        <img src={brand.logo} alt={brand.name} className="w-full h-full object-contain p-1" />
+                        <img 
+                          src={brand.logo} 
+                          alt={brand.name} 
+                          className="w-full h-full object-contain p-1" 
+                          onError={(e) => {
+                            e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(brand.name)}&background=random&color=fff&size=128&font-size=0.4&bold=true`;
+                          }}
+                        />
                       ) : (
                         <span className="text-xs font-bold text-gray-400">{brand.name.charAt(0)}</span>
                       )}
