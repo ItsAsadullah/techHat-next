@@ -58,6 +58,21 @@ export function BrandManager({ initialBrands }: { initialBrands: Brand[] }) {
     logo: '',
   });
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('Image size should be less than 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({ ...prev, logo: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleCreate = async () => {
     if (submittingRef.current) return;
     if (!formData.name.trim()) {
@@ -264,13 +279,20 @@ export function BrandManager({ initialBrands }: { initialBrands: Brand[] }) {
               />
             </div>
             <div className="grid gap-2.5">
-              <Label className="text-sm font-bold text-gray-700">Logo Image URL</Label>
+              <Label className="text-sm font-bold text-gray-700">Logo URL or Upload</Label>
               <Input
-                value={formData.logo}
+                value={formData.logo.startsWith('data:') ? 'Image uploaded' : formData.logo}
                 onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
-                placeholder="e.g. https://logo.clearbit.com/apple.com or Base64"
+                placeholder="e.g. apple.com or https://example.com/logo.png"
                 className="h-11 rounded-lg border-2 border-gray-200 text-sm"
               />
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="mt-1 text-sm file:bg-gray-100 file:text-gray-700 file:border-0 file:rounded-lg file:px-3 file:py-1.5 file:font-semibold hover:file:bg-gray-200 transition-colors"
+              />
+              <p className="text-xs text-gray-500">Provide a website link (e.g. apple.com) to automatically fetch its logo, OR upload a file.</p>
             </div>
             <div className="grid gap-2.5">
               <Label className="text-sm font-bold text-gray-700">Short Code (optional)</Label>
@@ -305,13 +327,20 @@ export function BrandManager({ initialBrands }: { initialBrands: Brand[] }) {
               />
             </div>
             <div className="grid gap-2.5">
-              <Label className="text-sm font-bold text-gray-700">Logo Image URL</Label>
+              <Label className="text-sm font-bold text-gray-700">Logo URL or Upload</Label>
               <Input
-                value={formData.logo}
+                value={formData.logo.startsWith('data:') ? 'Image uploaded' : formData.logo}
                 onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
-                placeholder="e.g. https://logo.clearbit.com/apple.com or Base64"
+                placeholder="e.g. apple.com or https://example.com/logo.png"
                 className="h-11 rounded-lg border-2 border-gray-200 text-sm"
               />
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="mt-1 text-sm file:bg-gray-100 file:text-gray-700 file:border-0 file:rounded-lg file:px-3 file:py-1.5 file:font-semibold hover:file:bg-gray-200 transition-colors"
+              />
+              <p className="text-xs text-gray-500">Provide a website link (e.g. apple.com) to automatically fetch its logo, OR upload a file.</p>
             </div>
             <div className="grid gap-2.5">
               <Label className="text-sm font-bold text-gray-700">Short Code (optional)</Label>

@@ -5,6 +5,17 @@ import slugify from 'slugify';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 
+function formatLogoString(input?: string | null) {
+  if (!input) return null;
+  if (input.startsWith('data:image')) return input; // Keep base64 for cloudinary
+  if (input.startsWith('http') && (input.includes('gstatic.com') || input.includes('cloudinary') || input.match(/\.(jpeg|jpg|gif|png|svg)$/i))) {
+    return input; // Already a full image URL
+  }
+  // Assume it's a domain or website link
+  let domain = input.replace(/^https?:\/\//, '').split('/')[0];
+  return `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${domain}&size=128`;
+}
+
 export async function createBrand(name: string, logoBase64?: string, shortCode?: string) {
   try {
     if (!name || name.trim() === '') {
@@ -21,12 +32,13 @@ export async function createBrand(name: string, logoBase64?: string, shortCode?:
       counter++;
     }
 
-    let logoUrl = null;
+    let formattedLogo = formatLogoString(logoBase64);
+    let logoUrl = formattedLogo;
 
     // Upload logo to Cloudinary if provided (as base64)
-    if (logoBase64) {
+    if (formattedLogo && formattedLogo.startsWith('data:image')) {
       try {
-        const base64Data = logoBase64.replace(/^data:[^;]+;base64,/, '');
+        const base64Data = formattedLogo.replace(/^data:[^;]+;base64,/, '');
         const buffer = Buffer.from(base64Data, 'base64');
         logoUrl = await uploadToCloudinary(buffer, 'brands');
       } catch (uploadError) {
@@ -84,7 +96,19 @@ export async function updateBrand(id: string, data: { name?: string; shortCode?:
         : null;
     }
     if (typeof data.logo !== 'undefined') {
-      updateData.logo = data.logo || null;
+      let formattedLogo = formatLogoString(data.logo);
+      let logoUrl = formattedLogo;
+
+      if (formattedLogo && formattedLogo.startsWith('data:image')) {
+        try {
+          const base64Data = formattedLogo.replace(/^data:[^;]+;base64,/, '');
+          const buffer = Buffer.from(base64Data, 'base64');
+          logoUrl = await uploadToCloudinary(buffer, 'brands');
+        } catch (uploadError) {
+          console.error('Logo upload failed:', uploadError);
+        }
+      }
+      updateData.logo = logoUrl;
     }
 
     const brand = await prisma.brand.update({
