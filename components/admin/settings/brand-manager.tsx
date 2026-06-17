@@ -55,6 +55,7 @@ export function BrandManager({ initialBrands }: { initialBrands: Brand[] }) {
   const [formData, setFormData] = useState({
     name: '',
     shortCode: '',
+    logo: '',
   });
 
   const handleCreate = async () => {
@@ -69,13 +70,13 @@ export function BrandManager({ initialBrands }: { initialBrands: Brand[] }) {
     try {
       const res = await createBrand(
         formData.name.trim(),
-        undefined,
+        formData.logo.trim() || undefined,
         formData.shortCode.trim().toUpperCase()
       );
       if (res.success) {
         toast.success('Brand created successfully');
         setIsCreateOpen(false);
-        setFormData({ name: '', shortCode: '' });
+        setFormData({ name: '', shortCode: '', logo: '' });
         router.refresh();
       } else {
         toast.error(res.error || 'Failed to create brand');
@@ -99,6 +100,7 @@ export function BrandManager({ initialBrands }: { initialBrands: Brand[] }) {
       const res = await updateBrand(currentBrand.id, {
         name: formData.name,
         shortCode: formData.shortCode,
+        logo: formData.logo,
       });
       if (res.success) {
         toast.success('Brand updated successfully');
@@ -141,7 +143,7 @@ export function BrandManager({ initialBrands }: { initialBrands: Brand[] }) {
         </div>
         <Button
           onClick={() => {
-            setFormData({ name: '', shortCode: '' });
+            setFormData({ name: '', shortCode: '', logo: '' });
             setIsCreateOpen(true);
           }}
           className="rounded-xl bg-gray-900 hover:bg-gray-800 text-white shadow-md font-medium px-5"
@@ -155,7 +157,8 @@ export function BrandManager({ initialBrands }: { initialBrands: Brand[] }) {
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50 hover:bg-gray-50 border-b border-gray-200">
-              <TableHead className="pl-6 py-3.5 text-xs font-bold uppercase tracking-wider text-gray-600">Brand Name</TableHead>
+              <TableHead className="w-[80px] pl-6 py-3.5 text-xs font-bold uppercase tracking-wider text-gray-600">Logo</TableHead>
+              <TableHead className="py-3.5 text-xs font-bold uppercase tracking-wider text-gray-600">Brand Name</TableHead>
               <TableHead className="py-3.5 text-xs font-bold uppercase tracking-wider text-gray-600">Slug</TableHead>
               <TableHead className="py-3.5 text-xs font-bold uppercase tracking-wider text-gray-600">Short Code</TableHead>
               <TableHead className="py-3.5 text-xs font-bold uppercase tracking-wider text-gray-600">Products</TableHead>
@@ -165,7 +168,7 @@ export function BrandManager({ initialBrands }: { initialBrands: Brand[] }) {
           <TableBody>
             {brands.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-20">
+                <TableCell colSpan={6} className="text-center py-20">
                   <div className="flex flex-col items-center justify-center">
                     <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
                       <Tags className="w-8 h-8 text-gray-400" />
@@ -178,7 +181,17 @@ export function BrandManager({ initialBrands }: { initialBrands: Brand[] }) {
             ) : (
               brands.map((brand) => (
                 <TableRow key={brand.id} className="hover:bg-gray-50 group border-b border-gray-100 last:border-0 transition-all">
-                  <TableCell className="font-medium py-4 pl-6 text-sm text-gray-900">{brand.name}</TableCell>
+                  <TableCell className="pl-6 py-4">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden bg-white border border-gray-200 shrink-0 shadow-sm">
+                      {brand.logo ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={brand.logo} alt={brand.name} className="w-full h-full object-contain p-1" />
+                      ) : (
+                        <span className="text-xs font-bold text-gray-400">{brand.name.charAt(0)}</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium py-4 text-sm text-gray-900">{brand.name}</TableCell>
                   <TableCell className="text-gray-600 text-sm font-medium py-4">{brand.slug}</TableCell>
                   <TableCell className="text-gray-600 text-sm py-4">
                     <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-semibold text-xs font-mono">
@@ -206,6 +219,7 @@ export function BrandManager({ initialBrands }: { initialBrands: Brand[] }) {
                             setFormData({
                               name: brand.name,
                               shortCode: brand.shortCode || '',
+                              logo: brand.logo || '',
                             });
                             setIsEditOpen(true);
                           }}
@@ -250,6 +264,15 @@ export function BrandManager({ initialBrands }: { initialBrands: Brand[] }) {
               />
             </div>
             <div className="grid gap-2.5">
+              <Label className="text-sm font-bold text-gray-700">Logo Image URL</Label>
+              <Input
+                value={formData.logo}
+                onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
+                placeholder="e.g. https://logo.clearbit.com/apple.com or Base64"
+                className="h-11 rounded-lg border-2 border-gray-200 text-sm"
+              />
+            </div>
+            <div className="grid gap-2.5">
               <Label className="text-sm font-bold text-gray-700">Short Code (optional)</Label>
               <Input
                 value={formData.shortCode}
@@ -279,6 +302,15 @@ export function BrandManager({ initialBrands }: { initialBrands: Brand[] }) {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="h-11 rounded-lg border-2 border-gray-200"
+              />
+            </div>
+            <div className="grid gap-2.5">
+              <Label className="text-sm font-bold text-gray-700">Logo Image URL</Label>
+              <Input
+                value={formData.logo}
+                onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
+                placeholder="e.g. https://logo.clearbit.com/apple.com or Base64"
+                className="h-11 rounded-lg border-2 border-gray-200 text-sm"
               />
             </div>
             <div className="grid gap-2.5">
