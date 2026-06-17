@@ -540,10 +540,7 @@ const _getFeaturedBrandsCache = unstable_cache(
     try {
       const brands = await prisma.brand.findMany({
         where: {
-          OR: [
-            { isFeatured: true },
-            { products: { some: { status: 'ACTIVE' } } },
-          ],
+          products: { some: { status: 'ACTIVE' } },
         },
         select: {
           id: true,
