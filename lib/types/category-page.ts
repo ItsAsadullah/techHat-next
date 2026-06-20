@@ -79,6 +79,7 @@ export interface CategoryProduct {
   warrantyMonths: number | null;
   warrantyType: string | null;
   specifications: Record<string, string> | null;
+  specs?: { name: string; value: string }[];
 }
 
 // ─── Filter options (aggregated from products) ────────────────────────────────

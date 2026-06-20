@@ -15,7 +15,7 @@ export function ProductPricingSection({ isEditMode = false }: Props) {
 
   // costPrice comes from form default (initialData) — display only, never submitted
   const costPrice = watch('costPrice') ?? 0;
-  const price     = watch('price')     || 0;
+  const price = watch('price') || 0;
 
   const profit = price - costPrice;
   const margin = price > 0 ? (profit / price) * 100 : 0;

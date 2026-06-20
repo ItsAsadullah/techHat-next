@@ -28,13 +28,36 @@ async function _getProductBySlug(slug: string) {
         include: {
           productImage: {
             select: { id: true, url: true }
+          },
+          variantAttributes: {
+            include: {
+              attributeValue: {
+                include: {
+                  attribute: {
+                    select: { id: true, name: true, uiType: true }
+                  }
+                }
+              }
+            }
           }
         },
         take: 50,
       },
-      specs: {
-        take: 5, // Initially fetch only first 5 specs
+      productAttributes: {
+        include: {
+          attribute: {
+            select: { id: true, name: true, uiType: true }
+          },
+          values: {
+            include: {
+              attributeValue: {
+                select: { id: true, label: true, value: true, colorCode: true, displayOrder: true }
+              }
+            }
+          }
+        },
       },
+      specs: true,
       reviews: {
         where: { status: 'APPROVED' },
         select: {
@@ -167,46 +190,46 @@ const BACKEND_BASE = 'http://localhost/techhat/';
 
 function getImageUrl(url: string | null) {
   if (!url) return null;
-  
+
   // Check if it's a local backend URL (http://localhost/techhat/...)
   if (url.includes('localhost/techhat/') || url.includes('127.0.0.1/techhat/')) {
-      const relativePath = url.split('/techhat/')[1];
-      return `${PROXY_BASE}${encodeURIComponent(relativePath)}`;
+    const relativePath = url.split('/techhat/')[1];
+    return `${PROXY_BASE}${encodeURIComponent(relativePath)}`;
   }
 
   // If it's another external URL (cloudinary, youtube, etc.), return as is
   if (url.startsWith('http') || url.startsWith('https') || url.startsWith('data:')) return url;
-  
+
   let cleanUrl = url;
   // Clean relative paths
   while (cleanUrl.startsWith('/') || cleanUrl.startsWith('./') || cleanUrl.startsWith('../')) {
-      if (cleanUrl.startsWith('/')) cleanUrl = cleanUrl.slice(1);
-      else if (cleanUrl.startsWith('./')) cleanUrl = cleanUrl.slice(2);
-      else if (cleanUrl.startsWith('../')) cleanUrl = cleanUrl.slice(3);
+    if (cleanUrl.startsWith('/')) cleanUrl = cleanUrl.slice(1);
+    else if (cleanUrl.startsWith('./')) cleanUrl = cleanUrl.slice(2);
+    else if (cleanUrl.startsWith('../')) cleanUrl = cleanUrl.slice(3);
   }
-  
+
   return `${PROXY_BASE}${encodeURIComponent(cleanUrl)}`;
 }
 
 function processContent(content: string | null) {
   if (!content) return '';
-  
+
   // 1. Handle explicit http://localhost/techhat/... URLs in src
   let processed = content.replace(/src=["'](http:\/\/localhost\/techhat\/|http:\/\/127\.0\.0\.1\/techhat\/)([^"']+)["']/gi, (match, prefix, path) => {
-      return `src="${PROXY_BASE}${encodeURIComponent(path)}"`;
+    return `src="${PROXY_BASE}${encodeURIComponent(path)}"`;
   });
 
   // 2. Handle relative paths (exclude http, https, data:, blob:, and /api/proxy)
   processed = processed.replace(/src\s*=\s*["'](?!http|https|data:|blob:|\/api\/proxy)([^"']+)["']/gi, (match, src) => {
     let cleanSrc = src;
     while (cleanSrc.startsWith('/') || cleanSrc.startsWith('./') || cleanSrc.startsWith('../')) {
-        if (cleanSrc.startsWith('/')) cleanSrc = cleanSrc.slice(1);
-        else if (cleanSrc.startsWith('./')) cleanSrc = cleanSrc.slice(2);
-        else if (cleanSrc.startsWith('../')) cleanSrc = cleanSrc.slice(3);
+      if (cleanSrc.startsWith('/')) cleanSrc = cleanSrc.slice(1);
+      else if (cleanSrc.startsWith('./')) cleanSrc = cleanSrc.slice(2);
+      else if (cleanSrc.startsWith('../')) cleanSrc = cleanSrc.slice(3);
     }
     return `src="${PROXY_BASE}${encodeURIComponent(cleanSrc)}"`;
   });
-  
+
   return sanitizeHtml(processed, {
     allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img', 'h1', 'h2', 'h3', 'figure', 'figcaption']),
     allowedAttributes: {
@@ -262,7 +285,46 @@ export default async function ProductPage({ params }: Props) {
     isFlashSale: product.isFlashSale,
     productVariantType: product.productVariantType,
     specifications: product.specifications as Record<string, string> | null,
-    attributes: product.attributes as Array<{ id: string; name: string; values: string[] }> | null,
+    attributes: (() => {
+      // Prefer productAttributes relation (new form data) over legacy JSON field
+      if (product.productAttributes && product.productAttributes.length > 0) {
+        return product.productAttributes.map((pa: any) => ({
+          id: pa.attribute.id,
+          name: pa.attribute.name,
+          uiType: pa.attribute.uiType,
+          values: (pa.values || [])
+            .map((pav: any) => {
+              const label = pav.attributeValue?.label;
+              const value = pav.attributeValue?.value;
+              const raw = label || value;
+              return raw != null ? String(raw) : '';
+            })
+            .filter(Boolean),
+          valueDetails: (pa.values || []).map((pav: any) => ({
+            id: pav.attributeValue?.id,
+            label: String(pav.attributeValue?.label || pav.attributeValue?.value || ''),
+            value: String(pav.attributeValue?.value || ''),
+            colorCode: pav.attributeValue?.colorCode || null,
+          })).filter((v: any) => v.label),
+        }));
+      }
+      // Fallback to legacy JSON field — normalise values to strings
+      const legacyAttrs = product.attributes;
+      if (!legacyAttrs || !Array.isArray(legacyAttrs)) return null;
+      return legacyAttrs.map((attr: any) => ({
+        ...attr,
+        values: Array.isArray(attr.values)
+          ? attr.values.map((v: any) => {
+            if (v == null) return '';
+            if (typeof v === 'string') return v;
+            if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+            // v is an object — extract label/value/name
+            if (typeof v === 'object') return String(v.label || v.value || v.name || '');
+            return '';
+          }).filter(Boolean)
+          : [],
+      }));
+    })(),
     category: {
       id: product.category.id,
       name: product.category.name,
@@ -280,20 +342,47 @@ export default async function ProductPage({ params }: Props) {
       isThumbnail: img.isThumbnail,
       displayOrder: img.displayOrder,
     })),
-    variants: (product.variants || []).map((v: any) => ({
-      id: v.id,
-      name: v.name,
-      sku: v.sku,
-      price: v.price,
-      offerPrice: v.offerPrice,
-      stock: v.stock,
-      image: getImageUrl(v.image),
-      productImage: v.productImage ? {
-        id: v.productImage.id,
-        url: getImageUrl(v.productImage.url),
-      } : null,
-      attributes: v.attributes as Record<string, string> | null,
-    })),
+    variants: (product.variants || []).map((v: any) => {
+      // Build attributes from variantAttributes relation (new form) + fallback to JSON
+      let builtAttributes: Record<string, string> | null = null;
+      let builtColorCode: string | null = null;
+
+      if (v.variantAttributes && v.variantAttributes.length > 0) {
+        builtAttributes = {};
+        for (const va of v.variantAttributes) {
+          const attrName = va.attributeValue?.attribute?.name;
+          const attrLabel = va.attributeValue?.label || va.attributeValue?.value;
+          const attrColorCode = va.attributeValue?.colorCode;
+          if (attrName && attrLabel) {
+            builtAttributes[attrName] = attrLabel;
+            // Pick up colorCode for color-type attributes
+            const uiType = va.attributeValue?.attribute?.uiType;
+            if (uiType === 'COLOR_SWATCH' && attrColorCode && !builtColorCode) {
+              builtColorCode = attrColorCode;
+            }
+          }
+        }
+      } else if (v.attributes) {
+        // Fallback: use legacy JSON attributes
+        builtAttributes = v.attributes as Record<string, string>;
+      }
+
+      return {
+        id: v.id,
+        name: v.name,
+        sku: v.sku,
+        price: v.price,
+        offerPrice: v.offerPrice,
+        stock: v.stock,
+        image: getImageUrl(v.image),
+        productImage: v.productImage ? {
+          id: v.productImage.id,
+          url: getImageUrl(v.productImage.url),
+        } : null,
+        attributes: builtAttributes,
+        colorCode: builtColorCode,
+      };
+    }),
     specs: (product.specs || []).map((s: any) => ({
       id: s.id,
       name: s.name,
@@ -318,6 +407,10 @@ export default async function ProductPage({ params }: Props) {
       createdAt: r.createdAt?.toISOString?.() || new Date().toISOString(),
     })),
     reviewStats: reviewStats,
+    faqs: (product.faqs || []).map((faq: any) => ({
+      question: faq.question,
+      answer: faq.answer,
+    })),
   };
 
   const relatedProductsData = (relatedProducts || []).map((p: any) => ({
@@ -330,8 +423,46 @@ export default async function ProductPage({ params }: Props) {
     brand: p.brand?.name || null,
   }));
 
+  // Generate JSON-LD Schema
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://techhat.shop';
+  const productSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: productData.name,
+    description: sanitizeHtml(productData.description || productData.shortDesc || '', { allowedTags: [] }),
+    image: productData.images.map((img: any) => img.url),
+    sku: productData.sku,
+    brand: {
+      '@type': 'Brand',
+      name: productData.brand?.name || 'TechHat',
+    },
+    offers: {
+      '@type': 'Offer',
+      url: `${baseUrl}/products/${productData.slug}`,
+      priceCurrency: 'BDT',
+      price: productData.offerPrice || productData.price,
+      itemCondition: 'https://schema.org/NewCondition',
+      availability: productData.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      seller: {
+        '@type': 'Organization',
+        name: 'TechHat',
+      },
+    },
+    ...(productData.reviewStats?.totalReviews > 0 ? {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: productData.reviewStats.averageRating,
+        reviewCount: productData.reviewStats.totalReviews,
+      }
+    } : {}),
+  };
+
   return (
     <div className="min-h-screen bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+      />
       <ProductView
         product={productData}
         relatedProducts={relatedProductsData}

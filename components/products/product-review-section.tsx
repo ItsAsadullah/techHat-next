@@ -293,7 +293,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string; onSubmitted
                   <div className="flex items-center gap-3 flex-wrap">
                     {images.map((img, i) => (
                       <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 group">
-                        <Image src={img} alt="" fill className="object-cover" />
+                        <Image src={img} alt="" fill sizes="96px" className="object-cover" />
                         <button
                           type="button"
                           onClick={() => removeImage(i)}
@@ -454,7 +454,7 @@ function ReviewCard({ review }: { review: ReviewData }) {
                 onClick={() => openImageGallery(index)}
                 className="relative w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition-colors"
               >
-                <Image src={img.imageUrl} alt="" fill className="object-cover" />
+                <Image src={img.imageUrl} alt="" fill sizes="400px" className="object-cover" />
               </button>
             ))}
           </div>

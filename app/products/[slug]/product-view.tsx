@@ -3,15 +3,15 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { 
-  Heart, 
-  Share2, 
-  ShoppingCart, 
-  Star, 
+import {
+  Heart,
+  Share2,
+  ShoppingCart,
+  Star,
   StarHalf,
   ChevronRight,
-  Shield, 
-  Truck, 
+  Shield,
+  Truck,
   RotateCcw,
   MessageCircle,
   Play,
@@ -67,6 +67,7 @@ interface ProductVariant {
   image: string | null;
   productImage: { id: string; url: string } | null;
   attributes: Record<string, string> | null;
+  colorCode: string | null; // Direct color hex from AttributeValue.colorCode
 }
 
 interface ProductSpec {
@@ -114,7 +115,19 @@ interface Product {
   isFlashSale: boolean;
   productVariantType: string;
   specifications: Record<string, string> | null;
-  attributes: Array<{ id: string; name: string; values: string[] }> | null;
+  attributes: Array<{
+    id: string;
+    name: string;
+    uiType?: string;
+    values: string[];
+    // New: from productAttributes relation with colorCode
+    valueDetails?: Array<{
+      id: string;
+      label: string;
+      value: string;
+      colorCode: string | null;
+    }>;
+  }> | null;
   category: { id: string; name: string; slug: string };
   brand: { id: string; name: string; slug: string; logo: string | null } | null;
   images: ProductImage[];
@@ -174,8 +187,8 @@ function RatingStars({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'm
 function getWhatsAppUrl(product: Product, variant: ProductVariant | null, quantity: number, whatsappNumber?: string) {
   const phone = whatsappNumber ? `880${whatsappNumber.replace(/^0/, '')}` : '8801XXXXXXXXX';
   const variantInfo = variant && variant.name !== 'Default' ? ` (${variant.name})` : '';
-  const price = variant 
-    ? formatPrice(variant.offerPrice || variant.price) 
+  const price = variant
+    ? formatPrice(variant.offerPrice || variant.price)
     : formatPrice(product.offerPrice || product.price);
   const message = encodeURIComponent(
     `Hi! I'd like to order:\n\n` +
@@ -276,7 +289,7 @@ function getColorCode(colorName: string): string | null {
     'light gray': '#D1D5DB',
     'dark gray': '#374151',
   };
-  
+
   const normalized = colorName.toLowerCase().trim();
   return colorMap[normalized] || null;
 }
@@ -297,14 +310,14 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
   // State
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showVideo, setShowVideo] = useState(false);
-  
+
   // Initialize selectedVariant to null if there are multiple variants, 
   // so the user sees the "Total Stock" initially.
   // If there's only 1 variant (e.g. Simple Product treated as Variant), select it.
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     product.variants.length === 1 ? product.variants[0] : null
   );
-  
+
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'specifications' | 'description' | 'reviews'>('specifications');
   const [showShareMenu, setShowShareMenu] = useState(false);
@@ -322,14 +335,14 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
   const [customAddress, setCustomAddress] = useState<string>(''); // For village/para/mahalla
 
   const imageRef = useRef<HTMLDivElement>(null);
-  
+
   // Refs for scroll sections
   const specsRef = useRef<HTMLDivElement>(null);
   const descRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
   const stickyNavRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  
+
   // Sticky detection using IntersectionObserver
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -350,7 +363,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, []);
-  
+
   // Meta Pixel: ViewContent on page load
   useEffect(() => {
     pixelViewContent({
@@ -358,7 +371,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
       content_ids: [product.id],
       value: product.offerPrice ?? product.price,
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product.id]);
 
   // Scroll spy effect
@@ -369,9 +382,9 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
         { ref: descRef, key: 'description' as const },
         { ref: reviewsRef, key: 'reviews' as const },
       ];
-      
+
       const scrollPosition = window.scrollY + 200;
-      
+
       for (const section of sections) {
         if (section.ref.current) {
           const { offsetTop, offsetHeight } = section.ref.current;
@@ -382,11 +395,11 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
         }
       }
     };
-    
+
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-  
+
   // Smooth scroll to section
   const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
     if (ref.current) {
@@ -397,14 +410,14 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
   };
 
   // Computed values - Show minimum price when no variant is selected
-  const currentPrice = selectedVariant 
-    ? selectedVariant.price 
+  const currentPrice = selectedVariant
+    ? selectedVariant.price
     : (product.variants.length > 1 ? Math.min(...product.variants.map(v => v.price)) : product.price);
-  
-  const currentOfferPrice = selectedVariant 
-    ? selectedVariant.offerPrice 
+
+  const currentOfferPrice = selectedVariant
+    ? selectedVariant.offerPrice
     : (product.variants.length > 1 ? Math.min(...product.variants.map(v => v.offerPrice || v.price)) : product.offerPrice);
-  
+
   const displayPrice = currentOfferPrice || currentPrice;
   const originalPrice = currentOfferPrice ? currentPrice : null;
   const discount = getDiscount(currentPrice, currentOfferPrice);
@@ -423,25 +436,39 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
   const currentStock = selectedVariant ? selectedVariant.stock : totalStock;
   const inStock = currentStock > 0;
 
-  // Get images - maintain original order from product
-  const allImages = product.images;
+  // Get images - maintain original order from product, and append any variant-specific images
+  const allImages = useMemo(() => {
+    const images = [...(product.images || [])];
+
+    // Add any variant images that aren't already in the gallery
+    if (product.variants) {
+      product.variants.forEach(v => {
+        const vUrl = v.productImage?.url || v.image;
+        if (vUrl && !images.some(i => i.url === vUrl)) {
+          images.push({
+            id: v.productImage?.id || `var-${v.id}`,
+            url: vUrl,
+            isThumbnail: false,
+            displayOrder: 999
+          });
+        }
+      });
+    }
+    return images;
+  }, [product.images, product.variants]);
 
   const currentImage = allImages[selectedImageIndex] || allImages[0];
-  const displayImage = currentImage?.url || product.image || (product.images && product.images[0]?.url);
+  const displayImage = currentImage?.url || product.image || (allImages[0]?.url);
 
-  // Handlers
   const handleVariantSelect = (variant: ProductVariant) => {
     setSelectedVariant(variant);
     // Switch to variant's image if available
-    if (variant.productImage) {
-      const idx = product.images.findIndex(i => i.id === variant.productImage!.id);
+    const targetUrl = variant.productImage?.url || variant.image;
+    if (targetUrl) {
+      const idx = allImages.findIndex(i => i.url === targetUrl || i.id === variant.productImage?.id);
       if (idx >= 0) {
         setSelectedImageIndex(idx);
-      } else {
-        setSelectedImageIndex(0);
       }
-    } else {
-      setSelectedImageIndex(0);
     }
   };
 
@@ -513,11 +540,21 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
   // Parse variant attributes for group selection
   const variantAttributes = useMemo(() => {
     if (product.productVariantType !== 'variable') return null;
+    // Prefer productAttributes relation data (new form)
     if (product.attributes && Array.isArray(product.attributes) && product.attributes.length > 0) {
-        return product.attributes;
+      return product.attributes;
     }
     return null;
   }, [product]);
+
+  // Helper to get colorCode for a specific attribute value label
+  const getColorCodeForValue = useCallback((attrName: string, val: string): string | null => {
+    if (!product.attributes) return null;
+    const attr = product.attributes.find(a => a.name.toLowerCase() === attrName.toLowerCase());
+    if (!attr?.valueDetails) return null;
+    const detail = attr.valueDetails.find(d => d.label.toLowerCase() === val.toLowerCase() || d.value.toLowerCase() === val.toLowerCase());
+    return detail?.colorCode || null;
+  }, [product.attributes]);
 
   return (
     <div className="bg-white pb-24 md:pb-0">
@@ -543,7 +580,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
           {/* ═══════════════ LEFT: IMAGE GALLERY (4 Columns) ═══════════════ */}
           <div className="lg:col-span-4 space-y-4">
             {/* Main Image */}
-            <div 
+            <div
               ref={imageRef}
               className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50 border border-gray-100 cursor-crosshair group"
               onMouseEnter={() => !showVideo && setImageZoom(true)}
@@ -554,10 +591,10 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                 <div className="w-full h-full">
                   {(() => {
                     const videoId = getYouTubeId(product.videoUrl);
-                    const embedUrl = videoId 
+                    const embedUrl = videoId
                       ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&rel=0&loop=1&playlist=${videoId}`
                       : product.videoUrl;
-                    
+
                     return (
                       <iframe
                         src={embedUrl}
@@ -582,7 +619,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                   priority
                 />
               ) : null}
-              
+
               {/* Badges */}
               <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
                 {discount > 0 && (
@@ -667,20 +704,20 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                         )}
                       >
                         {thumbnailUrl ? (
-                            <>
-                                <Image 
-                                    src={thumbnailUrl} 
-                                    alt="Video Thumbnail" 
-                                    fill 
-                                    className="object-cover opacity-60 group-hover/video:opacity-80 transition-opacity"
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <Play className="w-8 h-8 text-white drop-shadow-lg" />
-                                </div>
-                            </>
-                         ) : (
-                            <Play className="w-8 h-8 text-white/80" />
-                         )}
+                          <>
+                            <Image
+                              src={thumbnailUrl}
+                              alt="Video Thumbnail"
+                              fill
+                              className="object-cover opacity-60 group-hover/video:opacity-80 transition-opacity"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <Play className="w-8 h-8 text-white drop-shadow-lg" />
+                            </div>
+                          </>
+                        ) : (
+                          <Play className="w-8 h-8 text-white/80" />
+                        )}
                         <span className="absolute bottom-1 text-[9px] text-white/90 font-bold shadow-sm z-10">VIDEO</span>
                       </button>
                     );
@@ -735,7 +772,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                 <RatingStars rating={avgRating} size="md" />
                 <span className="text-sm font-semibold text-gray-700">{avgRating.toFixed(1)}</span>
               </div>
-              <button 
+              <button
                 onClick={() => setActiveTab('reviews')}
                 className="text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
@@ -784,33 +821,18 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
               <span className="text-xs text-gray-400 px-2 py-1 bg-gray-50 rounded-full">{product.category.name}</span>
             </div>
 
-            {/* Key Features */}
-            {product.specs && product.specs.length > 0 && (
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <Package className="w-4 h-4 text-blue-600" />
-                  Key Features
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {product.specs.slice(0, 4).map((spec) => (
-                    <div key={spec.id} className="flex items-start gap-2 text-sm">
-                      <ChevronRight className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                      <span className="text-gray-700">
-                        <span className="font-semibold text-gray-900">{spec.name}:</span> {spec.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Key Features removed from main top section */}
 
             {/* Variant Selector */}
             {product.productVariantType === 'variable' && product.variants.length > 1 && (
               <div className="flex flex-wrap items-start gap-6">
                 {variantAttributes?.map(attr => {
                   const currentAttrValue = selectedVariant ? getVariantAttributeValue(selectedVariant, attr.name) : null;
-                  const isColorAttribute = attr.name.toLowerCase() === 'color' || attr.name.toLowerCase() === 'colour';
-                  
+                  const isColorAttribute =
+                    attr.name.toLowerCase() === 'color' ||
+                    attr.name.toLowerCase() === 'colour' ||
+                    attr.uiType === 'COLOR_SWATCH';
+
                   return (
                     <div key={attr.id} className="flex items-center gap-2 flex-wrap">
                       {isColorAttribute ? (
@@ -819,102 +841,120 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                             {attr.name}:
                           </label>
                           <div className="flex flex-wrap gap-2">
-                            {attr.values.map(val => {
-                          // Check if this value is currently selected
-                          const isSelected = currentAttrValue && currentAttrValue.toLowerCase() === val.toLowerCase();
-                          
-                          // Check availability: match variant.name with attribute value (case-insensitive)
-                          const matchingVariants = product.variants.filter(v => {
-                              const vAttrVal = getVariantAttributeValue(v, attr.name);
-                              return vAttrVal && vAttrVal.toLowerCase() === val.toLowerCase();
-                          });
-                          
-                          const available = matchingVariants.length > 0 && matchingVariants.some(v => v.stock > 0);
-                          const colorCode = isColorAttribute ? getColorCode(val) : null;
-                          
-                          // Modern color-only design for color attributes
-                          if (isColorAttribute && colorCode) {
-                            return (
-                              <button
-                                key={val}
-                                onClick={() => {
-                                    // Find the best matching variant for this value
-                                    let targetVariant: ProductVariant | undefined;
-                                    
-                                    if (selectedVariant && variantAttributes.length > 1) {
+                            {attr.values.map(rawVal => {
+                              // Coerce to string to guard against non-string values from JSON data
+                              const val = typeof rawVal === 'string' ? rawVal : (rawVal == null ? '' : String(rawVal));
+                              if (!val) return null;
+                              // Check if this value is currently selected
+                              const isSelected = currentAttrValue && currentAttrValue.toLowerCase() === val.toLowerCase();
+
+                              // Check availability: match variant.name with attribute value (case-insensitive)
+                              const matchingVariants = product.variants.filter(v => {
+                                const vAttrVal = getVariantAttributeValue(v, attr.name);
+                                return vAttrVal && vAttrVal.toLowerCase() === val.toLowerCase();
+                              });
+
+                              const hasVariant = matchingVariants.length > 0;
+                              const inStockForVal = hasVariant && matchingVariants.some(v => v.stock > 0);
+                              // First try DB colorCode, then fallback to hardcoded map
+                              const colorCode = getColorCodeForValue(attr.name, val) || getColorCode(val);
+                              // For the selected matching variant, use its direct colorCode if available
+                              const matchingVariantColorCode = matchingVariants[0]?.colorCode;
+                              const finalColorCode = matchingVariantColorCode || colorCode;
+
+                              // Show color swatch if we have a colorCode or if it's a color attribute
+                              if (isColorAttribute) {
+                                return (
+                                  <button
+                                    key={val}
+                                    onClick={() => {
+                                      // Find the best matching variant for this value
+                                      let targetVariant: ProductVariant | undefined;
+
+                                      if (selectedVariant && variantAttributes.length > 1) {
                                         targetVariant = product.variants.find(v => {
-                                            const vVal = getVariantAttributeValue(v, attr.name);
-                                            if (!vVal || vVal.toLowerCase() !== val.toLowerCase()) return false;
-                                            
-                                            return variantAttributes.every(otherAttr => {
-                                                if (otherAttr.name === attr.name) return true;
-                                                
-                                                const currentOtherVal = getVariantAttributeValue(selectedVariant, otherAttr.name);
-                                                const vOtherVal = getVariantAttributeValue(v, otherAttr.name);
-                                                
-                                                if (currentOtherVal) {
-                                                    return vOtherVal && vOtherVal.toLowerCase() === currentOtherVal.toLowerCase();
-                                                }
-                                                return true;
-                                            });
+                                          const vVal = getVariantAttributeValue(v, attr.name);
+                                          if (!vVal || vVal.toLowerCase() !== val.toLowerCase()) return false;
+
+                                          return variantAttributes.every(otherAttr => {
+                                            if (otherAttr.name === attr.name) return true;
+
+                                            const currentOtherVal = getVariantAttributeValue(selectedVariant, otherAttr.name);
+                                            const vOtherVal = getVariantAttributeValue(v, otherAttr.name);
+
+                                            if (currentOtherVal) {
+                                              return vOtherVal && vOtherVal.toLowerCase() === currentOtherVal.toLowerCase();
+                                            }
+                                            return true;
+                                          });
                                         });
-                                    }
-                                    
-                                    if (!targetVariant) {
+                                      }
+
+                                      if (!targetVariant) {
                                         targetVariant = product.variants.find(v => {
-                                            const vVal = getVariantAttributeValue(v, attr.name);
-                                            return vVal && vVal.toLowerCase() === val.toLowerCase();
+                                          const vVal = getVariantAttributeValue(v, attr.name);
+                                          return vVal && vVal.toLowerCase() === val.toLowerCase();
                                         });
-                                    }
-                                    
-                                    if (targetVariant) {
+                                      }
+
+                                      if (targetVariant) {
                                         handleVariantSelect(targetVariant);
-                                    }
-                                }}
-                                disabled={!available}
-                                className={cn(
-                                  "relative w-8 h-8 rounded-full transition-all duration-300 group",
-                                  available ? "cursor-pointer hover:scale-110" : "cursor-not-allowed opacity-40"
-                                )}
-                              >
-                                {/* Color Circle */}
-                                <span 
-                                  className={cn(
-                                    "absolute inset-0 rounded-full transition-all duration-300",
-                                    val.toLowerCase() === 'white' ? "border-2 border-gray-300" : "border-2 border-transparent"
-                                  )}
-                                  style={{ backgroundColor: colorCode }}
-                                />
-                                
-                                {/* Selected Ring */}
-                                {isSelected && (
-                                  <span className="absolute inset-0 rounded-full ring-2 ring-offset-2 ring-blue-500 animate-pulse" />
-                                )}
-                                
-                                {/* Checkmark for selected */}
-                                {isSelected && (
-                                  <span className="absolute inset-0 flex items-center justify-center">
-                                    <svg className="w-3 h-3 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
-                                  </span>
-                                )}
-                                
-                                {/* Out of stock indicator */}
-                                {!available && (
-                                  <span className="absolute inset-0 flex items-center justify-center">
-                                    <span className="w-6 h-0.5 bg-gray-400 rotate-45" />
-                                  </span>
-                                )}
-                                
-                                {/* Tooltip on hover */}
-                                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                                  {val}
-                                </span>
-                              </button>
-                            );
-                          }
-                        })}
+                                      }
+                                    }}
+                                    disabled={!hasVariant}
+                                    title={val}
+                                    className={cn(
+                                      "relative transition-all duration-300 group",
+                                      finalColorCode
+                                        ? "w-8 h-8 rounded-full"
+                                        : "px-3 py-1.5 rounded-lg text-xs font-medium border",
+                                      hasVariant ? "cursor-pointer hover:scale-110" : "cursor-not-allowed opacity-40",
+                                      !finalColorCode && (isSelected
+                                        ? "border-blue-500 bg-blue-500 text-white shadow-lg"
+                                        : "border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50")
+                                    )}
+                                  >
+                                    {finalColorCode ? (
+                                      <>
+                                        {/* Color Circle */}
+                                        <span
+                                          className={cn(
+                                            "absolute inset-0 rounded-full transition-all duration-300",
+                                            val.toLowerCase() === 'white' ? "border-2 border-gray-300" : "border-2 border-transparent"
+                                          )}
+                                          style={{ backgroundColor: finalColorCode }}
+                                        />
+
+                                        {/* Selected Ring */}
+                                        {isSelected && (
+                                          <span className="absolute inset-0 rounded-full ring-2 ring-offset-2 ring-blue-500 animate-pulse" />
+                                        )}
+
+                                        {/* Checkmark for selected */}
+                                        {isSelected && (
+                                          <span className="absolute inset-0 flex items-center justify-center">
+                                            <svg className="w-3 h-3 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20">
+                                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                            </svg>
+                                          </span>
+                                        )}
+
+                                        {/* Out of stock indicator */}
+                                        {/* Removed: User finds the diagonal line confusing for new products with 0 stock */}
+
+                                        {/* Tooltip on hover */}
+                                        <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                          {val}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      // No colorCode: show as text badge
+                                      <>{val}</>
+                                    )}
+                                  </button>
+                                );
+                              }
+                            })}
                           </div>
                         </>
                       ) : (
@@ -923,63 +963,68 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                             {attr.name}:
                           </label>
                           <div className="flex flex-wrap gap-2">
-                            {attr.values.map(val => {
+                            {attr.values.map(rawVal => {
+                              // Coerce to string to guard against non-string values from JSON data
+                              const val = typeof rawVal === 'string' ? rawVal : (rawVal == null ? '' : String(rawVal));
+                              if (!val) return null;
                               // Check if this value is currently selected
                               const isSelected = currentAttrValue && currentAttrValue.toLowerCase() === val.toLowerCase();
-                              
+
                               // Check availability: match variant.name with attribute value (case-insensitive)
                               const matchingVariants = product.variants.filter(v => {
-                                  const vAttrVal = getVariantAttributeValue(v, attr.name);
-                                  return vAttrVal && vAttrVal.toLowerCase() === val.toLowerCase();
+                                const vAttrVal = getVariantAttributeValue(v, attr.name);
+                                return vAttrVal && vAttrVal.toLowerCase() === val.toLowerCase();
                               });
-                              
-                              const available = matchingVariants.length > 0 && matchingVariants.some(v => v.stock > 0);
-                              
+
+                              const hasVariant = matchingVariants.length > 0;
+                              const inStockForVal = hasVariant && matchingVariants.some(v => v.stock > 0);
+
                               // Standard button design for non-color attributes
                               return (
                                 <button
                                   key={val}
                                   onClick={() => {
-                                      let targetVariant: ProductVariant | undefined;
-                                      
-                                      if (selectedVariant && variantAttributes.length > 1) {
-                                          targetVariant = product.variants.find(v => {
-                                              const vVal = getVariantAttributeValue(v, attr.name);
-                                              if (!vVal || vVal.toLowerCase() !== val.toLowerCase()) return false;
-                                              
-                                              return variantAttributes.every(otherAttr => {
-                                                  if (otherAttr.name === attr.name) return true;
-                                                  
-                                                  const currentOtherVal = getVariantAttributeValue(selectedVariant, otherAttr.name);
-                                                  const vOtherVal = getVariantAttributeValue(v, otherAttr.name);
-                                                  
-                                                  if (currentOtherVal) {
-                                                      return vOtherVal && vOtherVal.toLowerCase() === currentOtherVal.toLowerCase();
-                                                  }
-                                                  return true;
-                                              });
-                                          });
-                                      }
-                                      
-                                      if (!targetVariant) {
-                                          targetVariant = product.variants.find(v => {
-                                              const vVal = getVariantAttributeValue(v, attr.name);
-                                              return vVal && vVal.toLowerCase() === val.toLowerCase();
-                                          });
-                                      }
-                                      
-                                      if (targetVariant) {
-                                          handleVariantSelect(targetVariant);
-                                      }
+                                    let targetVariant: ProductVariant | undefined;
+
+                                    if (selectedVariant && variantAttributes.length > 1) {
+                                      targetVariant = product.variants.find(v => {
+                                        const vVal = getVariantAttributeValue(v, attr.name);
+                                        if (!vVal || vVal.toLowerCase() !== val.toLowerCase()) return false;
+
+                                        return variantAttributes.every(otherAttr => {
+                                          if (otherAttr.name === attr.name) return true;
+
+                                          const currentOtherVal = getVariantAttributeValue(selectedVariant, otherAttr.name);
+                                          const vOtherVal = getVariantAttributeValue(v, otherAttr.name);
+
+                                          if (currentOtherVal) {
+                                            return vOtherVal && vOtherVal.toLowerCase() === currentOtherVal.toLowerCase();
+                                          }
+                                          return true;
+                                        });
+                                      });
+                                    }
+
+                                    if (!targetVariant) {
+                                      targetVariant = product.variants.find(v => {
+                                        const vVal = getVariantAttributeValue(v, attr.name);
+                                        return vVal && vVal.toLowerCase() === val.toLowerCase();
+                                      });
+                                    }
+
+                                    if (targetVariant) {
+                                      handleVariantSelect(targetVariant);
+                                    }
                                   }}
-                                  disabled={!available}
+                                  disabled={!hasVariant}
                                   className={cn(
                                     "px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 hover:scale-105",
                                     isSelected
                                       ? "border-blue-500 bg-blue-500 text-white shadow-lg shadow-blue-200"
-                                      : available
-                                      ? "border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50"
-                                      : "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed line-through"
+                                      : hasVariant
+                                        ? "border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50"
+                                        : "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed line-through",
+                                    hasVariant && !inStockForVal && "opacity-60"
                                   )}
                                 >
                                   {val}
@@ -1007,8 +1052,8 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                             selectedVariant?.id === v.id
                               ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm"
                               : v.stock > 0
-                              ? "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                              : "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed"
+                                ? "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                                : "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed"
                           )}
                         >
                           {v.name}
@@ -1036,7 +1081,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                   Stock: {currentStock}
                 </span>
               )}
-              
+
               {/* Quantity Selector - inline with stock */}
               <div className="flex items-center gap-2">
                 <label className="text-sm font-semibold text-gray-800">Quantity:</label>
@@ -1067,7 +1112,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
             <div className="flex flex-col gap-3">
               {/* Cart and Buy Now */}
               <div className="flex gap-3">
-                <button 
+                <button
                   ref={addToCartBtnRef}
                   disabled={!inStock}
                   onClick={() => handleAddToCart(addToCartBtnRef.current)}
@@ -1076,7 +1121,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                   <ShoppingCart className="w-5 h-5" />
                   Add to Cart
                 </button>
-                <button 
+                <button
                   disabled={!inStock}
                   onClick={() => handleBuyNow()}
                   className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all shadow-lg hover:shadow-xl uppercase tracking-wide"
@@ -1140,7 +1185,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                     className="w-9 h-9 flex items-center justify-center bg-gradient-to-br from-[#833AB4] via-[#FD1D1D] to-[#F77737] hover:opacity-90 text-white rounded-full transition-all hover:scale-110"
                   >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
                     </svg>
                   </button>
                   <button
@@ -1149,7 +1194,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                     className="w-9 h-9 flex items-center justify-center bg-black hover:bg-gray-800 text-white rounded-full transition-all hover:scale-110"
                   >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                     </svg>
                   </button>
                   <button
@@ -1158,7 +1203,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                     className="w-9 h-9 flex items-center justify-center bg-[#0A66C2] hover:bg-[#004182] text-white rounded-full transition-all hover:scale-110"
                   >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
                     </svg>
                   </button>
                   <button
@@ -1176,86 +1221,86 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
           {/* ═══════════════ RIGHT: DELIVERY SIDEBAR (3 Columns) ═══════════════ */}
           <div className="lg:col-span-3 space-y-6">
             <div className="border border-gray-200 rounded-lg overflow-hidden text-sm bg-gray-50/50 sticky top-24">
-                {/* Delivery Header */}
-                <div className="bg-gray-100 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
-                    <span className="font-semibold text-gray-700">Delivery Options</span>
-                    <AlertCircle className="w-4 h-4 text-gray-400" />
-                </div>
-                
-                <div className="divide-y divide-gray-100 bg-white">
-                    {/* Location */}
-                    <div className="p-4 flex gap-3 hover:bg-gray-50 transition-colors">
-                        <MapPin className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                            <p className="font-medium text-gray-900">{selectedUnion}, {selectedUpazila}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{selectedDistrict}, {selectedDivision}</p>
-                            {customAddress && <p className="text-xs text-gray-600 mt-1">{customAddress}</p>}
-                        </div>
-                        <button 
-                          onClick={() => setShowLocationModal(true)}
-                          className="text-blue-600 font-medium text-xs hover:underline"
-                        >
-                          CHANGE
-                        </button>
-                    </div>
+              {/* Delivery Header */}
+              <div className="bg-gray-100 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
+                <span className="font-semibold text-gray-700">Delivery Options</span>
+                <AlertCircle className="w-4 h-4 text-gray-400" />
+              </div>
 
-                    {/* Sold By */}
-                    <div className="p-4 flex gap-3 hover:bg-gray-50 transition-colors">
-                        <Store className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                            <p className="font-medium text-gray-900">Sold By:</p>
-                            <p className="text-sm font-bold text-blue-600 mt-0.5">TechHat. Your Trusted Techshop</p>
-                        </div>
-                        <button className="text-blue-600 font-medium text-xs hover:underline">VISIT STORE</button>
-                    </div>
-
-                    {/* Home Delivery */}
-                    <div className="p-4 flex gap-3 hover:bg-gray-50 transition-colors">
-                        <Truck className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                            <div className="flex justify-between">
-                                <p className="font-medium text-gray-900">Home Delivery</p>
-                                <span className="font-bold text-gray-900">৳ 60</span>
-                            </div>
-                            <p className="text-xs text-gray-500 mt-0.5">Get your product delivered to your doorstep.</p>
-                        </div>
-                    </div>
-
-                    {/* Cash on Delivery */}
-                    <div className="p-4 flex gap-3 hover:bg-gray-50 transition-colors">
-                        <Banknote className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                            <p className="font-medium text-gray-900">Cash on Delivery Available</p>
-                            <p className="text-xs text-gray-500 mt-0.5">Pay when you receive the product.</p>
-                        </div>
-                    </div>
+              <div className="divide-y divide-gray-100 bg-white">
+                {/* Location */}
+                <div className="p-4 flex gap-3 hover:bg-gray-50 transition-colors">
+                  <MapPin className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">{selectedUnion}, {selectedUpazila}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{selectedDistrict}, {selectedDivision}</p>
+                    {customAddress && <p className="text-xs text-gray-600 mt-1">{customAddress}</p>}
+                  </div>
+                  <button
+                    onClick={() => setShowLocationModal(true)}
+                    className="text-blue-600 font-medium text-xs hover:underline"
+                  >
+                    CHANGE
+                  </button>
                 </div>
 
-                {/* Service Header */}
-                <div className="bg-gray-100 px-4 py-2 border-y border-gray-200 flex justify-between items-center">
-                    <span className="font-semibold text-gray-700">Service & Warranty</span>
-                    <Shield className="w-4 h-4 text-gray-400" />
+                {/* Sold By */}
+                <div className="p-4 flex gap-3 hover:bg-gray-50 transition-colors">
+                  <Store className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">Sold By:</p>
+                    <p className="text-sm font-bold text-blue-600 mt-0.5">TechHat. Your Trusted Techshop</p>
+                  </div>
+                  <button className="text-blue-600 font-medium text-xs hover:underline">VISIT STORE</button>
                 </div>
 
-                <div className="divide-y divide-gray-100 bg-white">
-                     {/* Warranty */}
-                    <div className="p-4 flex gap-3 hover:bg-gray-50 transition-colors">
-                        <BadgeCheck className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                            <p className="font-medium text-gray-900">{product.warrantyMonths ? `${product.warrantyMonths} Months Warranty` : '100% Authentic Product'}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{product.warrantyType || 'Brand Warranty'}</p>
-                        </div>
+                {/* Home Delivery */}
+                <div className="p-4 flex gap-3 hover:bg-gray-50 transition-colors">
+                  <Truck className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="flex justify-between">
+                      <p className="font-medium text-gray-900">Home Delivery</p>
+                      <span className="font-bold text-gray-900">৳ 60</span>
                     </div>
-
-                    {/* Return Policy */}
-                    <div className="p-4 flex gap-3 hover:bg-gray-50 transition-colors">
-                        <RotateCcw className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                            <p className="font-medium text-gray-900">7 Days Return</p>
-                            <p className="text-xs text-gray-500 mt-0.5">Change of mind is not applicable.</p>
-                        </div>
-                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">Get your product delivered to your doorstep.</p>
+                  </div>
                 </div>
+
+                {/* Cash on Delivery */}
+                <div className="p-4 flex gap-3 hover:bg-gray-50 transition-colors">
+                  <Banknote className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">Cash on Delivery Available</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Pay when you receive the product.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Service Header */}
+              <div className="bg-gray-100 px-4 py-2 border-y border-gray-200 flex justify-between items-center">
+                <span className="font-semibold text-gray-700">Service & Warranty</span>
+                <Shield className="w-4 h-4 text-gray-400" />
+              </div>
+
+              <div className="divide-y divide-gray-100 bg-white">
+                {/* Warranty */}
+                <div className="p-4 flex gap-3 hover:bg-gray-50 transition-colors">
+                  <BadgeCheck className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">{product.warrantyMonths ? `${product.warrantyMonths} Months Warranty` : '100% Authentic Product'}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{product.warrantyType || 'Brand Warranty'}</p>
+                  </div>
+                </div>
+
+                {/* Return Policy */}
+                <div className="p-4 flex gap-3 hover:bg-gray-50 transition-colors">
+                  <RotateCcw className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">7 Days Return</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Change of mind is not applicable.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1264,7 +1309,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
         <div className="mt-16 border-t border-gray-100 pt-10 relative">
           {/* Sentinel for sticky detection */}
           <div ref={sentinelRef} className="absolute -top-20 left-0 w-full h-px" />
-          
+
           {/* Sticky Navigation */}
           <div ref={stickyNavRef} className="sticky top-16 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-200 -mx-4 px-4 mb-8">
             <div className="flex gap-1 w-fit">
@@ -1304,34 +1349,34 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
               {/* Specifications Section */}
               <div ref={specsRef} className="scroll-mt-24">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Technical Specifications</h2>
-            {product.specs && product.specs.length > 0 ? (
-              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                <div className="divide-y divide-gray-100">
-                  {product.specs.map((spec, index) => (
-                    <div
-                      key={spec.id}
-                      className={cn(
-                        "grid grid-cols-3 gap-4 px-6 py-4 hover:bg-gray-50 transition-colors",
-                        index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                      )}
-                    >
-                      <div className="col-span-1 font-semibold text-sm text-gray-700">{spec.name}</div>
-                      <div className="col-span-2 text-sm text-gray-600">{spec.value}</div>
+                {product.specs && product.specs.length > 0 ? (
+                  <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div className="divide-y divide-gray-100">
+                      {product.specs.map((spec, index) => (
+                        <div
+                          key={spec.id}
+                          className={cn(
+                            "grid grid-cols-3 gap-4 px-6 py-4 hover:bg-gray-50 transition-colors",
+                            index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                          )}
+                        >
+                          <div className="col-span-1 font-semibold text-sm text-gray-700">{spec.name}</div>
+                          <div className="col-span-2 text-sm text-gray-600">{spec.value}</div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-400 text-center py-12 bg-gray-50 rounded-2xl">No specifications available.</p>
+                )}
               </div>
-            ) : (
-              <p className="text-gray-400 text-center py-12 bg-gray-50 rounded-2xl">No specifications available.</p>
-            )}
-          </div>
 
               {/* Description Section */}
               <div ref={descRef} className="scroll-mt-24">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Product Description</h2>
                 {product.description ? (
                   <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm relative overflow-hidden">
-                    <div 
+                    <div
                       className={cn(
                         "prose prose-gray prose-headings:font-bold prose-a:text-blue-600 prose-img:rounded-lg prose-img:shadow-md prose-img:max-w-full prose-img:h-auto max-w-none text-gray-600 leading-relaxed transition-all duration-300",
                         !descriptionExpanded && "max-h-[300px] overflow-hidden"
@@ -1359,33 +1404,33 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                         </button>
                       </div>
                     )}
-                    
+
                     {/* Video Preview - Only show when expanded */}
                     {descriptionExpanded && product.videoUrl && (
-                  <div className="mt-8 pt-8 border-t border-gray-200">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <Play className="w-5 h-5 text-blue-600" />
-                      Product Video
-                    </h3>
-                    <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-100">
-                      {getYouTubeId(product.videoUrl) ? (
-                        <iframe
-                          src={`https://www.youtube.com/embed/${getYouTubeId(product.videoUrl)}`}
-                          title="Product Video"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          className="absolute inset-0 w-full h-full"
-                        />
-                      ) : (
-                        <video src={product.videoUrl} controls className="w-full h-full" />
-                      )}
-                    </div>
+                      <div className="mt-8 pt-8 border-t border-gray-200">
+                        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                          <Play className="w-5 h-5 text-blue-600" />
+                          Product Video
+                        </h3>
+                        <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-100">
+                          {getYouTubeId(product.videoUrl) ? (
+                            <iframe
+                              src={`https://www.youtube.com/embed/${getYouTubeId(product.videoUrl)}`}
+                              title="Product Video"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              className="absolute inset-0 w-full h-full"
+                            />
+                          ) : (
+                            <video src={product.videoUrl} controls className="w-full h-full" />
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  <p className="text-gray-400 text-center py-12 bg-gray-50 rounded-2xl">No description available.</p>
                 )}
-              </div>
-            ) : (
-              <p className="text-gray-400 text-center py-12 bg-gray-50 rounded-2xl">No description available.</p>
-            )}
               </div>
 
               {/* Reviews Section */}
@@ -1397,6 +1442,28 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                   initialStats={product.reviewStats}
                 />
               </div>
+
+              {/* FAQs Section */}
+              {product.faqs && product.faqs.length > 0 && (
+                <div className="scroll-mt-24 mt-12 pt-12 border-t border-gray-200">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Frequently Asked Questions</h2>
+                  <div className="space-y-4">
+                    {product.faqs.map((faq, idx) => (
+                      <details key={idx} className="group border border-gray-200 rounded-xl bg-gray-50 [&_summary::-webkit-details-marker]:hidden">
+                        <summary className="flex items-center justify-between p-4 font-semibold text-gray-900 cursor-pointer">
+                          {faq.question}
+                          <span className="transition group-open:rotate-180">
+                            <ChevronDown className="w-5 h-5 text-gray-500" />
+                          </span>
+                        </summary>
+                        <div className="px-4 pb-4 text-gray-600 bg-white border-t border-gray-100 rounded-b-xl pt-4">
+                          {faq.answer}
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right: Sticky Product Summary - Only show when scrolled */}
@@ -1446,7 +1513,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                               className={cn(
                                 "inline-flex items-center gap-1.5 text-xs font-medium transition-all px-2.5 py-1 rounded-full",
                                 wishlist?.isWishlisted(product.id)
-                                  ? "text-red-600 bg-red-50 border border-red-200" 
+                                  ? "text-red-600 bg-red-50 border border-red-200"
                                   : "text-gray-500 bg-white border border-gray-300 hover:text-red-500 hover:border-red-300"
                               )}
                             >
@@ -1510,48 +1577,113 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                         {product.productVariantType === 'variable' && product.variants.length > 1 && variantAttributes && (
                           <div className="pb-4 border-b border-gray-200">
                             <div className="flex flex-wrap items-center gap-3">
-                            {variantAttributes.map(attr => {
-                              const currentAttrValue = selectedVariant ? getVariantAttributeValue(selectedVariant, attr.name) : null;
-                              const isColorAttribute = attr.name.toLowerCase() === 'color' || attr.name.toLowerCase() === 'colour';
-                              
-                              return (
-                                <div key={attr.id} className="flex items-center gap-2">
-                                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
-                                    {attr.name}:
-                                  </label>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {attr.values.map(val => {
-                                      // Check if this value is currently selected
-                                      const isSelected = currentAttrValue && currentAttrValue.toLowerCase() === val.toLowerCase();
-                                      
-                                      // Check availability: match variant.name with attribute value (case-insensitive)
-                                      const matchingVariants = product.variants.filter(v => {
-                                        const vAttrVal = getVariantAttributeValue(v, attr.name);
-                                        return vAttrVal && vAttrVal.toLowerCase() === val.toLowerCase();
-                                      });
-                                      
-                                      const available = matchingVariants.length > 0 && matchingVariants.some(v => v.stock > 0);
-                                      const colorCode = isColorAttribute ? getColorCode(val) : null;
-                                      
-                                      if (isColorAttribute && colorCode) {
+                              {variantAttributes.map(attr => {
+                                const currentAttrValue = selectedVariant ? getVariantAttributeValue(selectedVariant, attr.name) : null;
+                                const isColorAttribute =
+                                  attr.name.toLowerCase() === 'color' ||
+                                  attr.name.toLowerCase() === 'colour' ||
+                                  attr.uiType === 'COLOR_SWATCH';
+
+                                return (
+                                  <div key={attr.id} className="flex items-center gap-2">
+                                    <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                                      {attr.name}:
+                                    </label>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {attr.values.map(rawVal => {
+                                        // Coerce to string to guard against non-string values from JSON data
+                                        const val = typeof rawVal === 'string' ? rawVal : (rawVal == null ? '' : String(rawVal));
+                                        if (!val) return null;
+                                        // Check if this value is currently selected
+                                        const isSelected = currentAttrValue && currentAttrValue.toLowerCase() === val.toLowerCase();
+
+                                        // Check availability: match variant.name with attribute value (case-insensitive)
+                                        const matchingVariants = product.variants.filter(v => {
+                                          const vAttrVal = getVariantAttributeValue(v, attr.name);
+                                          return vAttrVal && vAttrVal.toLowerCase() === val.toLowerCase();
+                                        });
+
+                                        const hasVariant = matchingVariants.length > 0;
+                                        const inStockForVal = hasVariant && matchingVariants.some(v => v.stock > 0);
+                                        // First try DB colorCode, then fallback to hardcoded map
+                                        const colorCode = isColorAttribute
+                                          ? (getColorCodeForValue(attr.name, val) || matchingVariants[0]?.colorCode || getColorCode(val))
+                                          : null;
+
+                                        if (isColorAttribute && colorCode) {
+                                          return (
+                                            <button
+                                              key={val}
+                                              onClick={() => {
+                                                // Find the best matching variant for this value
+                                                let targetVariant: ProductVariant | undefined;
+
+                                                if (selectedVariant && variantAttributes.length > 1) {
+                                                  targetVariant = product.variants.find(v => {
+                                                    const vVal = getVariantAttributeValue(v, attr.name);
+                                                    if (!vVal || vVal.toLowerCase() !== val.toLowerCase()) return false;
+
+                                                    return variantAttributes.every(otherAttr => {
+                                                      if (otherAttr.name === attr.name) return true;
+
+                                                      const currentOtherVal = getVariantAttributeValue(selectedVariant, otherAttr.name);
+                                                      const vOtherVal = getVariantAttributeValue(v, otherAttr.name);
+
+                                                      if (currentOtherVal) {
+                                                        return vOtherVal && vOtherVal.toLowerCase() === currentOtherVal.toLowerCase();
+                                                      }
+                                                      return true;
+                                                    });
+                                                  });
+                                                }
+
+                                                if (!targetVariant) {
+                                                  targetVariant = product.variants.find(v => {
+                                                    const vVal = getVariantAttributeValue(v, attr.name);
+                                                    return vVal && vVal.toLowerCase() === val.toLowerCase();
+                                                  });
+                                                }
+
+                                                if (targetVariant) {
+                                                  handleVariantSelect(targetVariant);
+                                                }
+                                              }}
+                                              disabled={!hasVariant}
+                                              className={cn(
+                                                "w-8 h-8 rounded-full border-2 transition-all shadow-sm relative",
+                                                isSelected
+                                                  ? "border-blue-500 ring-2 ring-blue-200 scale-110"
+                                                  : "border-gray-300 hover:border-gray-400",
+                                                !hasVariant && "opacity-40 cursor-not-allowed"
+                                              )}
+                                              style={{ backgroundColor: colorCode }}
+                                              title={val}
+                                            >
+                                              {isSelected && (
+                                                <Check className="w-4 h-4 text-white absolute inset-0 m-auto drop-shadow" />
+                                              )}
+                                            </button>
+                                          );
+                                        }
+
                                         return (
                                           <button
                                             key={val}
                                             onClick={() => {
                                               // Find the best matching variant for this value
                                               let targetVariant: ProductVariant | undefined;
-                                              
+
                                               if (selectedVariant && variantAttributes.length > 1) {
                                                 targetVariant = product.variants.find(v => {
                                                   const vVal = getVariantAttributeValue(v, attr.name);
                                                   if (!vVal || vVal.toLowerCase() !== val.toLowerCase()) return false;
-                                                  
+
                                                   return variantAttributes.every(otherAttr => {
                                                     if (otherAttr.name === attr.name) return true;
-                                                    
+
                                                     const currentOtherVal = getVariantAttributeValue(selectedVariant, otherAttr.name);
                                                     const vOtherVal = getVariantAttributeValue(v, otherAttr.name);
-                                                    
+
                                                     if (currentOtherVal) {
                                                       return vOtherVal && vOtherVal.toLowerCase() === currentOtherVal.toLowerCase();
                                                     }
@@ -1559,90 +1691,36 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                                                   });
                                                 });
                                               }
-                                              
+
                                               if (!targetVariant) {
                                                 targetVariant = product.variants.find(v => {
                                                   const vVal = getVariantAttributeValue(v, attr.name);
                                                   return vVal && vVal.toLowerCase() === val.toLowerCase();
                                                 });
                                               }
-                                              
+
                                               if (targetVariant) {
                                                 handleVariantSelect(targetVariant);
                                               }
                                             }}
-                                            disabled={!available}
+                                            disabled={!hasVariant}
                                             className={cn(
-                                              "w-8 h-8 rounded-full border-2 transition-all shadow-sm relative",
-                                              isSelected 
-                                                ? "border-blue-500 ring-2 ring-blue-200 scale-110" 
-                                                : "border-gray-300 hover:border-gray-400",
-                                              !available && "opacity-40 cursor-not-allowed"
+                                              "px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
+                                              isSelected
+                                                ? "border-blue-500 bg-blue-500 text-white shadow-md"
+                                                : hasVariant
+                                                  ? "border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:bg-blue-50"
+                                                  : "opacity-40 cursor-not-allowed line-through"
                                             )}
-                                            style={{ backgroundColor: colorCode }}
-                                            title={val}
                                           >
-                                            {isSelected && (
-                                              <Check className="w-4 h-4 text-white absolute inset-0 m-auto drop-shadow" />
-                                            )}
+                                            {val}
                                           </button>
                                         );
-                                      }
-                                      
-                                      return (
-                                        <button
-                                          key={val}
-                                          onClick={() => {
-                                            // Find the best matching variant for this value
-                                            let targetVariant: ProductVariant | undefined;
-                                            
-                                            if (selectedVariant && variantAttributes.length > 1) {
-                                              targetVariant = product.variants.find(v => {
-                                                const vVal = getVariantAttributeValue(v, attr.name);
-                                                if (!vVal || vVal.toLowerCase() !== val.toLowerCase()) return false;
-                                                
-                                                return variantAttributes.every(otherAttr => {
-                                                  if (otherAttr.name === attr.name) return true;
-                                                  
-                                                  const currentOtherVal = getVariantAttributeValue(selectedVariant, otherAttr.name);
-                                                  const vOtherVal = getVariantAttributeValue(v, otherAttr.name);
-                                                  
-                                                  if (currentOtherVal) {
-                                                    return vOtherVal && vOtherVal.toLowerCase() === currentOtherVal.toLowerCase();
-                                                  }
-                                                  return true;
-                                                });
-                                              });
-                                            }
-                                            
-                                            if (!targetVariant) {
-                                              targetVariant = product.variants.find(v => {
-                                                const vVal = getVariantAttributeValue(v, attr.name);
-                                                return vVal && vVal.toLowerCase() === val.toLowerCase();
-                                              });
-                                            }
-                                            
-                                            if (targetVariant) {
-                                              handleVariantSelect(targetVariant);
-                                            }
-                                          }}
-                                          disabled={!available}
-                                          className={cn(
-                                            "px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
-                                            isSelected
-                                              ? "border-blue-500 bg-blue-500 text-white shadow-md"
-                                              : "border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:bg-blue-50",
-                                            !available && "opacity-40 cursor-not-allowed line-through"
-                                          )}
-                                        >
-                                          {val}
-                                        </button>
-                                      );
-                                    })}
+                                      })}
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
                             </div>
                           </div>
                         )}
@@ -1697,7 +1775,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
 
                         {/* Action Buttons */}
                         <div className="space-y-2.5 pt-2">
-                          <button 
+                          <button
                             disabled={!inStock}
                             onClick={() => handleAddToCart()}
                             className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl disabled:shadow-none"
@@ -1705,7 +1783,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                             <ShoppingCart className="w-4 h-4" />
                             Add to Cart
                           </button>
-                          <button 
+                          <button
                             disabled={!inStock}
                             onClick={() => handleBuyNow()}
                             className="w-full h-11 bg-gradient-to-r from-gray-900 to-gray-800 hover:from-black hover:to-gray-900 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl disabled:shadow-none"
@@ -1833,8 +1911,8 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                   <h2 className="text-lg font-bold text-gray-900">Select Delivery Location</h2>
                   <p className="text-xs text-gray-600 mt-0.5">Choose your complete address</p>
                 </div>
-                <button 
-                  onClick={() => setShowLocationModal(false)} 
+                <button
+                  onClick={() => setShowLocationModal(false)}
                   className="p-1.5 hover:bg-white/50 rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5 text-gray-600" />
@@ -2001,7 +2079,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
 
       {/* Mobile Sticky Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-50 p-3 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] md:hidden flex gap-3 pb-safe">
-        <button 
+        <button
           disabled={!inStock}
           onClick={(e) => {
             const btn = e.currentTarget;
@@ -2017,7 +2095,7 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
           <ShoppingCart className="w-5 h-5" />
           Add to Cart
         </button>
-        <button 
+        <button
           disabled={!inStock}
           onClick={() => handleBuyNow()}
           className="flex-[1.5] h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-300 disabled:to-gray-400 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"

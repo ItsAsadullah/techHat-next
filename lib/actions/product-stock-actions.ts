@@ -72,6 +72,7 @@ export async function getProducts(params: ProductFilterParams) {
       select: {
         id: true,
         name: true,
+        slug: true,
         sku: true,
         price: true,
         costPrice: true,
@@ -149,12 +150,73 @@ export async function getProducts(params: ProductFilterParams) {
 
 export async function bulkDeleteProducts(ids: string[]) {
     try {
-        await prisma.product.deleteMany({
-            where: { id: { in: ids } }
-        });
+        let deletedCount = 0;
+        let archivedCount = 0;
+        let failedCount = 0;
+
+        for (const id of ids) {
+            try {
+                // 1. Check for restricting relationships (Orders, GRNs, POs, etc.)
+                const [orders, returns, po, pr, grn, transfers, adjustments] = await Promise.all([
+                    prisma.orderItem.count({ where: { productId: id } }),
+                    prisma.returnItem.count({ where: { productId: id } }),
+                    prisma.purchaseOrderItem.count({ where: { productId: id } }),
+                    prisma.purchaseReturnItem.count({ where: { productId: id } }),
+                    prisma.goodsReceiveNoteItem.count({ where: { productId: id } }),
+                    prisma.warehouseTransferItem.count({ where: { productId: id } }),
+                    prisma.stockAdjustmentItem.count({ where: { productId: id } })
+                ]);
+
+                const hasTransactions = (orders + returns + po + pr + grn + transfers + adjustments) > 0;
+
+                if (hasTransactions) {
+                    // Soft delete (Archive) if it's tied to transactions
+                    await prisma.product.update({
+                        where: { id },
+                        data: { status: 'ARCHIVED' }
+                    });
+                    archivedCount++;
+                } else {
+                    // Safe to hard delete.
+                    // Clean up non-cascading relations first
+                    await prisma.$transaction(async (tx) => {
+                        await tx.stockLedger.deleteMany({ where: { productId: id } });
+                        await tx.supplierProduct.deleteMany({ where: { productId: id } });
+                        
+                        // Finally delete the product (Variants, Specs, Images, History will cascade)
+                        await tx.product.delete({ where: { id } });
+                    });
+                    deletedCount++;
+                }
+            } catch (error: any) {
+                // P2003 = Foreign key constraint failed. If we missed a relation, fallback to Archive
+                if (error.code === 'P2003') {
+                    try {
+                        await prisma.product.update({
+                            where: { id },
+                            data: { status: 'ARCHIVED' }
+                        });
+                        archivedCount++;
+                    } catch (updateErr) {
+                        failedCount++;
+                    }
+                } else {
+                    failedCount++;
+                }
+            }
+        }
 
         revalidatePath('/admin/products');
-        return { success: true };
+        
+        const messageParts = [];
+        if (deletedCount > 0) messageParts.push(`Permanently deleted ${deletedCount}`);
+        if (archivedCount > 0) messageParts.push(`Archived ${archivedCount} (due to existing records)`);
+        if (failedCount > 0) messageParts.push(`Failed to delete ${failedCount}`);
+
+        return { 
+            success: true, 
+            message: messageParts.join(', ') || 'No products were processed.'
+        };
     } catch (error: any) {
         return { success: false, error: (error as any)?.message };
     }

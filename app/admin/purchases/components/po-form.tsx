@@ -68,6 +68,7 @@ export function PurchaseOrderForm({ initialData, isEditMode, suppliers, warehous
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   // Derived Totals
   const totals = useMemo(() => {
@@ -91,37 +92,70 @@ export function PurchaseOrderForm({ initialData, isEditMode, suppliers, warehous
   // Product Search Effect
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
-      if (searchQuery.length >= 2) {
-        setIsSearching(true);
-        const res = await searchProductsForPO(searchQuery);
-        if (res.success) setSearchResults(res.data || []);
-        setIsSearching(false);
-      } else {
-        setSearchResults([]);
-      }
-    }, 400);
+      setIsSearching(true);
+      const res = await searchProductsForPO(searchQuery);
+      if (res.success) setSearchResults(res.data || []);
+      setIsSearching(false);
+    }, 200);
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
-  const addProductToPO = (product: any, variant: any = null) => {
-    setItems(prev => [
-      ...prev,
-      {
-        id: Math.random().toString(),
-        productId: product.id,
-        variantId: variant ? variant.id : null,
-        name: product.name,
-        variantName: variant ? variant.name : null,
-        sku: variant ? variant.sku : product.sku,
-        quantity: 1,
-        unitCost: variant ? (variant.costPrice || product.costPrice || 0) : (product.costPrice || 0),
-        discount: 0,
-        tax: 0,
+  const filteredSearchResults = useMemo(() => {
+    const results = [];
+    for (const product of searchResults) {
+      const hasVariants = product.variants && product.variants.length > 0;
+      
+      if (hasVariants) {
+        const remainingVariants = product.variants.filter((v: any) => 
+          !items.some(item => item.productId === product.id && item.variantId === v.id)
+        );
+        if (remainingVariants.length > 0) {
+          results.push({ ...product, variants: remainingVariants });
+        }
+      } else {
+        const isAdded = items.some(item => item.productId === product.id && !item.variantId);
+        if (!isAdded) {
+          results.push(product);
+        }
       }
-    ]);
+    }
+    return results;
+  }, [searchResults, items]);
+
+  const addProductToPO = (product: any, variant: any = null) => {
+    setItems(prev => {
+      const existingItemIndex = prev.findIndex(item => 
+        item.productId === product.id && 
+        item.variantId === (variant ? variant.id : null)
+      );
+
+      if (existingItemIndex >= 0) {
+        const newItems = [...prev];
+        newItems[existingItemIndex].quantity += 1;
+        toast.success(`Increased quantity of ${variant ? variant.name : product.name}`);
+        return newItems;
+      }
+
+      return [
+        ...prev,
+        {
+          id: Math.random().toString(),
+          productId: product.id,
+          variantId: variant ? variant.id : null,
+          name: product.name,
+          variantName: variant ? variant.name : null,
+          sku: variant ? variant.sku : product.sku,
+          quantity: 1,
+          unitCost: variant ? (variant.costPrice || product.costPrice || 0) : (product.costPrice || 0),
+          discount: 0,
+          tax: 0,
+        }
+      ];
+    });
     setSearchQuery('');
-    setSearchResults([]);
+    setIsSearchFocused(false);
+    document.getElementById('product-search-input')?.blur();
   };
 
   const updateItem = (id: string, field: string, value: number) => {
@@ -248,8 +282,8 @@ export function PurchaseOrderForm({ initialData, isEditMode, suppliers, warehous
           </div>
 
           {/* Product Items Table */}
-          <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-            <div className="p-4 border-b bg-muted/20">
+          <div className="rounded-xl border bg-card shadow-sm">
+            <div className="p-4 border-b bg-muted/20 rounded-t-xl">
               <h3 className="font-semibold flex items-center gap-2">
                 <Package className="h-5 w-5 text-primary" /> Purchase Items
               </h3>
@@ -260,42 +294,101 @@ export function PurchaseOrderForm({ initialData, isEditMode, suppliers, warehous
               <div className="relative">
                 <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
+                  id="product-search-input"
                   placeholder="Search products by name or SKU to add..."
                   className="pl-9 h-10"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
                 />
                 {isSearching && <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />}
               </div>
               
               {/* Dropdown Results */}
-              {searchResults.length > 0 && (
-                <div className="absolute top-full left-4 right-4 mt-1 bg-popover text-popover-foreground border rounded-md shadow-lg z-50 max-h-[300px] overflow-y-auto">
-                  {searchResults.map((product) => (
-                    <div key={product.id} className="p-2 border-b last:border-0">
-                      {product.variants.length > 0 ? (
+              {isSearchFocused && filteredSearchResults.length > 0 && (
+                <div className="absolute top-full left-4 right-4 mt-1 bg-popover text-popover-foreground border rounded-lg shadow-xl z-50 max-h-[350px] overflow-y-auto divide-y">
+                  {filteredSearchResults.map((product) => (
+                    <div key={product.id} className="p-1">
+                      {product.variants?.length > 0 ? (
                         <div className="space-y-1">
-                          <div className="text-sm font-semibold px-2 text-muted-foreground">{product.name} (Select Variant)</div>
+                          <div className="text-xs font-semibold px-3 py-1.5 text-muted-foreground uppercase tracking-wider bg-muted/30 rounded flex items-center gap-2">
+                            {product.images?.[0]?.url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={product.images[0].url} alt={product.name} className="w-5 h-5 rounded object-cover" />
+                            ) : (
+                              <Package className="h-4 w-4" />
+                            )}
+                            {product.name}
+                          </div>
                           {product.variants.map((v: any) => (
                             <button
                               key={v.id}
                               type="button"
-                              onClick={() => addProductToPO(product, v)}
-                              className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded flex justify-between items-center"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                addProductToPO(product, v);
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-md flex justify-between items-center transition-colors group"
                             >
-                              <span>{v.name} <span className="text-xs text-muted-foreground ml-2 font-mono">{v.sku}</span></span>
-                              <span className="text-xs font-mono">৳{v.costPrice || product.costPrice || 0}</span>
+                              <div className="flex items-center gap-3">
+                                {v.images?.[0]?.url ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={v.images[0].url} alt={v.name} className="w-8 h-8 rounded border object-cover" />
+                                ) : (
+                                  <div className="w-8 h-8 rounded border bg-muted/50 flex items-center justify-center">
+                                    <Package className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="font-medium">{v.name}</div>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                    <span className="font-mono bg-muted px-1.5 py-0.5 rounded">{v.sku}</span>
+                                    <span className={v.stock <= 0 ? 'text-red-500 font-medium' : 'text-emerald-600 dark:text-emerald-400'}>
+                                      Stock: {v.stock}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-xs text-muted-foreground mb-0.5">Cost Price</div>
+                                <div className="text-sm font-mono font-medium">৳{v.costPrice || product.costPrice || 0}</div>
+                              </div>
                             </button>
                           ))}
                         </div>
                       ) : (
                         <button
                           type="button"
-                          onClick={() => addProductToPO(product)}
-                          className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded flex justify-between items-center"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            addProductToPO(product);
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-md flex justify-between items-center transition-colors"
                         >
-                          <span className="font-medium">{product.name} <span className="text-xs text-muted-foreground ml-2 font-mono">{product.sku}</span></span>
-                          <span className="text-xs font-mono">৳{product.costPrice || 0}</span>
+                          <div className="flex items-center gap-3">
+                            {product.images?.[0]?.url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={product.images[0].url} alt={product.name} className="w-8 h-8 rounded border object-cover" />
+                            ) : (
+                              <div className="w-8 h-8 rounded border bg-muted/50 flex items-center justify-center">
+                                <Package className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div>
+                              <div className="font-medium">{product.name}</div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                <span className="font-mono bg-muted px-1.5 py-0.5 rounded">{product.sku}</span>
+                                <span className={product.stock <= 0 ? 'text-red-500 font-medium' : 'text-emerald-600 dark:text-emerald-400'}>
+                                  Stock: {product.stock}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs text-muted-foreground mb-0.5">Cost Price</div>
+                            <div className="text-sm font-mono font-medium">৳{product.costPrice || 0}</div>
+                          </div>
                         </button>
                       )}
                     </div>

@@ -21,6 +21,7 @@ export type ProductColumn = {
   minStock: number;
   updatedAt: Date;
   sku: string | null;
+  slug: string | null;
 };
 
 export const columns: ColumnDef<ProductColumn>[] = [

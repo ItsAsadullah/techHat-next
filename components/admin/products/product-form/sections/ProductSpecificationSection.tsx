@@ -23,7 +23,7 @@ export function ProductSpecificationSection() {
           type="button" 
           variant="outline" 
           size="sm" 
-          onClick={() => append({ key: '', value: '' })}
+          onClick={() => append({ id: crypto.randomUUID(), key: '', value: '' })}
         >
           <Plus className="h-4 w-4 mr-2" /> Add Spec
         </Button>

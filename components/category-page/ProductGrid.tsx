@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Package } from 'lucide-react';
 import type { CategoryProduct } from '@/lib/types/category-page';
-import CategoryProductCard from './CategoryProductCard';
+import ProductCard from '@/components/homepage/ProductCard';
 import QuickViewModal from './QuickViewModal';
 
 interface Props {
@@ -33,7 +33,7 @@ export default function ProductGrid({ products }: Props) {
     <>
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
         {products.map((product) => (
-          <CategoryProductCard
+          <ProductCard
             key={product.id}
             product={product}
             onQuickView={setQuickViewProduct}

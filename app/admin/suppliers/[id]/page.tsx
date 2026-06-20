@@ -22,9 +22,10 @@ export const metadata: Metadata = {
   description: 'View supplier information and performance metrics',
 };
 
-export default async function SupplierDetailsPage({ params }: { params: { id: string } }) {
+export default async function SupplierDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supplier = await prisma.supplier.findUnique({
-    where: { id: params.id },
+    where: { id: id },
     include: {
       purchaseOrders: {
         orderBy: { date: 'desc' },

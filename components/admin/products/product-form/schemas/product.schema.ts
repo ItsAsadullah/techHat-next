@@ -84,14 +84,22 @@ export const productSchema = z.object({
   description: z.string().nullable().optional().or(z.literal('')),
   shortDesc:   z.string().nullable().optional().or(z.literal('')),
   videoUrl:    z.string().nullable().optional().or(z.literal('')),
+  faqs:        z.array(z.object({
+    question: z.string().min(1, 'Question is required'),
+    answer: z.string().min(1, 'Answer is required'),
+  })).default([]),
 
   // ── SEO ──
   seoTitle:        z.string().nullable().optional().or(z.literal('')),
   metaDescription: z.string().nullable().optional().or(z.literal('')),
   slug:            z.string().nullable().optional().or(z.literal('')),
 
-  // ── Dynamic ──
-  images: z.array(z.string()).optional(),
+  images: z.array(z.object({
+    id: z.string().optional(),
+    url: z.string(),
+    isThumbnail: z.boolean().optional(),
+    alt: z.string().nullable().optional()
+  }).passthrough()).optional(),
 
   // ── Specifications & Variants (managed by RHF useFieldArray) ──
   productSpecs: z.array(
@@ -105,9 +113,15 @@ export const productSchema = z.object({
   attributes: z.array(
     z.object({
       id:          z.string(),
-      attributeId: z.number().optional(),
+      attributeId: z.string().optional(),
       name:        z.string().min(1, 'Attribute must be selected'),
-      values:      z.array(z.string()).min(1, 'At least one value must be selected'),
+      values:      z.array(
+        z.object({
+          id: z.string(),
+          label: z.string(),
+          shortCode: z.string().nullable().optional()
+        })
+      ).min(1, 'At least one value must be selected'),
     })
   ).default([]),
 
@@ -124,8 +138,11 @@ export const productSchema = z.object({
       hasSerial:      z.boolean().default(false),
       serials:        z.array(z.string()).default([]),
       image: z.string().nullable().optional(),
+      imageAlt: z.string().nullable().optional(),
       productImageId: z.string().nullable().optional(),
       attributes: z.record(z.string(), z.string()).nullable().optional(),
+      attributeValueIds: z.array(z.string()).optional(),
+      customColor: z.string().nullable().optional(),
     })
   ).default([]),
 });

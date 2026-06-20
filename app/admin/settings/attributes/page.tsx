@@ -1,19 +1,24 @@
+import { Metadata } from 'next';
 import { getAttributes } from '@/lib/actions/attribute-actions';
-import { AttributesClient } from './attributes-client';
+import AttributeManager from '@/components/admin/settings/attribute-manager';
+
+export const metadata: Metadata = {
+  title: 'Attribute Manager - Admin | TechHat',
+};
 
 export default async function AttributesPage() {
-  const result = await getAttributes();
-  
+  const attributes = await getAttributes();
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Attributes Management</h1>
-        <p className="text-sm text-muted-foreground">
-          Create and manage global product attributes like Size, Color, or Storage.
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-2xl font-bold tracking-tight">Global Attributes</h1>
+        <p className="text-gray-500">
+          Manage product attributes, variants, and swatches used across your catalog.
         </p>
       </div>
 
-      <AttributesClient initialAttributes={result.success && result.attributes ? result.attributes : []} />
+      <AttributeManager initialAttributes={attributes} />
     </div>
   );
 }

@@ -64,6 +64,7 @@ export function useProductForm(options: UseProductFormOptions = {}): UseFormRetu
       description: initialData?.description || '',
       shortDesc:   initialData?.shortDesc || '',
       videoUrl:    initialData?.videoUrl || '',
+      faqs:        (initialData as any)?.faqs?.length ? (initialData as any).faqs : [{ question: '', answer: '' }],
 
       // SEO
       seoTitle:        (initialData as any)?.seoTitle || '',

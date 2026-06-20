@@ -17,7 +17,7 @@ function buildSlug(name: string): string {
     locale: 'vi',
     trim: true,
   });
-  
+
   return baseSlug + '-' + Date.now().toString(36);
 }
 
@@ -69,6 +69,7 @@ export async function createProductJSON(payload: {
   variants?: any[];
   attributes?: any[];
   productSpecs?: { key: string; value: string }[];
+  faqs?: { question: string; answer: string }[];
 }) {
   try {
     const status = payload.status || 'DRAFT';
@@ -109,11 +110,15 @@ export async function createProductJSON(payload: {
           model: payload.model || null,
           sku: payload.sku?.trim() || null,
           barcode: payload.barcode?.trim() || null,
+          seoTitle: payload.seoTitle || null,
+          metaDescription: payload.metaDescription || null,
+          tags: payload.tags || [],
+          faqs: payload.faqs ? (payload.faqs as any) : Prisma.JsonNull,
           specifications: (payload.attributes?.length
             ? payload.attributes.reduce((acc: any, a: any) => {
-                acc[a.name] = (a.values || []).join(', ');
-                return acc;
-              }, {})
+              acc[a.name] = (a.values || []).map((v: any) => v.label || v.value).join(', ');
+              return acc;
+            }, {})
             : Prisma.JsonNull),
           attributes: payload.attributes ? payload.attributes : Prisma.JsonNull,
           images: [],
@@ -125,10 +130,10 @@ export async function createProductJSON(payload: {
       // Images
       if (payload.images && payload.images.length > 0) {
         const imageInserts = payload.images.map((img, i) =>
-          `(gen_random_uuid()::text, '${newProduct.id}', '${img.url.replace(/'/g, "''")}', ${img.isThumbnail}, ${i}, NOW())`
+          `(gen_random_uuid()::text, '${newProduct.id}', '${img.url.replace(/'/g, "''")}', ${img.isThumbnail}, ${i}, NOW(), ${img.alt ? `'${img.alt.replace(/'/g, "''")}'` : 'NULL'})`
         ).join(',');
         await tx.$executeRawUnsafe(`
-          INSERT INTO "product_images" ("id", "product_id", "url", "is_thumbnail", "display_order", "updatedAt")
+          INSERT INTO "product_images" ("id", "product_id", "url", "is_thumbnail", "display_order", "updatedAt", "alt_text")
           VALUES ${imageInserts}
         `);
       }
@@ -147,10 +152,37 @@ export async function createProductJSON(payload: {
         }
       }
 
+      // Product Attributes (Relational)
+      if (payload.attributes && payload.attributes.length > 0) {
+        for (const attr of payload.attributes) {
+          if (attr.attributeId) {
+            const pa = await tx.productAttribute.create({
+              data: {
+                productId: newProduct.id,
+                attributeId: attr.attributeId,
+              }
+            });
+            if (attr.values && attr.values.length > 0) {
+              await tx.productAttributeValue.createMany({
+                data: attr.values.map((v: any) => ({
+                  productAttributeId: pa.id,
+                  attributeValueId: v.id
+                }))
+              });
+            }
+          }
+        }
+      }
+
       // Variants
       if (payload.variants && payload.variants.length > 0) {
         for (const v of payload.variants) {
-          await tx.variant.create({
+          let finalAttributes: any = v.attributes || {};
+          if (v.customColor) {
+            finalAttributes._customColor = v.customColor;
+          }
+
+          const variant = await tx.variant.create({
             data: {
               productId: newProduct.id,
               name: v.name || 'Default',
@@ -161,14 +193,28 @@ export async function createProductJSON(payload: {
               offerPrice: v.offerPrice || null,
               stock: 0, // Stock comes from Purchase Module
               hasSerial: false,
-              attributes: v.attributes ? v.attributes : Prisma.JsonNull,
+              image: v.image || null,
+              imageAlt: v.imageAlt || null,
+              attributes: Object.keys(finalAttributes).length > 0 ? finalAttributes : Prisma.JsonNull,
             },
           });
+
+          if (v.attributeValueIds && v.attributeValueIds.length > 0) {
+            const validValIds = v.attributeValueIds.filter((id: string) => id && id.length === 36);
+            if (validValIds.length > 0) {
+              await tx.variantAttributeValue.createMany({
+                data: validValIds.map((valId: string) => ({
+                  variantId: variant.id,
+                  attributeValueId: valId,
+                }))
+              });
+            }
+          }
         }
       }
 
       return newProduct;
-    });
+    }, { maxWait: 10000, timeout: 30000 });
 
     // Write audit log (non-blocking)
     writeProductAuditLog(product.id, 'created', 'admin', undefined, `Product "${product.name}" created with status ${status}`);
@@ -229,21 +275,141 @@ export async function updateProductJSON(
           model: payload.model || null,
           sku: payload.sku?.trim() || null,
           barcode: payload.barcode?.trim() || null,
+          seoTitle: payload.seoTitle || null,
+          metaDescription: payload.metaDescription || null,
+          tags: payload.tags || [],
+          faqs: payload.faqs ? (payload.faqs as any) : Prisma.JsonNull,
+          ...(payload.slug ? { slug: payload.slug } : {}),
           attributes: payload.attributes ? payload.attributes : Prisma.JsonNull,
           // V3 fields
           status: status as any,
         } as any,
       });
 
+      // Product Attributes (Relational)
+      await tx.productAttributeValue.deleteMany({ where: { productAttribute: { productId: id } } });
+      await tx.productAttribute.deleteMany({ where: { productId: id } });
+
+      if (payload.attributes && payload.attributes.length > 0) {
+        for (const attr of payload.attributes) {
+          if (attr.attributeId) {
+            const pa = await tx.productAttribute.create({
+              data: {
+                productId: id,
+                attributeId: attr.attributeId,
+              }
+            });
+            if (attr.values && attr.values.length > 0) {
+              await tx.productAttributeValue.createMany({
+                data: attr.values.map((v: any) => ({
+                  productAttributeId: pa.id,
+                  attributeValueId: v.id
+                }))
+              });
+            }
+          }
+        }
+      }
+
+      // Variants Update
+      if (payload.variants !== undefined) {
+        const payloadVariants = payload.variants || [];
+        const payloadVariantIds = payloadVariants
+          .map((v: any) => v.id)
+          .filter((id: string) => id && id.length === 36);
+
+        // Find existing variants
+        const existingVariants = await tx.variant.findMany({ where: { productId: id } });
+        const existingIds = existingVariants.map(v => v.id);
+
+        const idsToDelete = existingIds.filter(vId => !payloadVariantIds.includes(vId));
+
+        // Delete removed variants
+        if (idsToDelete.length > 0) {
+          await tx.variantAttributeValue.deleteMany({ where: { variantId: { in: idsToDelete } } });
+          await tx.productSerial.deleteMany({ where: { variantId: { in: idsToDelete } } });
+          try {
+            await tx.variant.deleteMany({ where: { id: { in: idsToDelete } } });
+          } catch (e) {
+            console.error("Could not delete variants (likely foreign key constraints):", e);
+          }
+        }
+
+        if (payloadVariants.length > 0) {
+          for (const v of payloadVariants) {
+            let finalAttributes: any = v.attributes || {};
+            if (v.customColor) {
+              finalAttributes._customColor = v.customColor;
+            }
+
+            const isExisting = v.id && v.id.length === 36;
+            let variantId = v.id;
+
+            if (isExisting && existingIds.includes(v.id)) {
+              // Update existing variant
+              await tx.variant.update({
+                where: { id: v.id },
+                data: {
+                  name: v.name || 'Default',
+                  sku: v.sku || null,
+                  upc: v.barcode || v.upc || null,
+                  price: v.price || payload.price || 0,
+                  costPrice: v.costPrice || payload.costPrice || 0,
+                  offerPrice: v.offerPrice || null,
+                  image: v.image || null,
+                  imageAlt: v.imageAlt || null,
+                  attributes: Object.keys(finalAttributes).length > 0 ? finalAttributes : Prisma.JsonNull,
+                },
+              });
+              
+              // Clear old attribute values
+              await tx.variantAttributeValue.deleteMany({ where: { variantId: v.id } });
+            } else {
+              // Create new variant
+              const newVariant = await tx.variant.create({
+                data: {
+                  productId: id,
+                  name: v.name || 'Default',
+                  sku: v.sku || null,
+                  upc: v.barcode || v.upc || null,
+                  price: v.price || payload.price || 0,
+                  costPrice: v.costPrice || payload.costPrice || 0,
+                  offerPrice: v.offerPrice || null,
+                  stock: 0,
+                  hasSerial: false,
+                  image: v.image || null,
+                  imageAlt: v.imageAlt || null,
+                  attributes: Object.keys(finalAttributes).length > 0 ? finalAttributes : Prisma.JsonNull,
+                },
+              });
+              variantId = newVariant.id;
+            }
+
+            // Assign attribute values
+            if (v.attributeValueIds && v.attributeValueIds.length > 0) {
+              const validValIds = v.attributeValueIds.filter((aid: string) => aid && aid.length === 36);
+              if (validValIds.length > 0) {
+                await tx.variantAttributeValue.createMany({
+                  data: validValIds.map((valId: string) => ({
+                    variantId: variantId,
+                    attributeValueId: valId,
+                  }))
+                });
+              }
+            }
+          }
+        }
+      }
+
       // Refresh images
       if (payload.images !== undefined) {
         await tx.$executeRaw`DELETE FROM "product_images" WHERE "product_id" = ${id}`;
         if (payload.images.length > 0) {
           const imageInserts = payload.images.map((img, i) =>
-            `(gen_random_uuid()::text, '${id}', '${img.url.replace(/'/g, "''")}', ${img.isThumbnail}, ${i}, NOW())`
+            `(gen_random_uuid()::text, '${id}', '${img.url.replace(/'/g, "''")}', ${img.isThumbnail}, ${i}, NOW(), ${img.alt ? `'${img.alt.replace(/'/g, "''")}'` : 'NULL'})`
           ).join(',');
           await tx.$executeRawUnsafe(`
-            INSERT INTO "product_images" ("id", "product_id", "url", "is_thumbnail", "display_order", "updatedAt")
+            INSERT INTO "product_images" ("id", "product_id", "url", "is_thumbnail", "display_order", "updatedAt", "alt_text")
             VALUES ${imageInserts}
           `);
         }
@@ -265,7 +431,7 @@ export async function updateProductJSON(
       }
 
       return updated;
-    });
+    }, { maxWait: 10000, timeout: 30000 });
 
     // Build changed fields for audit log
     const changedFields: Record<string, any> = {};
@@ -283,6 +449,14 @@ export async function updateProductJSON(
 
     revalidatePath('/admin/products');
     revalidatePath(`/admin/products/${id}`);
+
+    // Revalidate public routes
+    if (product?.slug) {
+      revalidatePath(`/products/${product.slug}`);
+    }
+    revalidatePath('/products');
+    revalidatePath('/');
+
     return { success: true, product };
   } catch (error: any) {
     console.error('updateProductJSON error:', error);

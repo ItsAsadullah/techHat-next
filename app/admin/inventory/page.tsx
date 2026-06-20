@@ -3,13 +3,24 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Package, Warehouse, DollarSign, Activity, Settings2, Plus, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { InventoryInstructions } from './inventory-instructions';
 
 export default async function InventoryDashboard() {
   const res = await getInventoryDashboardStats();
   const stats = res.success ? res.data : null;
 
   return (
-    <div className="space-y-6 max-w-[1400px] mx-auto">
+    <div className="space-y-6 max-w-[1400px] mx-auto p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Inventory Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            Overview of your physical stock, reserves, and warehouse movements.
+          </p>
+        </div>
+        <InventoryInstructions />
+      </div>
+
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
         <Card className="shadow-sm border-l-4 border-l-blue-500">

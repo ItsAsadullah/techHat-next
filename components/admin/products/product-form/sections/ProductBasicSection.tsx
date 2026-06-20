@@ -11,14 +11,14 @@ import { Textarea } from '@/components/ui/textarea';
 
 interface ProductBasicSectionProps {
   categories: any[];
-  brands:     any[];
+  brands: any[];
 }
 
 export function ProductBasicSection({ categories, brands }: ProductBasicSectionProps) {
   const { register, control, setValue, watch, formState: { errors } } = useFormContext<ProductFormValues>();
   const categoryId = watch('categoryId');
-  const brandId    = watch('brandId');
-  const unit       = watch('unit');
+  const brandId = watch('brandId');
+  const unit = watch('unit');
   const nameLength = (watch('name') || '').length;
 
   return (

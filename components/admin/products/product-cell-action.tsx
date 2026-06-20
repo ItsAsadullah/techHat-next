@@ -13,7 +13,6 @@ interface ProductCellActionProps {
 }
 
 export function ProductCellAction({ data }: ProductCellActionProps) {
-  const [showStockUpdate, setShowStockUpdate] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -52,15 +51,7 @@ export function ProductCellAction({ data }: ProductCellActionProps) {
         </Link>
       </Button>
 
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="h-8 w-8 text-gray-500 hover:text-green-600" 
-        onClick={() => setShowStockUpdate(true)}
-        title="Quick Stock Update"
-      >
-        <BoxSelect className="h-4 w-4" />
-      </Button>
+
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

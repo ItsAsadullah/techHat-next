@@ -33,34 +33,33 @@ import { cn } from '@/lib/utils';
 import { GlobalScannerProvider, useGlobalScanner } from '@/components/admin/global-scanner-provider';
 import usePerformanceMonitor from '@/lib/hooks/use-performance-monitor';
 
-// Programmatically lock body scroll and hide main header for POS
-function POSBodyLock({ isPOS }: { isPOS: boolean }) {
+// Programmatically lock body scroll and hide main header for Admin
+function AdminBodyLock({ isPOS }: { isPOS: boolean }) {
   useEffect(() => {
-    if (isPOS) {
-      const originalOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      // Find the storefront header (usually the first header or specific class)
-      const storeHeader = document.querySelector('header.sticky.top-0.z-\\[60\\]') || document.querySelector('header.sticky.top-0');
-      const originalDisplay = storeHeader ? (storeHeader as HTMLElement).style.display : '';
-      if (storeHeader) (storeHeader as HTMLElement).style.display = 'none';
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    
+    // Hide storefront header only for POS if needed, but since NavbarWrapper returns null, we can just hide it globally for safety
+    const storeHeader = document.querySelector('header.sticky.top-0.z-\\[60\\]') || document.querySelector('header.sticky.top-0');
+    const originalDisplay = storeHeader ? (storeHeader as HTMLElement).style.display : '';
+    if (storeHeader) (storeHeader as HTMLElement).style.display = 'none';
 
-      // Fix for mobile keyboard causing the page to scroll up and get stuck
-      const handleFocusOut = () => {
-        setTimeout(() => {
-          window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-          document.body.scrollTop = 0;
-          document.documentElement.scrollTop = 0;
-        }, 50);
-      };
-      
-      window.addEventListener('focusout', handleFocusOut);
-      
-      return () => {
-        document.body.style.overflow = originalOverflow;
-        if (storeHeader) (storeHeader as HTMLElement).style.display = originalDisplay;
-        window.removeEventListener('focusout', handleFocusOut);
-      };
-    }
+    // Fix for mobile keyboard causing the page to scroll up and get stuck
+    const handleFocusOut = () => {
+      setTimeout(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+      }, 50);
+    };
+    
+    window.addEventListener('focusout', handleFocusOut);
+    
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      if (storeHeader) (storeHeader as HTMLElement).style.display = originalDisplay;
+      window.removeEventListener('focusout', handleFocusOut);
+    };
   }, [isPOS]);
   return null;
 }
@@ -314,8 +313,8 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
 
   return (
     <GlobalScannerProvider>
-      <POSBodyLock isPOS={isPOS} />
-      <div className="h-[100dvh] bg-gray-50 dark:bg-gray-950 flex overflow-hidden">
+      <AdminBodyLock isPOS={isPOS} />
+      <div className="h-screen bg-gray-50 dark:bg-gray-950 flex overflow-hidden">
 
         {/* Drawer overlay (mobile) */}
         {drawerOpen && (
@@ -450,7 +449,7 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
           {/* Content */}
           <main id="admin-main-content" className={cn(
             "flex-1 overflow-x-hidden w-full max-w-full",
-            isPOS ? "overflow-hidden p-0 lg:p-2 bg-white dark:bg-gray-900" : "overflow-y-auto p-3 sm:p-4 lg:p-8 pb-20 lg:pb-0"
+            isPOS ? "overflow-hidden p-0 lg:p-2 bg-white dark:bg-gray-900" : "overflow-y-auto p-3 sm:p-4 lg:p-8 pb-20 lg:pb-0 bg-gray-50/50 dark:bg-gray-950"
           )}>
             {children}
           </main>

@@ -110,6 +110,7 @@ export default function ImageUpload({
             </div>
             <Image
               fill
+              sizes="(max-width: 768px) 100vw, 200px"
               className="object-cover"
               alt="Image"
               src={url}

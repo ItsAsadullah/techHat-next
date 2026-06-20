@@ -186,8 +186,9 @@ const PRODUCT_SELECT = {
   productImages: { 
     select: { url: true }, 
     orderBy: { displayOrder: 'asc' },
-    take: 1, // Only fetch thumbnail image
+    take: 2, // Fetch up to 2 images for primary & hover
   },
+  specs: { select: { name: true, value: true }, take: 4 },
   _count: { select: { reviews: { where: { status: 'APPROVED' } }, orderItems: true } },
 } as const;
 
@@ -227,6 +228,7 @@ function mapProduct(p: any): HomepageProduct {
     flashSaleEndTime: p.flashSaleEndTime?.toISOString?.() ?? p.flashSaleEndTime ?? null,
     createdAt: p.createdAt?.toISOString?.() ?? p.createdAt,
     _soldCount: p.soldCount ?? p._count?.orderItems ?? p._soldCount ?? 0,
+    specs: p.specs?.map((s: any) => ({ name: s.name, value: s.value })) || [],
   };
 }
 
@@ -540,7 +542,7 @@ const _getFeaturedBrandsCache = unstable_cache(
     try {
       const brands = await prisma.brand.findMany({
         where: {
-          products: { some: { status: 'ACTIVE' } },
+          products: { some: { status: { in: ['ACTIVE', 'PUBLISHED'] } } },
         },
         select: {
           id: true,

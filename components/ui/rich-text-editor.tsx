@@ -561,6 +561,12 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     },
   });
 
+  React.useEffect(() => {
+    if (editor && value !== editor.getHTML()) {
+      editor.commands.setContent(value || '');
+    }
+  }, [value, editor]);
+
   return (
     <div className={`w-full rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400 transition-all ${isFullScreen ? 'fixed inset-0 z-[9999] rounded-none border-0' : ''}`}>
       <Toolbar editor={editor} isFullScreen={isFullScreen} toggleFullScreen={toggleFullScreen} />

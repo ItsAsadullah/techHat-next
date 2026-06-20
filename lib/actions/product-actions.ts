@@ -88,232 +88,232 @@ export async function createProduct(formData: FormData) {
     const productBarcode = firstVariation.upc ? sanitizeString(firstVariation.upc) : null;
     // Upload all images in parallel instead of sequentially
     const uploadedImages = (await Promise.all(
-        galleryMetadata.map(async (meta: any) => {
-            let imageUrl = meta.url;
-            if (meta.fileKey) {
-                const imageFile = formData.get(meta.fileKey) as File | null;
-                if (imageFile && imageFile.size > 0) {
-                    try {
-                        const arrayBuffer = await imageFile.arrayBuffer();
-                        const buffer = Buffer.from(arrayBuffer);
-                        imageUrl = await uploadToCloudinary(buffer, 'products/gallery');
-                    } catch (e) {
-                        console.error("Failed to upload gallery image", e);
-                        throw new Error(`Image upload failed: ${e instanceof Error ? (e as any)?.message : 'Unknown error'}`);
-                    }
-                }
+      galleryMetadata.map(async (meta: any) => {
+        let imageUrl = meta.url;
+        if (meta.fileKey) {
+          const imageFile = formData.get(meta.fileKey) as File | null;
+          if (imageFile && imageFile.size > 0) {
+            try {
+              const arrayBuffer = await imageFile.arrayBuffer();
+              const buffer = Buffer.from(arrayBuffer);
+              imageUrl = await uploadToCloudinary(buffer, 'products/gallery');
+            } catch (e) {
+              console.error("Failed to upload gallery image", e);
+              throw new Error(`Image upload failed: ${e instanceof Error ? (e as any)?.message : 'Unknown error'}`);
             }
-            return imageUrl ? { id: meta.id, url: imageUrl, isThumbnail: meta.isThumbnail } : null;
-        })
-    )).filter((img: any): img is { id: string; url: string; isThumbnail: boolean } => img !== null);
+          }
+        }
+        return imageUrl ? { id: meta.id, url: imageUrl, isThumbnail: meta.isThumbnail, altText: meta.alt } : null;
+      })
+    )).filter((img: any): img is { id: string; url: string; isThumbnail: boolean; altText?: string } => img !== null);
 
     // ===== STEP 1.5: Validate serial numbers for duplicates =====
     const allSerials: string[] = [];
     const serialToVariationMap = new Map<string, string>(); // Maps serial to variation name
-    
+
     for (const v of variations) {
-        if (v.hasSerial && v.serials) {
-            const variationName = v.name || 'Default';
-            const variationSerials = v.serials.filter((s: string) => s && s.trim().length > 0);
-            
-            // Check for duplicates within the same variation
-            const uniqueSerials = new Set<string>();
-            for (const serial of variationSerials) {
-                const trimmedSerial = serial.trim();
-                if (uniqueSerials.has(trimmedSerial)) {
-                    return { 
-                        success: false, 
-                        error: `Duplicate serial number "${trimmedSerial}" found multiple times in variation "${variationName}". Each serial must be unique.`,
-                        duplicateSerial: trimmedSerial
-                    };
-                }
-                uniqueSerials.add(trimmedSerial);
-            }
-            
-            // Check for duplicates across variations
-            for (const serial of variationSerials) {
-                const trimmedSerial = serial.trim();
-                if (allSerials.includes(trimmedSerial)) {
-                    const firstVariation = serialToVariationMap.get(trimmedSerial);
-                    return { 
-                        success: false, 
-                        error: `Duplicate serial number "${trimmedSerial}" found in variation "${variationName}". It was already used in variation "${firstVariation}".`,
-                        duplicateSerial: trimmedSerial
-                    };
-                }
-                allSerials.push(trimmedSerial);
-                serialToVariationMap.set(trimmedSerial, variationName);
-            }
+      if (v.hasSerial && v.serials) {
+        const variationName = v.name || 'Default';
+        const variationSerials = v.serials.filter((s: string) => s && s.trim().length > 0);
+
+        // Check for duplicates within the same variation
+        const uniqueSerials = new Set<string>();
+        for (const serial of variationSerials) {
+          const trimmedSerial = serial.trim();
+          if (uniqueSerials.has(trimmedSerial)) {
+            return {
+              success: false,
+              error: `Duplicate serial number "${trimmedSerial}" found multiple times in variation "${variationName}". Each serial must be unique.`,
+              duplicateSerial: trimmedSerial
+            };
+          }
+          uniqueSerials.add(trimmedSerial);
         }
+
+        // Check for duplicates across variations
+        for (const serial of variationSerials) {
+          const trimmedSerial = serial.trim();
+          if (allSerials.includes(trimmedSerial)) {
+            const firstVariation = serialToVariationMap.get(trimmedSerial);
+            return {
+              success: false,
+              error: `Duplicate serial number "${trimmedSerial}" found in variation "${variationName}". It was already used in variation "${firstVariation}".`,
+              duplicateSerial: trimmedSerial
+            };
+          }
+          allSerials.push(trimmedSerial);
+          serialToVariationMap.set(trimmedSerial, variationName);
+        }
+      }
     }
 
     // Check if any serial already exists in database
     if (allSerials.length > 0) {
-        const existingSerials = await prisma.productSerial.findMany({
-            where: {
-                serialNumber: {
-                    in: allSerials
-                }
-            },
+      const existingSerials = await prisma.productSerial.findMany({
+        where: {
+          serialNumber: {
+            in: allSerials
+          }
+        },
+        include: {
+          variant: {
             include: {
-                variant: {
-                    include: {
-                        product: {
-                            select: {
-                                name: true
-                            }
-                        }
-                    }
+              product: {
+                select: {
+                  name: true
                 }
+              }
             }
-        });
-
-        if (existingSerials.length > 0) {
-            const firstDuplicate = existingSerials[0];
-            return {
-                success: false,
-                error: `Serial number "${firstDuplicate.serialNumber}" already exists in product "${firstDuplicate.variant.product.name}".`,
-                duplicateSerial: firstDuplicate.serialNumber
-            };
+          }
         }
+      });
+
+      if (existingSerials.length > 0) {
+        const firstDuplicate = existingSerials[0];
+        return {
+          success: false,
+          error: `Serial number "${firstDuplicate.serialNumber}" already exists in product "${firstDuplicate.variant.product.name}".`,
+          duplicateSerial: firstDuplicate.serialNumber
+        };
+      }
     }
 
     // ===== STEP 2: Database transaction =====
     const product = await prisma.$transaction(async (tx) => {
-        // 1. Create Product
-        const newProduct = await tx.product.create({
-            data: {
-                name,
-                slug,
-                categoryId,
-                brandId: brandId || null,
-                productVariantType: productType,
-                type: 'PHYSICAL',
-                price: parseFloat(firstVariation.price) || 0,
-                offerPrice: parseFloat(firstVariation.offerPrice) || null,
-                onlinePrice,
-                wholesalePrice,
-                taxClass,
-                costPrice: parseFloat(firstVariation.cost) || 0,
-                stock: totalStock,
-                trackInventory,
-                trackSerials,
-                trackExpiry,
-                trackBatch,
-                trackWarranty,
-                minStock,
-                maxStock,
-                reorderPoint,
-                defaultWarehouseId,
-                defaultSupplierId,
-                description,
-                shortDesc,
+      // 1. Create Product
+      const newProduct = await tx.product.create({
+        data: {
+          name,
+          slug,
+          categoryId,
+          brandId: brandId || null,
+          productVariantType: productType,
+          type: 'PHYSICAL',
+          price: parseFloat(firstVariation.price) || 0,
+          offerPrice: parseFloat(firstVariation.offerPrice) || null,
+          onlinePrice,
+          wholesalePrice,
+          taxClass,
+          costPrice: parseFloat(firstVariation.cost) || 0,
+          stock: totalStock,
+          trackInventory,
+          trackSerials,
+          trackExpiry,
+          trackBatch,
+          trackWarranty,
+          minStock,
+          maxStock,
+          reorderPoint,
+          defaultWarehouseId,
+          defaultSupplierId,
+          description,
+          shortDesc,
 
-                isFlashSale,
-                isFeatured,
-                isBestSeller,
-                unit,
-                warrantyMonths,
-                videoUrl: videoUrl || undefined,
-                sku: sku && sku.trim().length > 0 ? sku : null,
-                barcode: productBarcode,
-                specifications: specifications || Prisma.JsonNull,
-                attributes: attributes || Prisma.JsonNull,
-                images: [], 
-            }
-        });
+          isFlashSale,
+          isFeatured,
+          isBestSeller,
+          unit,
+          warrantyMonths,
+          videoUrl: videoUrl || undefined,
+          sku: sku && sku.trim().length > 0 ? sku : null,
+          barcode: productBarcode,
+          specifications: specifications || Prisma.JsonNull,
+          attributes: attributes || Prisma.JsonNull,
+          images: [],
+        }
+      });
 
-        // 2. Create Gallery Images in DB - ALL IN ONE BATCH
-        const imageMap = new Map<string, { id: string, url: string }>();
+      // 2. Create Gallery Images in DB - ALL IN ONE BATCH
+      const imageMap = new Map<string, { id: string, url: string }>();
 
-        if (uploadedImages.length > 0) {
-            const imageInserts = uploadedImages.map((img, i) => {
-                const newImageId = crypto.randomUUID();
-                imageMap.set(img.id, { id: newImageId, url: img.url });
-                return `('${newImageId}'::uuid, '${newProduct.id}', '${img.url}', ${img.isThumbnail}, ${i}, NOW())`;
-            }).join(',');
-            
-            await tx.$executeRawUnsafe(`
-                INSERT INTO "product_images" ("id", "product_id", "url", "is_thumbnail", "display_order", "updatedAt")
+      if (uploadedImages.length > 0) {
+        const imageInserts = uploadedImages.map((img, i) => {
+          const newImageId = crypto.randomUUID();
+          imageMap.set(img.id, { id: newImageId, url: img.url });
+          return `('${newImageId}'::uuid, '${newProduct.id}', '${img.url}', ${img.isThumbnail}, ${i}, NOW(), ${img.altText ? `'${img.altText.replace(/'/g, "''")}'` : 'NULL'})`;
+        }).join(',');
+
+        await tx.$executeRawUnsafe(`
+                INSERT INTO "product_images" ("id", "product_id", "url", "is_thumbnail", "display_order", "updatedAt", "alt_text")
                 VALUES ${imageInserts}
             `);
-        }
+      }
 
-        // 3. Save specifications to product_specs table - ALL IN ONE BATCH
-        if (specifications) {
-            const specEntries = Object.entries(specifications);
-            if (specEntries.length > 0) {
-                const specInserts = specEntries.map(([key, value]) => 
-                    `(gen_random_uuid(), '${newProduct.id}', '${key.replace(/'/g, "''")}', '${String(value).replace(/'/g, "''")}')` 
-                ).join(',');
-                
-                await tx.$executeRawUnsafe(`
+      // 3. Save specifications to product_specs table - ALL IN ONE BATCH
+      if (specifications) {
+        const specEntries = Object.entries(specifications);
+        if (specEntries.length > 0) {
+          const specInserts = specEntries.map(([key, value]) =>
+            `(gen_random_uuid(), '${newProduct.id}', '${key.replace(/'/g, "''")}', '${String(value).replace(/'/g, "''")}')`
+          ).join(',');
+
+          await tx.$executeRawUnsafe(`
                     INSERT INTO "product_specs" ("id", "product_id", "name", "value")
                     VALUES ${specInserts}
                 `);
-            }
+        }
+      }
+
+      // 4. Create Variations with their serial numbers
+      for (const v of variations) {
+        const variationSerials = v.hasSerial && v.serials
+          ? v.serials.filter((s: string) => s && s.trim().length > 0)
+          : [];
+        const stockQty = v.hasSerial ? variationSerials.length : (parseInt(v.stock) || 0);
+
+        // Link image
+        let productImageId = null;
+        let imageUrl = null;
+
+        if (v.productImageId) {
+          const mapped = imageMap.get(v.productImageId);
+          if (mapped) {
+            productImageId = mapped.id;
+            imageUrl = mapped.url;
+          }
         }
 
-        // 4. Create Variations with their serial numbers
-        for (const v of variations) {
-            const variationSerials = v.hasSerial && v.serials 
-                ? v.serials.filter((s: string) => s && s.trim().length > 0) 
-                : [];
-            const stockQty = v.hasSerial ? variationSerials.length : (parseInt(v.stock) || 0);
+        const newVariant = await tx.variant.create({
+          data: {
+            productId: newProduct.id,
+            name: v.name || 'Default',
+            sku: v.sku || undefined,
+            upc: v.upc || undefined,
+            price: parseFloat(v.price) || 0,
+            costPrice: parseFloat(v.cost) || 0,
+            expense: parseFloat(v.expense) || 0,
+            offerPrice: parseFloat(v.offerPrice) || null,
+            stock: stockQty,
+            hasSerial: v.hasSerial || false,
+            image: imageUrl,
+            attributes: v.attributes || Prisma.JsonNull,
+          }
+        });
 
-            // Link image
-            let productImageId = null;
-            let imageUrl = null;
-            
-            if (v.productImageId) {
-                const mapped = imageMap.get(v.productImageId);
-                if (mapped) {
-                    productImageId = mapped.id;
-                    imageUrl = mapped.url;
-                }
-            }
-
-            const newVariant = await tx.variant.create({
-                    data: {
-                      productId: newProduct.id,
-                      name: v.name || 'Default',
-                      sku: v.sku || undefined,
-                      upc: v.upc || undefined,
-                    price: parseFloat(v.price) || 0,
-                    costPrice: parseFloat(v.cost) || 0,
-                    expense: parseFloat(v.expense) || 0,
-                    offerPrice: parseFloat(v.offerPrice) || null,
-                    stock: stockQty,
-                    hasSerial: v.hasSerial || false,
-                    image: imageUrl,
-                    attributes: v.attributes || Prisma.JsonNull,
-                }
-            });
-            
-            if (productImageId) {
-                await tx.$executeRaw`
+        if (productImageId) {
+          await tx.$executeRaw`
                     UPDATE "product_variants" 
                     SET "product_image_id" = ${productImageId}
                     WHERE "id" = ${newVariant.id}
                 `;
-            }
-
-            // 5. Create serial numbers linked to this variation
-            if (variationSerials.length > 0) {
-                await tx.productSerial.createMany({
-                    data: variationSerials.map((s: string) => ({
-                        variantId: newVariant.id,
-                        serialNumber: s.trim(),
-                        status: 'AVAILABLE',
-                    }))
-                });
-            }
         }
 
-        return newProduct;
+        // 5. Create serial numbers linked to this variation
+        if (variationSerials.length > 0) {
+          await tx.productSerial.createMany({
+            data: variationSerials.map((s: string) => ({
+              variantId: newVariant.id,
+              serialNumber: s.trim(),
+              status: 'AVAILABLE',
+            }))
+          });
+        }
+      }
+
+      return newProduct;
     }, {
-        maxWait: 20000,
-        timeout: 20000
+      maxWait: 20000,
+      timeout: 20000
     });
 
     revalidatePath('/admin/products');
@@ -365,6 +365,8 @@ export async function getProduct(id: string) {
         type: true,
         specifications: true,
         attributes: true,
+        tags: true,
+        faqs: true,
         categoryId: true,
         brandId: true,
         category: {
@@ -425,6 +427,7 @@ export async function getProduct(id: string) {
             url: true,
             isThumbnail: true,
             displayOrder: true,
+            altText: true,
           },
           orderBy: { displayOrder: 'asc' },
         },
@@ -432,14 +435,20 @@ export async function getProduct(id: string) {
     });
 
     if (product) {
-      (product as any).images = (product as any).productImages;
+      (product as any).images = (product as any).productImages.map((img: any) => ({
+        id: img.id,
+        url: img.url,
+        isThumbnail: img.isThumbnail,
+        displayOrder: img.displayOrder,
+        alt: img.altText,
+      }));
       // Sanitize fields to remove CR/LF from database
       product.name = sanitizeString(product.name);
       product.sku = sanitizeString(product.sku);
       product.model = sanitizeString(product.model);
       product.barcode = sanitizeString(product.barcode);
       product.description = sanitizeString(product.description);
-      
+
       // Sanitize variant fields
       if ((product as any).variants) {
         (product as any).variants.forEach((v: any) => {
@@ -447,6 +456,15 @@ export async function getProduct(id: string) {
           v.sku = sanitizeString(v.sku);
           v.upc = sanitizeString(v.upc);
         });
+      }
+
+      // Map specs to productSpecs for the form
+      if ((product as any).specs) {
+        (product as any).productSpecs = (product as any).specs.map((s: any) => ({
+          id: s.id,
+          key: sanitizeString(s.name) || '',
+          value: sanitizeString(s.value) || '',
+        }));
       }
     }
 
@@ -517,245 +535,245 @@ export async function updateProduct(id: string, formData: FormData) {
 
     // Upload new images OUTSIDE transaction to avoid timeout — all in parallel
     const uploadedImages = (await Promise.all(
-        galleryMetadata.map(async (meta: any) => {
-            let imageUrl = meta.url;
-            if (meta.fileKey) {
-                const imageFile = formData.get(meta.fileKey) as File | null;
-                if (imageFile && imageFile.size > 0) {
-                    try {
-                        const arrayBuffer = await imageFile.arrayBuffer();
-                        const buffer = Buffer.from(arrayBuffer);
-                        imageUrl = await uploadToCloudinary(buffer, 'products/gallery');
-                    } catch (e) {
-                        console.error("Failed to upload gallery image", e);
-                        return null; // skip failed upload, continue with others
-                    }
-                }
+      galleryMetadata.map(async (meta: any) => {
+        let imageUrl = meta.url;
+        if (meta.fileKey) {
+          const imageFile = formData.get(meta.fileKey) as File | null;
+          if (imageFile && imageFile.size > 0) {
+            try {
+              const arrayBuffer = await imageFile.arrayBuffer();
+              const buffer = Buffer.from(arrayBuffer);
+              imageUrl = await uploadToCloudinary(buffer, 'products/gallery');
+            } catch (e) {
+              console.error("Failed to upload gallery image", e);
+              return null; // skip failed upload, continue with others
             }
-            return imageUrl ? { id: meta.id, url: imageUrl, isThumbnail: meta.isThumbnail } : null;
-        })
-    )).filter((img: any): img is { id: string; url: string; isThumbnail: boolean } => img !== null);
+          }
+        }
+        return imageUrl ? { id: meta.id, url: imageUrl, isThumbnail: meta.isThumbnail, altText: meta.alt } : null;
+      })
+    )).filter((img: any): img is { id: string; url: string; isThumbnail: boolean; altText?: string } => img !== null);
 
     // Validate serial numbers for duplicates before transaction
     const allSerials: string[] = [];
     const serialToVariationMap = new Map<string, string>();
-    
+
     for (const v of variations) {
-        if (v.hasSerial && v.serials) {
-            const variationName = v.name || 'Default';
-            const variationSerials = v.serials.filter((s: string) => s && s.trim().length > 0);
-            
-            // Check for duplicates within the same variation
-            const uniqueSerials = new Set<string>();
-            for (const serial of variationSerials) {
-                const trimmedSerial = serial.trim();
-                if (uniqueSerials.has(trimmedSerial)) {
-                    return { 
-                        success: false, 
-                        error: `Duplicate serial number "${trimmedSerial}" found multiple times in variation "${variationName}". Each serial must be unique.`,
-                        duplicateSerial: trimmedSerial
-                    };
-                }
-                uniqueSerials.add(trimmedSerial);
-            }
-            
-            // Check for duplicates across variations
-            for (const serial of variationSerials) {
-                const trimmedSerial = serial.trim();
-                if (allSerials.includes(trimmedSerial)) {
-                    const firstVariation = serialToVariationMap.get(trimmedSerial);
-                    return { 
-                        success: false, 
-                        error: `Duplicate serial number "${trimmedSerial}" found in variation "${variationName}". It was already used in variation "${firstVariation}".`,
-                        duplicateSerial: trimmedSerial
-                    };
-                }
-                allSerials.push(trimmedSerial);
-                serialToVariationMap.set(trimmedSerial, variationName);
-            }
+      if (v.hasSerial && v.serials) {
+        const variationName = v.name || 'Default';
+        const variationSerials = v.serials.filter((s: string) => s && s.trim().length > 0);
+
+        // Check for duplicates within the same variation
+        const uniqueSerials = new Set<string>();
+        for (const serial of variationSerials) {
+          const trimmedSerial = serial.trim();
+          if (uniqueSerials.has(trimmedSerial)) {
+            return {
+              success: false,
+              error: `Duplicate serial number "${trimmedSerial}" found multiple times in variation "${variationName}". Each serial must be unique.`,
+              duplicateSerial: trimmedSerial
+            };
+          }
+          uniqueSerials.add(trimmedSerial);
         }
+
+        // Check for duplicates across variations
+        for (const serial of variationSerials) {
+          const trimmedSerial = serial.trim();
+          if (allSerials.includes(trimmedSerial)) {
+            const firstVariation = serialToVariationMap.get(trimmedSerial);
+            return {
+              success: false,
+              error: `Duplicate serial number "${trimmedSerial}" found in variation "${variationName}". It was already used in variation "${firstVariation}".`,
+              duplicateSerial: trimmedSerial
+            };
+          }
+          allSerials.push(trimmedSerial);
+          serialToVariationMap.set(trimmedSerial, variationName);
+        }
+      }
     }
 
     // Check if any serial already exists in database (excluding current product's serials)
     if (allSerials.length > 0) {
-        const existingSerials = await prisma.productSerial.findMany({
-            where: {
-                serialNumber: {
-                    in: allSerials
-                },
-                variant: {
-                    productId: {
-                        not: id // Exclude current product
-                    }
-                }
-            },
-            include: {
-                variant: {
-                    include: {
-                        product: {
-                            select: {
-                                name: true
-                            }
-                        }
-                    }
-                }
+      const existingSerials = await prisma.productSerial.findMany({
+        where: {
+          serialNumber: {
+            in: allSerials
+          },
+          variant: {
+            productId: {
+              not: id // Exclude current product
             }
-        });
-
-        if (existingSerials.length > 0) {
-            const firstDuplicate = existingSerials[0];
-            return {
-                success: false,
-                error: `Serial number "${firstDuplicate.serialNumber}" already exists in product "${firstDuplicate.variant.product.name}".`,
-                duplicateSerial: firstDuplicate.serialNumber
-            };
+          }
+        },
+        include: {
+          variant: {
+            include: {
+              product: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          }
         }
+      });
+
+      if (existingSerials.length > 0) {
+        const firstDuplicate = existingSerials[0];
+        return {
+          success: false,
+          error: `Serial number "${firstDuplicate.serialNumber}" already exists in product "${firstDuplicate.variant.product.name}".`,
+          duplicateSerial: firstDuplicate.serialNumber
+        };
+      }
     }
 
     // Now do FAST database operations in transaction with increased timeout
     const product = await prisma.$transaction(async (tx) => {
-        // 1. Update Product Basic Info
-        const updatedProduct = await tx.product.update({
-            where: { id },
-            data: {
-                name,
-                categoryId,
-                brandId: brandId || null,
-                productVariantType: productType,
-                price: parseFloat(firstVariation.price) || 0,
-                offerPrice: parseFloat(firstVariation.offerPrice) || null,
-                onlinePrice,
-                wholesalePrice,
-                taxClass,
-                costPrice: parseFloat(firstVariation.cost) || 0,
-                stock: totalStock,
-                trackInventory,
-                trackSerials,
-                trackExpiry,
-                trackBatch,
-                trackWarranty,
-                minStock,
-                maxStock,
-                reorderPoint,
-                defaultWarehouseId,
-                defaultSupplierId,
-                description,
-                shortDesc,
+      // 1. Update Product Basic Info
+      const updatedProduct = await tx.product.update({
+        where: { id },
+        data: {
+          name,
+          categoryId,
+          brandId: brandId || null,
+          productVariantType: productType,
+          price: parseFloat(firstVariation.price) || 0,
+          offerPrice: parseFloat(firstVariation.offerPrice) || null,
+          onlinePrice,
+          wholesalePrice,
+          taxClass,
+          costPrice: parseFloat(firstVariation.cost) || 0,
+          stock: totalStock,
+          trackInventory,
+          trackSerials,
+          trackExpiry,
+          trackBatch,
+          trackWarranty,
+          minStock,
+          maxStock,
+          reorderPoint,
+          defaultWarehouseId,
+          defaultSupplierId,
+          description,
+          shortDesc,
 
-                isFlashSale,
-                isFeatured,
-                isBestSeller,
-                unit,
-                warrantyMonths,
-                videoUrl: videoUrl || undefined,
-                model,
-                sku: sku && sku.trim().length > 0 ? sku : null,
-                barcode: productBarcode,
-                specifications: specifications || Prisma.JsonNull,
-                attributes: attributes || Prisma.JsonNull,
-            }
-        });
+          isFlashSale,
+          isFeatured,
+          isBestSeller,
+          unit,
+          warrantyMonths,
+          videoUrl: videoUrl || undefined,
+          model,
+          sku: sku && sku.trim().length > 0 ? sku : null,
+          barcode: productBarcode,
+          specifications: specifications || Prisma.JsonNull,
+          attributes: attributes || Prisma.JsonNull,
+        }
+      });
 
-        // 2. Delete existing images in one query
-        await tx.$executeRaw`DELETE FROM "product_images" WHERE "product_id" = ${id}`;
+      // 2. Delete existing images in one query
+      await tx.$executeRaw`DELETE FROM "product_images" WHERE "product_id" = ${id}`;
 
-        // 3. Insert ALL images in ONE batch query
-        const imageMap = new Map<string, { id: string, url: string }>();
-        if (uploadedImages.length > 0) {
-            const imageInserts = uploadedImages.map((img, i) => {
-                const newImageId = crypto.randomUUID();
-                imageMap.set(img.id, { id: newImageId, url: img.url });
-                return `('${newImageId}'::uuid, '${updatedProduct.id}', '${img.url}', ${img.isThumbnail}, ${i}, NOW())`;
-            }).join(',');
-            
-            await tx.$executeRawUnsafe(`
-                INSERT INTO "product_images" ("id", "product_id", "url", "is_thumbnail", "display_order", "updatedAt")
+      // 3. Insert ALL images in ONE batch query
+      const imageMap = new Map<string, { id: string, url: string }>();
+      if (uploadedImages.length > 0) {
+        const imageInserts = uploadedImages.map((img, i) => {
+          const newImageId = crypto.randomUUID();
+          imageMap.set(img.id, { id: newImageId, url: img.url });
+          return `('${newImageId}'::uuid, '${updatedProduct.id}', '${img.url}', ${img.isThumbnail}, ${i}, NOW(), ${img.altText ? `'${img.altText.replace(/'/g, "''")}'` : 'NULL'})`;
+        }).join(',');
+
+        await tx.$executeRawUnsafe(`
+                INSERT INTO "product_images" ("id", "product_id", "url", "is_thumbnail", "display_order", "updatedAt", "alt_text")
                 VALUES ${imageInserts}
             `);
-        }
+      }
 
-        // 4. Delete and insert specs in batch
-        await tx.$executeRaw`DELETE FROM "product_specs" WHERE "product_id" = ${id}`;
-        
-        if (specifications) {
-            const specEntries = Object.entries(specifications);
-            if (specEntries.length > 0) {
-                const specInserts = specEntries.map(([key, value]) => 
-                    `(gen_random_uuid(), '${updatedProduct.id}', '${key.replace(/'/g, "''")}', '${String(value).replace(/'/g, "''")}')` 
-                ).join(',');
-                
-                await tx.$executeRawUnsafe(`
+      // 4. Delete and insert specs in batch
+      await tx.$executeRaw`DELETE FROM "product_specs" WHERE "product_id" = ${id}`;
+
+      if (specifications) {
+        const specEntries = Object.entries(specifications);
+        if (specEntries.length > 0) {
+          const specInserts = specEntries.map(([key, value]) =>
+            `(gen_random_uuid(), '${updatedProduct.id}', '${key.replace(/'/g, "''")}', '${String(value).replace(/'/g, "''")}')`
+          ).join(',');
+
+          await tx.$executeRawUnsafe(`
                     INSERT INTO "product_specs" ("id", "product_id", "name", "value")
                     VALUES ${specInserts}
                 `);
-            }
+        }
+      }
+
+      // 5. Delete and recreate variations
+      await tx.productSerial.deleteMany({
+        where: { variant: { productId: id } }
+      });
+      await tx.variant.deleteMany({ where: { productId: id } });
+
+      // 6. Create new variations
+      for (const v of variations) {
+        const variationSerials = v.hasSerial && v.serials
+          ? v.serials.filter((s: string) => s && s.trim().length > 0)
+          : [];
+        const stockQty = v.hasSerial ? variationSerials.length : (parseInt(v.stock) || 0);
+
+        // Link image
+        let productImageId = null;
+        let imageUrl = null;
+
+        if (v.productImageId) {
+          const mapped = imageMap.get(v.productImageId);
+          if (mapped) {
+            productImageId = mapped.id;
+            imageUrl = mapped.url;
+          }
         }
 
-        // 5. Delete and recreate variations
-        await tx.productSerial.deleteMany({ 
-            where: { variant: { productId: id } } 
+        const newVariant = await tx.variant.create({
+          data: {
+            productId: updatedProduct.id,
+            name: v.name || 'Default',
+            sku: v.sku || undefined,
+            upc: v.upc || undefined,
+            price: parseFloat(v.price) || 0,
+            costPrice: parseFloat(v.cost) || 0,
+            expense: parseFloat(v.expense) || 0,
+            offerPrice: parseFloat(v.offerPrice) || null,
+            stock: stockQty,
+            hasSerial: v.hasSerial || false,
+            image: imageUrl,
+            attributes: v.attributes || Prisma.JsonNull,
+          }
         });
-        await tx.variant.deleteMany({ where: { productId: id } });
 
-        // 6. Create new variations
-        for (const v of variations) {
-            const variationSerials = v.hasSerial && v.serials 
-                ? v.serials.filter((s: string) => s && s.trim().length > 0) 
-                : [];
-            const stockQty = v.hasSerial ? variationSerials.length : (parseInt(v.stock) || 0);
-
-            // Link image
-            let productImageId = null;
-            let imageUrl = null;
-            
-            if (v.productImageId) {
-                const mapped = imageMap.get(v.productImageId);
-                if (mapped) {
-                    productImageId = mapped.id;
-                    imageUrl = mapped.url;
-                }
-            }
-
-            const newVariant = await tx.variant.create({
-                data: {
-                    productId: updatedProduct.id,
-                    name: v.name || 'Default',
-                    sku: v.sku || undefined,
-                    upc: v.upc || undefined,
-                    price: parseFloat(v.price) || 0,
-                    costPrice: parseFloat(v.cost) || 0,
-                    expense: parseFloat(v.expense) || 0,
-                    offerPrice: parseFloat(v.offerPrice) || null,
-                    stock: stockQty,
-                    hasSerial: v.hasSerial || false,
-                    image: imageUrl,
-                    attributes: v.attributes || Prisma.JsonNull,
-                }
-            });
-
-            if (productImageId) {
-                await tx.$executeRaw`
+        if (productImageId) {
+          await tx.$executeRaw`
                     UPDATE "product_variants" 
                     SET "product_image_id" = ${productImageId}::uuid
                     WHERE "id" = ${newVariant.id}
                 `;
-            }
-
-            if (variationSerials.length > 0) {
-                await tx.productSerial.createMany({
-                    data: variationSerials.map((s: string) => ({
-                        variantId: newVariant.id,
-                        serialNumber: s.trim(),
-                        status: 'AVAILABLE',
-                    }))
-                });
-            }
         }
 
-        return updatedProduct;
+        if (variationSerials.length > 0) {
+          await tx.productSerial.createMany({
+            data: variationSerials.map((s: string) => ({
+              variantId: newVariant.id,
+              serialNumber: s.trim(),
+              status: 'AVAILABLE',
+            }))
+          });
+        }
+      }
+
+      return updatedProduct;
     }, {
-        maxWait: 20000,
-        timeout: 20000
+      maxWait: 20000,
+      timeout: 20000
     });
 
     revalidatePath('/admin/products');
@@ -802,13 +820,13 @@ export async function getProducts({
       AND: [
         search
           ? {
-              OR: [
-                { name: { contains: search, mode: 'insensitive' } },
-                { sku: { contains: search, mode: 'insensitive' } },
-                { model: { contains: search, mode: 'insensitive' } },
-                { barcode: { contains: search, mode: 'insensitive' } },
-              ],
-            }
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { sku: { contains: search, mode: 'insensitive' } },
+              { model: { contains: search, mode: 'insensitive' } },
+              { barcode: { contains: search, mode: 'insensitive' } },
+            ],
+          }
           : {},
         category ? { categoryId: category } : {},
         vendor ? { vendorId: vendor } : {},
@@ -816,10 +834,10 @@ export async function getProducts({
         // type ? { type: type as any} : {},
         stockStatus
           ? stockStatus === 'LOW_STOCK'
-            ? { stock: { lte: 5 } } 
+            ? { stock: { lte: 5 } }
             : stockStatus === 'OUT_OF_STOCK'
-            ? { stock: 0 }
-            : { stock: { gt: 0 } }
+              ? { stock: 0 }
+              : { stock: { gt: 0 } }
           : {},
         minPrice ? { price: { gte: minPrice } } : {},
         maxPrice ? { price: { lte: maxPrice } } : {},
@@ -874,73 +892,74 @@ export async function duplicateProduct(id: string) {
     // Generate new slug/name
     const newName = `${product.name} (Copy)`;
     const newSlug = `${product.slug}-copy-${Date.now()}`;
-    
+
     // Transaction to create everything
     const newProduct = await prisma.$transaction(async (tx) => {
-        // Create Product
-        const created = await tx.product.create({
-            data: {
-                name: newName,
-                slug: newSlug,
-                categoryId: product.categoryId,
-                brandId: product.brandId,
-                vendorId: product.vendorId,
-                productVariantType: product.productVariantType,
-                type: product.type,
-                price: product.price,
-                offerPrice: product.offerPrice,
-                costPrice: product.costPrice,
-                stock: product.stock, 
-                minStock: product.minStock,
-                description: product.description,
-                shortDesc: product.shortDesc,
-                status: 'DRAFT', // Draft by default
-                isFeatured: false,
-                isFlashSale: false,
-                unit: product.unit,
-                warrantyMonths: product.warrantyMonths,
-                warrantyType: product.warrantyType,
-                videoUrl: product.videoUrl,
-                specifications: product.specifications || undefined,
-                attributes: product.attributes || undefined,
-                sku: product.sku ? `${product.sku}-copy-${Date.now().toString().slice(-4)}` : null,
-                barcode: null, 
-                
-                // Relations
-                specs: {
-                    create: product.specs.map(s => ({
-                        name: s.name,
-                        value: s.value
-                    }))
-                },
-                productImages: {
-                    create: product.productImages.map(img => ({
-                        url: img.url,
-                        publicId: img.publicId,
-                        isThumbnail: img.isThumbnail,
-                        displayOrder: img.displayOrder
-                    }))
-                },
-                variants: {
-                    create: (product as any).variants.map((v: any) => ({
-                        name: v.name,
-                        sku: v.sku ? `${v.sku}-copy-${Date.now().toString().slice(-4)}-${Math.floor(Math.random()*1000)}` : null,
-                        upc: null,
-                        price: v.price,
-                        costPrice: v.costPrice,
-                        expense: v.expense,
-                        offerPrice: v.offerPrice,
-                        stock: v.stock,
-                        minStock: v.minStock,
-                        hasSerial: false, // Disable serials for duplicate
-                        image: v.image,
-                        attributes: v.attributes || undefined,
-                    }))
-                }
-            }
-        });
-        
-        return created;
+      // Create Product
+      const created = await tx.product.create({
+        data: {
+          name: newName,
+          slug: newSlug,
+          categoryId: product.categoryId,
+          brandId: product.brandId,
+          vendorId: product.vendorId,
+          productVariantType: product.productVariantType,
+          type: product.type,
+          price: product.price,
+          offerPrice: product.offerPrice,
+          costPrice: product.costPrice,
+          stock: product.stock,
+          minStock: product.minStock,
+          description: product.description,
+          shortDesc: product.shortDesc,
+          status: 'DRAFT', // Draft by default
+          isFeatured: false,
+          isFlashSale: false,
+          unit: product.unit,
+          warrantyMonths: product.warrantyMonths,
+          warrantyType: product.warrantyType,
+          videoUrl: product.videoUrl,
+          specifications: product.specifications || undefined,
+          attributes: product.attributes || undefined,
+          sku: product.sku ? `${product.sku}-copy-${Date.now().toString().slice(-4)}` : null,
+          barcode: null,
+
+          // Relations
+          specs: {
+            create: product.specs.map(s => ({
+              name: s.name,
+              value: s.value
+            }))
+          },
+          productImages: {
+            create: product.productImages.map(img => ({
+              url: img.url,
+              publicId: img.publicId,
+              isThumbnail: img.isThumbnail,
+              displayOrder: img.displayOrder,
+              altText: img.altText
+            }))
+          },
+          variants: {
+            create: (product as any).variants.map((v: any) => ({
+              name: v.name,
+              sku: v.sku ? `${v.sku}-copy-${Date.now().toString().slice(-4)}-${Math.floor(Math.random() * 1000)}` : null,
+              upc: null,
+              price: v.price,
+              costPrice: v.costPrice,
+              expense: v.expense,
+              offerPrice: v.offerPrice,
+              stock: v.stock,
+              minStock: v.minStock,
+              hasSerial: false, // Disable serials for duplicate
+              image: v.image,
+              attributes: v.attributes || undefined,
+            }))
+          }
+        }
+      });
+
+      return created;
     });
 
     revalidatePath('/admin/products');

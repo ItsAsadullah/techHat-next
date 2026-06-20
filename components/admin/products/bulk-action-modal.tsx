@@ -74,7 +74,7 @@ export function BulkActionModal({
       }
 
       if (result?.success) {
-        toast.success(`Successfully processed ${selectedIds.length} products`);
+        toast.success(result.message || `Successfully processed ${selectedIds.length} products`);
         onSuccess();
         handleClose();
       } else {

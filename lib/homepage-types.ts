@@ -88,6 +88,7 @@ export interface HomepageProduct {
   flashSaleEndTime: string | null;
   createdAt: string;
   _soldCount?: number;
+  specs?: { name: string; value: string }[];
 }
 
 export interface HomepageCategory {

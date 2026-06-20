@@ -47,11 +47,11 @@ function buildClientSlug(text: string): string {
 export function ProductSEOSection() {
   const { register, watch, setValue } = useFormContext<ProductFormValues>();
 
-  const name            = watch('name');
-  const shortDesc       = watch('shortDesc');
-  const seoTitle        = watch('seoTitle');
+  const name = watch('name');
+  const shortDesc = watch('shortDesc');
+  const seoTitle = watch('seoTitle');
   const metaDescription = watch('metaDescription');
-  const slug            = watch('slug');
+  const slug = watch('slug');
 
   // Auto-fill SEO title from name (only if seoTitle is empty)
   useEffect(() => {
@@ -78,7 +78,7 @@ export function ProductSEOSection() {
   }, [name]);
 
   const titleLen = (seoTitle || '').length;
-  const descLen  = (metaDescription || '').length;
+  const descLen = (metaDescription || '').length;
   const previewSlug = slug || buildClientSlug(name || '');
 
   return (

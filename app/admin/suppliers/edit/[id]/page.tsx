@@ -8,8 +8,9 @@ export const metadata: Metadata = {
   description: 'Update supplier information',
 };
 
-export default async function EditSupplierPage({ params }: { params: { id: string } }) {
-  const res = await getSupplierById(params.id);
+export default async function EditSupplierPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const res = await getSupplierById(id);
 
   if (!res.success || !res.data) {
     notFound();

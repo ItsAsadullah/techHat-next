@@ -57,7 +57,7 @@ export default function Reviews() {
 
               <div className="flex items-center gap-4">
                 <div className="relative w-12 h-12 rounded-full overflow-hidden">
-                  <Image src={review.image} alt={review.name} fill className="object-cover" />
+                  <Image src={review.image} alt={review.name} fill sizes="64px" className="object-cover" />
                 </div>
                 <div>
                   <h4 className="font-bold text-gray-900 flex items-center gap-2">

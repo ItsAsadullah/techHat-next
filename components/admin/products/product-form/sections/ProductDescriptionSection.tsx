@@ -29,20 +29,6 @@ export function ProductDescriptionSection() {
         />
       </div>
 
-      {/* Full Description — Rich text marketing body */}
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium">
-          Full Description
-          <span className="ml-1.5 text-[10px] text-muted-foreground font-normal">(marketing copy, product page body)</span>
-        </Label>
-        <div className="min-h-[180px] max-h-[350px]">
-          <RichTextEditor
-            value={description || ''}
-            onChange={(content) => setValue('description', content)}
-          />
-        </div>
-      </div>
-
       {/* Video URL — belongs with content, not sidebar */}
       <div className="space-y-1.5 border-t pt-4">
         <Label htmlFor="videoUrl" className="text-sm font-medium flex items-center gap-1.5">
@@ -58,6 +44,20 @@ export function ProductDescriptionSection() {
         <p className="text-[11px] text-muted-foreground">
           YouTube, Vimeo, or any embed-compatible URL
         </p>
+      </div>
+
+      {/* Full Description — Rich text marketing body */}
+      <div className="space-y-1.5 border-t pt-4">
+        <Label className="text-sm font-medium">
+          Full Description
+          <span className="ml-1.5 text-[10px] text-muted-foreground font-normal">(marketing copy, product page body)</span>
+        </Label>
+        <div className="w-full">
+          <RichTextEditor
+            value={description || ''}
+            onChange={(content) => setValue('description', content)}
+          />
+        </div>
       </div>
 
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useMemo } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Image as ImageIcon, X, Star, GripVertical, Upload } from 'lucide-react';
@@ -9,21 +9,21 @@ import { CldUploadWidget } from 'next-cloudinary';
 import { MediaLibrary } from '@/components/admin/media-library';
 
 export interface GalleryImage {
-  id:          string;
-  url:         string;
+  id: string;
+  url: string;
   isThumbnail: boolean;
-  alt?:        string;
+  alt?: string;
 }
 
 interface Props {
-  images:              GalleryImage[];
-  setImages:           (images: GalleryImage[]) => void;
+  images: GalleryImage[];
+  setImages: (images: GalleryImage[]) => void;
 }
 
 export function ProductMediaSection({ images, setImages }: Props) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const dragSourceIndex             = useRef<number>(-1);
+  const dragSourceIndex = useRef<number>(-1);
 
   // ── Thumbnail ─────────────────────────────────────────────────────────────
   const handleSetThumbnail = useCallback((id: string) => {
@@ -55,7 +55,7 @@ export function ProductMediaSection({ images, setImages }: Props) {
   // ── Media Library ─────────────────────────────────────────────────────────
   const handleLibrarySelect = useCallback((urls: string | string[]) => {
     const urlArray = Array.isArray(urls) ? urls : [urls];
-    
+
     const newImages = urlArray.map((url, i) => ({
       id: Math.random().toString(36).substring(2, 11) + i,
       url,
@@ -78,7 +78,7 @@ export function ProductMediaSection({ images, setImages }: Props) {
     }
 
     const reordered = [...images];
-    const [moved]   = reordered.splice(dragSourceIndex.current, 1);
+    const [moved] = reordered.splice(dragSourceIndex.current, 1);
     reordered.splice(targetIndex, 0, moved);
 
     setImages(reordered);
@@ -93,9 +93,28 @@ export function ProductMediaSection({ images, setImages }: Props) {
     dragSourceIndex.current = -1;
   };
 
+  const uploadOptions = useMemo(() => ({
+    multiple: true,
+    resourceType: "image" as const,
+    clientAllowedFormats: ["png", "jpeg", "jpg", "webp"],
+    folder: "products/gallery",
+    sources: ['local', 'url', 'camera', 'google_drive', 'image_search', 'unsplash'],
+    singleUploadAutoClose: false
+  }), []);
+
+  const handleSuccess = useCallback((result: any) => {
+    if (typeof result.info === 'object' && result.info.secure_url) {
+      const newImage: GalleryImage = {
+        id: Math.random().toString(36).substring(2, 11),
+        url: result.info.secure_url,
+        isThumbnail: images.length === 0,
+      };
+      setImages([...images, newImage]);
+    }
+  }, [images, setImages]);
+
   return (
-    <div className="space-y-3">
-      {/* Header */}
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <Label className="text-sm font-medium">Product Images</Label>
@@ -115,25 +134,8 @@ export function ProductMediaSection({ images, setImages }: Props) {
           />
           <CldUploadWidget
             signatureEndpoint="/api/cloudinary/sign"
-            onSuccess={(result) => {
-              if (typeof result.info === 'object' && result.info.secure_url) {
-                const newImage: GalleryImage = {
-                  id: Math.random().toString(36).substring(2, 11),
-                  url: result.info.secure_url,
-                  // Using a functional state update to ensure isThumbnail is correct
-                  isThumbnail: false, // We'll handle this inside setImages
-                };
-                const isThumbnail = images.length === 0;
-                setImages([...images, { ...newImage, isThumbnail }]);
-              }
-            }}
-            options={{
-              multiple: true,
-              resourceType: "image",
-              clientAllowedFormats: ["png", "jpeg", "jpg", "webp"],
-              folder: "products/gallery",
-              sources: ['local', 'url', 'camera', 'google_drive', 'image_search', 'unsplash']
-            }}
+            onSuccess={handleSuccess}
+            options={uploadOptions}
           >
             {({ open }) => (
               <Button type="button" variant="default" size="sm" className="h-8 text-xs" onClick={() => open()}>
@@ -154,13 +156,12 @@ export function ProductMediaSection({ images, setImages }: Props) {
             onDragOver={(e) => handleDragOver(e, img.id)}
             onDrop={(e) => handleDrop(e, index)}
             onDragEnd={handleDragEnd}
-            className={`relative group border rounded-lg overflow-hidden bg-muted transition-all duration-150 ${
-              draggingId === img.id
+            className={`relative group border rounded-lg overflow-hidden bg-muted transition-all duration-150 ${draggingId === img.id
                 ? 'opacity-40 ring-2 ring-blue-500 scale-95'
                 : dragOverId === img.id && draggingId !== img.id
-                ? 'ring-2 ring-blue-400 ring-offset-1'
-                : ''
-            }`}
+                  ? 'ring-2 ring-blue-400 ring-offset-1'
+                  : ''
+              }`}
           >
             {/* Image */}
             <div className="aspect-square relative">
@@ -189,11 +190,10 @@ export function ProductMediaSection({ images, setImages }: Props) {
                   <button
                     type="button"
                     onClick={() => handleSetThumbnail(img.id)}
-                    className={`text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 transition-colors ${
-                      img.isThumbnail
+                    className={`text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 transition-colors ${img.isThumbnail
                         ? 'bg-yellow-400 text-black'
                         : 'bg-white/80 text-black hover:bg-white'
-                    }`}
+                      }`}
                   >
                     <Star className={`w-2.5 h-2.5 ${img.isThumbnail ? 'fill-current' : ''}`} />
                     {img.isThumbnail ? 'Main' : 'Set Main'}
@@ -245,10 +245,10 @@ export function ProductMediaSection({ images, setImages }: Props) {
                 setImages([...images, { ...newImage, isThumbnail }]);
               }
             }}
-            options={{ 
-              multiple: true, 
-              resourceType: "image", 
-              clientAllowedFormats: ["png", "jpeg", "jpg", "webp"], 
+            options={{
+              multiple: true,
+              resourceType: "image",
+              clientAllowedFormats: ["png", "jpeg", "jpg", "webp"],
               folder: "products/gallery",
               sources: ['local', 'url', 'camera', 'google_drive', 'image_search', 'unsplash']
             }}
@@ -263,7 +263,7 @@ export function ProductMediaSection({ images, setImages }: Props) {
               </div>
             )}
           </CldUploadWidget>
-          
+
           <MediaLibrary
             onSelect={handleLibrarySelect}
             multiple={true}
@@ -292,10 +292,10 @@ export function ProductMediaSection({ images, setImages }: Props) {
                 setImages([...images, { ...newImage, isThumbnail }]);
               }
             }}
-            options={{ 
-              multiple: true, 
-              resourceType: "image", 
-              clientAllowedFormats: ["png", "jpeg", "jpg", "webp"], 
+            options={{
+              multiple: true,
+              resourceType: "image",
+              clientAllowedFormats: ["png", "jpeg", "jpg", "webp"],
               folder: "products/gallery",
               sources: ['local', 'url', 'camera', 'google_drive', 'image_search', 'unsplash']
             }}

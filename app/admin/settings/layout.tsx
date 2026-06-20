@@ -58,6 +58,7 @@ const settingsNav = [
     items: [
       { name: 'Notifications', href: '/admin/settings/notifications', icon: Bell },
       { name: 'Analytics & Tracking', href: '/admin/settings/analytics', icon: BarChart3 },
+      { name: 'AI Assistant', href: '/admin/settings/ai-assistant', icon: ShieldCheck },
       { name: 'Appearance', href: '/admin/settings/appearance', icon: Palette },
       { name: 'Security', href: '/admin/settings/security', icon: ShieldCheck },
       { name: 'Data Backup', href: '/admin/settings/backup', icon: HardDrive },

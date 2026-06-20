@@ -75,6 +75,36 @@ enum StockStatus {
   LOW_STOCK
 }
 
+enum AttributeDataType {
+  TEXT
+  NUMBER
+  DECIMAL
+  BOOLEAN
+  DATE
+  DROPDOWN
+  MULTI_SELECT
+  COLOR
+  IMAGE_OPTION
+  FILE_OPTION
+  DIMENSION
+  WEIGHT
+  CUSTOM
+}
+
+enum AttributeUIType {
+  INPUT
+  TEXTAREA
+  DROPDOWN
+  RADIO
+  CHECKBOX
+  COLOR_SWATCH
+  IMAGE_SWATCH
+  BUTTON_SELECTOR
+  SLIDER
+  RANGE
+  TAG_SELECTOR
+}
+
 // --------------------------------------
 // USER & AUTHENTICATION
 // --------------------------------------
@@ -194,34 +224,51 @@ model Category {
 // --------------------------------------
 
 model Attribute {
-  id       Int     @id @default(autoincrement())
-  name     String
-  slug     String?
-  type     String? // 'select', 'color', 'radio' etc.
-  isActive Boolean @default(true) @map("is_active")
+  id           String             @id @default(uuid())
+  name         String
+  slug         String             @unique
+  description  String?
+  dataType     AttributeDataType  @default(TEXT) @map("data_type")
+  uiType       AttributeUIType    @default(INPUT) @map("ui_type")
+  
+  // Configurations
+  isVariant    Boolean @default(false) @map("is_variant")
+  isFilterable Boolean @default(true) @map("is_filterable")
+  isSearchable Boolean @default(true) @map("is_searchable")
+  status       String  @default("ACTIVE") // ACTIVE, INACTIVE
 
-  values     AttributeValue[]
-  categories CategoryAttribute[]
+  values           AttributeValue[]
+  categoryMappings CategoryAttribute[]
+  productMappings  ProductAttribute[]
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("attributes")
 }
 
 model AttributeValue {
-  id           Int     @id @default(autoincrement())
-  attributeId  Int     @map("attribute_id")
+  id           String  @id @default(uuid())
+  attributeId  String  @map("attribute_id")
+  label        String
   value        String
-  colorCode    String? @map("color_code")
-  isActive     Boolean @default(true) @map("is_active")
+  shortCode    String? @map("short_code") // e.g., "BLK" for Black (Used for SKU)
+  colorCode    String? @map("color_code") // For COLOR type
+  imageUrl     String? @map("image_url") // For IMAGE_OPTION type
+  metadata     Json?   // Extra config
   displayOrder Int     @default(0) @map("display_order")
 
   attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+  
+  productMappings ProductAttributeValue[]
+  variantMappings VariantAttributeValue[]
 
   @@map("attribute_values")
 }
 
 model CategoryAttribute {
   categoryId   String  @map("category_id")
-  attributeId  Int     @map("attribute_id")
+  attributeId  String  @map("attribute_id")
   isRequired   Boolean @default(false) @map("is_required")
   displayOrder Int     @default(0) @map("display_order")
 
@@ -230,6 +277,55 @@ model CategoryAttribute {
 
   @@id([categoryId, attributeId])
   @@map("category_attributes")
+}
+
+model ProductAttribute {
+  id          String @id @default(uuid())
+  productId   String @map("product_id")
+  attributeId String @map("attribute_id")
+  
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+  
+  values ProductAttributeValue[]
+
+  @@unique([productId, attributeId])
+  @@map("product_attributes")
+}
+
+model ProductAttributeValue {
+  productAttributeId String @map("product_attribute_id")
+  attributeValueId   String @map("attribute_value_id")
+
+  productAttribute ProductAttribute @relation(fields: [productAttributeId], references: [id], onDelete: Cascade)
+  attributeValue   AttributeValue   @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
+
+  @@id([productAttributeId, attributeValueId])
+  @@map("product_attribute_values")
+}
+
+model VariantAttributeValue {
+  variantId        String @map("variant_id")
+  attributeValueId String @map("attribute_value_id")
+
+  variant        Variant        @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  attributeValue AttributeValue @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
+
+  @@id([variantId, attributeValueId])
+  @@map("variant_attribute_values")
+}
+
+model VariantMedia {
+  id          String  @id @default(uuid())
+  variantId   String  @map("variant_id")
+  url         String
+  type        String  @default("IMAGE") // IMAGE, VIDEO, 360
+  isMain      Boolean @default(false) @map("is_main")
+  displayOrder Int    @default(0) @map("display_order")
+
+  variant Variant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@map("variant_media")
 }
 
 model Product {
@@ -295,6 +391,7 @@ model Product {
   // JSON Data
   specifications Json? // Key-value pairs: { "RAM": "8GB", "Color": "Black" }
   attributes     Json? // Defined attributes: [{ id: "1", name: "Color", values: ["Red", "Blue"] }]
+  faqs           Json? // Array of { question, answer }
 
   // Relations
   vendor        Vendor?        @relation(fields: [vendorId], references: [id])
@@ -308,6 +405,7 @@ model Product {
   specs         ProductSpec[]
   productImages ProductImage[]
   stockHistory  StockHistory[]
+  productAttributes ProductAttribute[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -350,6 +448,7 @@ model ProductImage {
   publicId     String? @map("public_id")
   isThumbnail  Boolean @default(false) @map("is_thumbnail")
   displayOrder Int     @default(0) @map("display_order")
+  altText      String? @map("alt_text")
 
   product  Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   variants Variant[]
@@ -412,6 +511,7 @@ model Variant {
   minStock   Int     @default(5)
   hasSerial  Boolean @default(false)
   image      String?
+  imageAlt   String? @map("image_alt")
 
   // Image Relation
   productImageId String?       @map("product_image_id")
@@ -425,6 +525,8 @@ model Variant {
   orderItems   OrderItem[]
   returnItems  ReturnItem[]
   stockHistory StockHistory[]
+  variantAttributes VariantAttributeValue[]
+  media        VariantMedia[]
 
   lastPurchaseCost       Float                   @default(0) @map("last_purchase_cost")
   stockAdjustments       StockAdjustmentItem[]
@@ -1580,4 +1682,46 @@ model Customer {
   orders          Order[]
 
   @@map("customers")
+}
+
+// --------------------------------------
+// AI PRODUCT INTELLIGENCE ENGINE
+// --------------------------------------
+
+model AiGenerationDraft {
+  id              String   @id @default(uuid())
+  adminId         String?  // Who initiated this
+  status          String   @default("PENDING") // PENDING, REVIEWED, ACCEPTED, REJECTED
+  
+  // Inputs
+  productName     String?
+  sourceUrls      String[]
+  imageUrls       String[]
+  
+  // Extracted/Generated Data (JSON structured with Confidence Scores & Sources)
+  description     Json?    
+  shortDesc       Json?
+  specifications  Json?    
+  attributes      Json?
+  variants        Json?
+  tags            Json?
+  seoData         Json?    
+  faqs            Json?
+  highlights      Json?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("ai_generation_drafts")
+}
+
+model AiLearningLog {
+  id              String   @id @default(uuid())
+  field           String   // e.g., "shortDesc", "seoTitle", "colorAttribute"
+  suggestedValue  String   @db.Text
+  acceptedValue   String   @db.Text
+  action          String   // "ACCEPTED_AS_IS", "EDITED", "REJECTED"
+  createdAt       DateTime @default(now())
+
+  @@map("ai_learning_logs")
 }

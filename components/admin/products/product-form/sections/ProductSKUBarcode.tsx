@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Copy, RefreshCw, Barcode, Loader2 } from 'lucide-react';
+import BarcodeLib from 'react-barcode';
 import { toast } from 'sonner';
 import { useCallback, useState } from 'react';
 import { generateSKU, generateBarcode } from '@/lib/actions/product-enterprise-actions';
@@ -121,18 +122,9 @@ export function ProductSKUBarcode() {
 
       {/* Barcode Visual Preview */}
       {barcode && (
-        <div className="p-3 bg-white dark:bg-zinc-900 border rounded-md text-center">
-          <div className="font-mono text-lg tracking-[0.3em] text-gray-800 dark:text-gray-200 mb-1">{barcode}</div>
-          <div className="flex justify-center gap-[1px] h-10">
-            {barcode.split('').map((char, i) => (
-              <div
-                key={i}
-                className="bg-gray-900 dark:bg-gray-100"
-                style={{ width: `${parseInt(char) % 2 === 0 ? 2 : 1}px`, height: '100%' }}
-              />
-            ))}
-          </div>
-          <p className="text-[10px] text-muted-foreground mt-1">CODE-128 Preview</p>
+        <div className="p-3 bg-white border rounded-md text-center flex flex-col items-center justify-center">
+          <BarcodeLib value={barcode} height={40} displayValue={true} />
+          <p className="text-[10px] text-muted-foreground mt-1">Scannable Preview</p>
         </div>
       )}
     </div>

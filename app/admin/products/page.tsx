@@ -63,6 +63,7 @@ export default async function ProductsPage({
     minStock: p.minStock,
     updatedAt: p.updatedAt,
     sku: p.sku,
+    slug: p.slug,
   }));
 
 

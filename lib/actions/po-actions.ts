@@ -120,24 +120,31 @@ export async function getPurchaseOrderById(id: string) {
 export async function searchProductsForPO(query: string) {
   try {
     const products = await prisma.product.findMany({
-      where: {
+      where: query ? {
         OR: [
           { name: { contains: query, mode: 'insensitive' } },
           { sku: { contains: query, mode: 'insensitive' } },
         ]
-      },
-      take: 10,
+      } : {},
+      take: 50,
+      orderBy: { name: 'asc' },
       select: {
         id: true,
         name: true,
         sku: true,
         costPrice: true,
+        images: true,
+        productImages: {
+          take: 1,
+          select: { url: true }
+        },
         variants: {
           select: {
             id: true,
             name: true,
             sku: true,
             costPrice: true,
+            image: true,
           }
         }
       }
@@ -152,11 +159,13 @@ export async function searchProductsForPO(query: string) {
     }
     const stockMap = await InventoryService.getBulkAvailableStock(stockQueries);
 
-    const mappedProducts = products.map((p) => ({
+    const mappedProducts = products.map((p: any) => ({
       ...p,
+      images: p.productImages?.length > 0 ? p.productImages : (p.images && p.images.length > 0 ? p.images.map((url: string) => ({ url })) : []),
       stock: stockMap.get(p.id)?.availableStock || 0,
-      variations: p.variants.map((v) => ({
+      variants: p.variants.map((v: any) => ({
         ...v,
+        images: v.image ? [{ url: v.image }] : [],
         stock: stockMap.get(`${p.id}-${v.id}`)?.availableStock || 0,
       })),
     }));

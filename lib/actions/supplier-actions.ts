@@ -121,9 +121,11 @@ export async function createSupplier(data: SupplierFormData) {
       finalCode = `SUP-${String(count + 1).padStart(4, '0')}`;
     }
 
+    const { mobileNumber, whatsapp, ...prismaData } = data;
+
     const supplier = await prisma.supplier.create({
       data: {
-        ...data,
+        ...prismaData,
         supplierCode: finalCode,
         openingBalance: data.openingBalance || 0,
         status: data.status || 'ACTIVE',
@@ -143,10 +145,12 @@ export async function createSupplier(data: SupplierFormData) {
 
 export async function updateSupplier(id: string, data: SupplierFormData) {
   try {
+    const { mobileNumber, whatsapp, ...prismaData } = data;
+
     const supplier = await prisma.supplier.update({
       where: { id },
       data: {
-        ...data,
+        ...prismaData,
       },
     });
 

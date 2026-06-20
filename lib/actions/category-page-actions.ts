@@ -35,6 +35,7 @@ const PRODUCT_SELECT = {
   warrantyMonths: true,
   warrantyType: true,
   specifications: true,
+  specs: { select: { name: true, value: true }, take: 4 },
   createdAt: true,
   brand: { select: { id: true, name: true, slug: true } },
   reviews: {
@@ -91,6 +92,7 @@ function mapProduct(raw: any): CategoryProduct {
     warrantyMonths: r.warrantyMonths ?? null,
     warrantyType: r.warrantyType ?? null,
     specifications: (r.specifications as Record<string, string> | null) ?? null,
+    specs: r.specs?.map((s: any) => ({ name: s.name, value: s.value })) || [],
   };
 }
 
@@ -293,6 +295,8 @@ async function _getCategoryPageData(
       offerPrice: true,
       discountPercentage: true,
       specifications: true,
+      specs: { select: { name: true, value: true }, take: 4 },
+      category: { select: { name: true, slug: true } },
       brand: { select: { id: true, name: true, slug: true } },
       reviews: { where: { status: 'APPROVED' }, select: { rating: true } },
     },

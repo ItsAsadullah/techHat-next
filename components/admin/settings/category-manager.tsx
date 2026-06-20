@@ -209,6 +209,12 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
                                 >
                                     <Pencil className="mr-2 h-4 w-4" /> Edit
                                 </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                    onClick={() => router.push(`/admin/settings/categories/${cat.id}/attributes`)}
+                                    className="rounded-lg cursor-pointer text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                                >
+                                    <Icons.ListTodo className="mr-2 h-4 w-4" /> Attributes Template
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                     className="text-red-600 focus:text-red-600 focus:bg-red-50 rounded-lg cursor-pointer"
