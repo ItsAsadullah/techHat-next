@@ -4,7 +4,8 @@ import { getAuthContext } from '@/lib/auth/require-role';
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await getAuthContext();
-  if (auth.error || !auth.user) return auth.error;
+  if (auth.error) return auth.error;
+  if (!auth.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await context.params;
   const body = await request.json();
 
@@ -37,7 +38,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
 export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await getAuthContext();
-  if (auth.error || !auth.user) return auth.error;
+  if (auth.error) return auth.error;
+  if (!auth.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await context.params;
 
   const existing = await prisma.customerAddress.findFirst({ where: { id, userId: auth.user.id } });

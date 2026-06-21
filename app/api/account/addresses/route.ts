@@ -22,7 +22,8 @@ function parseAddress(body: Record<string, unknown>) {
 
 export async function GET() {
   const auth = await getAuthContext();
-  if (auth.error || !auth.user) return auth.error;
+  if (auth.error) return auth.error;
+  if (!auth.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const addresses = await prisma.customerAddress.findMany({
     where: { userId: auth.user.id },
@@ -33,7 +34,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const auth = await getAuthContext();
-  if (auth.error || !auth.user) return auth.error;
+  if (auth.error) return auth.error;
+  if (!auth.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const data = parseAddress(await request.json());
   if (!data.name || !data.phone || !data.address || !data.division || !data.district) {

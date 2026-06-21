@@ -17,14 +17,16 @@ const ALLOWED_KEYS = new Set(Object.keys(DEFAULTS));
 
 export async function GET() {
   const auth = await getAuthContext();
-  if (auth.error || !auth.user) return auth.error;
+  if (auth.error) return auth.error;
+  if (!auth.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const stored = await prisma.notificationPreference.findUnique({ where: { userId: auth.user.id } });
   return NextResponse.json({ preferences: { ...DEFAULTS, ...(stored?.settings as object ?? {}) } });
 }
 
 export async function PUT(request: NextRequest) {
   const auth = await getAuthContext();
-  if (auth.error || !auth.user) return auth.error;
+  if (auth.error) return auth.error;
+  if (!auth.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await request.json();
   const input = body?.preferences;
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
