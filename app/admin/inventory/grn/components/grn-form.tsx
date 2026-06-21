@@ -24,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { createGRN, GRNFormData } from '@/lib/actions/grn-actions';
+import { createGRN, GRNFormData, submitGRN } from '@/lib/actions/grn-actions';
 import { getPurchaseOrderById } from '@/lib/actions/po-actions';
 
 interface GRNFormProps {
@@ -131,7 +131,12 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
 
       const res = await createGRN(payload);
       if (('data' in res)) {
-        toast.success('Goods Receive Note drafted!');
+        const submitRes = await submitGRN((res as any).data.id);
+        if (submitRes.success) {
+          toast.success('Goods received and inventory updated successfully!');
+        } else {
+          toast.error(submitRes.error || 'GRN created but failed to finalize.');
+        }
         router.push(`/admin/inventory/grn/${(res as any).data.id}`);
       } else {
         toast.error(('error' in res ? res.error : 'Error') || 'Something went wrong.');
