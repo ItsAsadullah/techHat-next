@@ -79,6 +79,12 @@ export async function createProduct(formData: FormData) {
     }
 
     const firstVariation = variations[0] || {};
+    
+    const validPrices = variations.map((v: any) => parseFloat(v.price)).filter((p: number) => !isNaN(p) && p > 0);
+    const validOfferPrices = variations.map((v: any) => parseFloat(v.offerPrice)).filter((p: number) => !isNaN(p) && p > 0);
+    const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
+    const minOfferPrice = validOfferPrices.length > 0 ? Math.min(...validOfferPrices) : null;
+    
     const totalStock = variations.reduce((sum: number, v: any) => {
       if (v.hasSerial && v.serials) {
         return sum + v.serials.filter((s: string) => s && s.trim().length > 0).length;
@@ -189,8 +195,8 @@ export async function createProduct(formData: FormData) {
           brandId: brandId || null,
           productVariantType: productType,
           type: 'PHYSICAL',
-          price: parseFloat(firstVariation.price) || 0,
-          offerPrice: parseFloat(firstVariation.offerPrice) || null,
+          price: minPrice,
+          offerPrice: minOfferPrice,
           onlinePrice,
           wholesalePrice,
           taxClass,
@@ -525,6 +531,12 @@ export async function updateProduct(id: string, formData: FormData) {
 
     // Compute product-level derived values
     const firstVariation = variations[0] || {};
+    
+    const validPrices = variations.map((v: any) => parseFloat(v.price)).filter((p: number) => !isNaN(p) && p > 0);
+    const validOfferPrices = variations.map((v: any) => parseFloat(v.offerPrice)).filter((p: number) => !isNaN(p) && p > 0);
+    const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
+    const minOfferPrice = validOfferPrices.length > 0 ? Math.min(...validOfferPrices) : null;
+
     const totalStock = variations.reduce((sum: number, v: any) => {
       if (v.hasSerial && v.serials) {
         return sum + v.serials.filter((s: string) => s && s.trim().length > 0).length;
@@ -640,8 +652,8 @@ export async function updateProduct(id: string, formData: FormData) {
           categoryId,
           brandId: brandId || null,
           productVariantType: productType,
-          price: parseFloat(firstVariation.price) || 0,
-          offerPrice: parseFloat(firstVariation.offerPrice) || null,
+          price: minPrice,
+          offerPrice: minOfferPrice,
           onlinePrice,
           wholesalePrice,
           taxClass,
