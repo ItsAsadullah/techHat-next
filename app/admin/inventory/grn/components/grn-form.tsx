@@ -202,13 +202,6 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
     setShowSerialsModal(false);
   };
 
-  const saveSerials = () => {
-    if (activeItemIndex !== null) {
-      updateItem(activeItemIndex, 'serials', tempSerials);
-    }
-    setShowSerialsModal(false);
-  };
-
   return (
     <>
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full mx-auto pb-12 px-4 md:px-6">
