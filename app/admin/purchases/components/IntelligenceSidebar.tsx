@@ -14,10 +14,12 @@ interface IntelligenceSidebarProps {
   setShippingCost: (val: number) => void;
   otherCost: number;
   setOtherCost: (val: number) => void;
+  globalDiscount: number;
+  setGlobalDiscount: (val: number) => void;
   intelligence: any;
 }
 
-export function IntelligenceSidebar({ totals, shippingCost, setShippingCost, otherCost, setOtherCost, intelligence }: IntelligenceSidebarProps) {
+export function IntelligenceSidebar({ totals, shippingCost, setShippingCost, otherCost, setOtherCost, globalDiscount, setGlobalDiscount, intelligence }: IntelligenceSidebarProps) {
   
   const totalItemsCount = totals.formattedItems.reduce((acc, item) => acc + item.quantity, 0);
   const avgCost = totals.formattedItems.length > 0 ? (totals.subtotal / totalItemsCount) : 0;
@@ -38,7 +40,7 @@ export function IntelligenceSidebar({ totals, shippingCost, setShippingCost, oth
             <span className="font-mono text-gray-900 dark:text-gray-100 font-medium">৳{totals.subtotal.toLocaleString()}</span>
           </div>
           <div className="flex justify-between items-center text-red-500">
-            <span>Discount Total</span>
+            <span>Item Discount</span>
             <span className="font-mono font-medium">-৳{totals.totalDiscount.toLocaleString()}</span>
           </div>
           <div className="flex justify-between items-center text-gray-600 dark:text-gray-400">
@@ -63,6 +65,15 @@ export function IntelligenceSidebar({ totals, shippingCost, setShippingCost, oth
                 className="h-10 font-mono bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800"
                 value={otherCost}
                 onChange={(e) => setOtherCost(parseFloat(e.target.value) || 0)}
+              />
+            </div>
+            <div className="space-y-2 pt-2">
+              <Label className="text-xs font-semibold text-red-500 uppercase tracking-wider">Global Discount (-)</Label>
+              <Input 
+                type="number" min="0" step="0.01" 
+                className="h-10 font-mono bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50 text-red-600 focus-visible:ring-red-500"
+                value={globalDiscount}
+                onChange={(e) => setGlobalDiscount(parseFloat(e.target.value) || 0)}
               />
             </div>
           </div>

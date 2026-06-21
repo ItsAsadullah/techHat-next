@@ -49,6 +49,7 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
   // Costs State
   const [shippingCost, setShippingCost] = useState<number>(initialData?.shippingCost || 0);
   const [otherCost, setOtherCost] = useState<number>(initialData?.otherCost || 0);
+  const [globalDiscount, setGlobalDiscount] = useState<number>(initialData?.discount || 0);
 
   // Items State
   const [items, setItems] = useState<any[]>(
@@ -78,21 +79,22 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
   // Derived Totals
   const totals = useMemo(() => {
     let subtotal = 0;
-    let totalDiscount = 0;
+    let itemDiscountTotal = 0;
     let totalTax = 0;
 
     const formattedItems = items.map(item => {
-      const itemSubtotal = (item.quantity * item.unitCost) + (item.tax || 0) - (item.discount || 0);
+      const lineDiscount = (item.discount || 0) * item.quantity;
+      const itemSubtotal = (item.quantity * item.unitCost) + (item.tax || 0) - lineDiscount;
       subtotal += (item.quantity * item.unitCost);
-      totalDiscount += (item.discount || 0);
+      itemDiscountTotal += lineDiscount;
       totalTax += (item.tax || 0);
       return { ...item, subtotal: itemSubtotal };
     });
 
-    const grandTotal = subtotal + shippingCost + otherCost + totalTax - totalDiscount;
+    const grandTotal = subtotal + shippingCost + otherCost + totalTax - itemDiscountTotal - globalDiscount;
 
-    return { subtotal, totalDiscount, totalTax, grandTotal, formattedItems };
-  }, [items, shippingCost, otherCost]);
+    return { subtotal, totalDiscount: itemDiscountTotal, totalTax, grandTotal, formattedItems };
+  }, [items, shippingCost, otherCost, globalDiscount]);
 
   // Load Intelligence on Supplier Change
   useEffect(() => {
@@ -186,7 +188,7 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
         warehouseId: warehouseId || undefined,
         expectedDeliveryDate: expectedDeliveryDate ? new Date(expectedDeliveryDate) : undefined,
         totalAmount: totals.subtotal,
-        discount: totals.totalDiscount,
+        discount: globalDiscount,
         tax: totals.totalTax,
         shippingCost,
         otherCost,
@@ -319,6 +321,8 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
                 setShippingCost={setShippingCost}
                 otherCost={otherCost}
                 setOtherCost={setOtherCost}
+                globalDiscount={globalDiscount}
+                setGlobalDiscount={setGlobalDiscount}
                 intelligence={supplierIntell}
               />
             </div>
