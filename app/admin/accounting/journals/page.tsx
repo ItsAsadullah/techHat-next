@@ -33,7 +33,8 @@ export default async function JournalEntriesPage() {
         <CardContent>
           <div className="space-y-8">
             {entries?.map((entry: any) => {
-              const totalDebit = entry.items.reduce((sum: number, item: any) => sum + item.debit, 0);
+              const items = entry.journalEntryItems || [];
+              const totalDebit = items.reduce((sum: number, item: any) => sum + item.debit, 0);
 
               return (
                 <div key={entry.id} className="border rounded-lg overflow-hidden">
@@ -64,11 +65,11 @@ export default async function JournalEntriesPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {entry.items.map((item: any) => (
+                      {items.map((item: any) => (
                         <TableRow key={item.id} className="hover:bg-transparent">
                           <TableCell>
-                            <div className="font-medium">{item.account?.name}</div>
-                            <div className="text-xs text-muted-foreground font-mono">{item.account?.code}</div>
+                            <div className="font-medium">{item.chartOfAccount?.name}</div>
+                            <div className="text-xs text-muted-foreground font-mono">{item.chartOfAccount?.code}</div>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">{item.description}</TableCell>
                           <TableCell className="text-right font-medium">
