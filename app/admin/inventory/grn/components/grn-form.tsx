@@ -66,30 +66,49 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
       setSupplierId((po || {}).supplierId || '');
       if ((po || {}).warehouseId) setWarehouseId((po || {}).warehouseId || '');
       
-      const newItems = ((po || {}).items || []).map((pi: any) => ({
-        poItemId: pi.id,
-        productId: pi.productId,
-        variantId: pi.variantId,
-        name: pi.product.name,
-        variantName: pi.variant?.name,
-        sku: pi.variant?.sku || pi.product.sku,
-        orderedQty: pi.quantity,
-        previouslyReceivedQty: pi.receivedQty,
-        pendingQty: pi.quantity - pi.receivedQty,
-        // editable fields
-        receivedQty: pi.quantity - pi.receivedQty > 0 ? pi.quantity - pi.receivedQty : 0,
-        rejectedQty: 0,
-        acceptedQty: pi.quantity - pi.receivedQty > 0 ? pi.quantity - pi.receivedQty : 0,
-        batchNumber: '',
-        imei: '',
-        serialNumber: '',
-        unitCost: pi.unitCost,
-        newRetailPrice: pi.variant?.price || pi.product?.price || 0,
-        newOfferPrice: pi.variant?.offerPrice || pi.product?.offerPrice || 0,
-        newWholesalePrice: pi.product?.wholesalePrice || 0,
-        newOnlinePrice: pi.product?.onlinePrice || 0,
-        newTaxClass: pi.product?.taxClass || '',
-      }));
+      // Calculate Landed Cost Multiplier
+      let poTotalBaseValue = 0;
+      const poItems = po.items || [];
+      for (const pi of poItems) {
+        const perUnitDiscount = pi.quantity > 0 ? (pi.discount || 0) / pi.quantity : 0;
+        const netUnitCost = pi.unitCost - perUnitDiscount;
+        poTotalBaseValue += (pi.quantity * netUnitCost);
+      }
+
+      const globalExtraCost = (po.shippingCost || 0) + (po.otherCost || 0) - (po.discount || 0);
+      const landedCostMultiplier = poTotalBaseValue > 0 ? (poTotalBaseValue + globalExtraCost) / poTotalBaseValue : 1;
+
+      const newItems = poItems.map((pi: any) => {
+        const perUnitDiscount = pi.quantity > 0 ? (pi.discount || 0) / pi.quantity : 0;
+        const netUnitCost = pi.unitCost - perUnitDiscount;
+        const landedUnitCost = netUnitCost * landedCostMultiplier;
+
+        return {
+          poItemId: pi.id,
+          productId: pi.productId,
+          variantId: pi.variantId,
+          name: pi.product.name,
+          variantName: pi.variant?.name,
+          sku: pi.variant?.sku || pi.product.sku,
+          orderedQty: pi.quantity,
+          previouslyReceivedQty: pi.receivedQty,
+          pendingQty: pi.quantity - pi.receivedQty,
+          // editable fields
+          receivedQty: pi.quantity - pi.receivedQty > 0 ? pi.quantity - pi.receivedQty : 0,
+          rejectedQty: 0,
+          acceptedQty: pi.quantity - pi.receivedQty > 0 ? pi.quantity - pi.receivedQty : 0,
+          batchNumber: '',
+          imei: '',
+          serialNumber: '',
+          unitCost: pi.unitCost,
+          landedCost: landedUnitCost,
+          newRetailPrice: pi.variant?.price || pi.product?.price || 0,
+          newOfferPrice: pi.variant?.offerPrice || pi.product?.offerPrice || 0,
+          newWholesalePrice: pi.product?.wholesalePrice || 0,
+          newOnlinePrice: pi.product?.onlinePrice || 0,
+          newTaxClass: pi.product?.taxClass || '',
+        };
+      });
       setItems(newItems);
     } else {
       toast.error('Failed to load Purchase Order details.');
@@ -455,8 +474,15 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div className="bg-background rounded-xl shadow-lg w-full max-w-md overflow-hidden flex flex-col">
           <div className="p-4 border-b bg-muted/30">
-            <h3 className="font-semibold">Update Selling Prices</h3>
-            <p className="text-xs text-muted-foreground mt-1">
+            <h3 className="font-semibold flex justify-between items-center">
+              <span>Update Selling Prices</span>
+              {items[activeItemIndex]?.landedCost !== undefined && (
+                <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md font-medium">
+                  Landed Cost: ৳{items[activeItemIndex].landedCost.toFixed(2)}
+                </span>
+              )}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1.5">
               Adjust prices for <strong>{items[activeItemIndex].name}</strong>. These will be updated globally when GRN is submitted.
             </p>
           </div>
