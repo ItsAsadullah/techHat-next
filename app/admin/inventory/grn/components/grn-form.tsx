@@ -160,7 +160,7 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
 
       const res = await createGRN(payload);
       if (('data' in res)) {
-        const submitRes = await submitGRN((res as any).data.id);
+        const submitRes = await submitGRN((res as any).data.id, payload.items);
         if (submitRes.success) {
           toast.success('Goods received and inventory updated successfully!');
           router.push('/admin/purchases');

@@ -162,7 +162,7 @@ export async function createGRN(data: GRNFormData) {
   }
 }
 
-export async function submitGRN(grnId: string) {
+export async function submitGRN(grnId: string, itemPricingInputs?: GRNItemInput[]) {
   try {
     return await prisma.$transaction(async (tx) => {
       const grn = await tx.goodsReceiveNote.findUnique({
@@ -245,44 +245,43 @@ export async function submitGRN(grnId: string) {
         );
         
         // Update Product/Variant Prices if provided
-        const productUpdateData: any = {};
-        if ((item as any).newRetailPrice !== undefined) productUpdateData.price = (item as any).newRetailPrice;
-        if ((item as any).newOfferPrice !== undefined) productUpdateData.offerPrice = (item as any).newOfferPrice;
-        if ((item as any).newWholesalePrice !== undefined) productUpdateData.wholesalePrice = (item as any).newWholesalePrice;
-        if ((item as any).newOnlinePrice !== undefined) productUpdateData.onlinePrice = (item as any).newOnlinePrice;
-        if ((item as any).newTaxClass !== undefined) productUpdateData.taxClass = (item as any).newTaxClass;
+        const pricingInput = itemPricingInputs?.find(i => i.productId === item.productId && (i.variantId || null) === (item.variantId || null));
         
-        if (Object.keys(productUpdateData).length > 0) {
-          // If variant exists, update Variant specific pricing, else update Product pricing
-          if (item.variantId) {
-            const variantUpdateData: any = {};
-            if (productUpdateData.price !== undefined) variantUpdateData.price = productUpdateData.price;
-            if (productUpdateData.offerPrice !== undefined) variantUpdateData.offerPrice = productUpdateData.offerPrice;
-            
-            if (Object.keys(variantUpdateData).length > 0) {
-               await tx.variant.update({
-                 where: { id: item.variantId },
-                 data: variantUpdateData
-               });
-            }
-            // Still update wholesale/online/tax on the base product since variant doesn't have them
-            const baseProductUpdate: any = {};
-            if (productUpdateData.wholesalePrice !== undefined) baseProductUpdate.wholesalePrice = productUpdateData.wholesalePrice;
-            if (productUpdateData.onlinePrice !== undefined) baseProductUpdate.onlinePrice = productUpdateData.onlinePrice;
-            if (productUpdateData.taxClass !== undefined) baseProductUpdate.taxClass = productUpdateData.taxClass;
-            
-            if (Object.keys(baseProductUpdate).length > 0) {
-              await tx.product.update({
-                where: { id: item.productId },
-                data: baseProductUpdate
+        if (pricingInput) {
+          const productUpdateData: any = {};
+          if (pricingInput.newRetailPrice !== undefined) productUpdateData.price = pricingInput.newRetailPrice;
+          if (pricingInput.newOfferPrice !== undefined) productUpdateData.offerPrice = pricingInput.newOfferPrice;
+          if (pricingInput.newWholesalePrice !== undefined) productUpdateData.wholesalePrice = pricingInput.newWholesalePrice;
+          if (pricingInput.newOnlinePrice !== undefined) productUpdateData.onlinePrice = pricingInput.newOnlinePrice;
+          if (pricingInput.newTaxClass !== undefined) productUpdateData.taxClass = pricingInput.newTaxClass;
+  
+          if (Object.keys(productUpdateData).length > 0) {
+            if (item.variantId) {
+              await tx.variant.update({ 
+                where: { id: item.variantId }, 
+                data: { 
+                  price: productUpdateData.price, 
+                  offerPrice: productUpdateData.offerPrice 
+                } 
+              });
+              // Still update wholesale/online/tax on the base product
+              const baseProductUpdate: any = {};
+              if (productUpdateData.wholesalePrice !== undefined) baseProductUpdate.wholesalePrice = productUpdateData.wholesalePrice;
+              if (productUpdateData.onlinePrice !== undefined) baseProductUpdate.onlinePrice = productUpdateData.onlinePrice;
+              if (productUpdateData.taxClass !== undefined) baseProductUpdate.taxClass = productUpdateData.taxClass;
+              
+              if (Object.keys(baseProductUpdate).length > 0) {
+                await tx.product.update({
+                  where: { id: item.productId },
+                  data: baseProductUpdate
+                });
+              }
+            } else {
+              await tx.product.update({ 
+                where: { id: item.productId }, 
+                data: productUpdateData 
               });
             }
-          } else {
-             // Standard product update
-             await tx.product.update({
-               where: { id: item.productId },
-               data: productUpdateData
-             });
           }
         }
         
