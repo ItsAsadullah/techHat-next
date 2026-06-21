@@ -48,9 +48,6 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
   const [showSerialsModal, setShowSerialsModal] = useState(false);
   const [activeItemIndex, setActiveItemIndex] = useState<number | null>(null);
   const [tempSerials, setTempSerials] = useState<string[]>([]);
-  
-  const [showPricesModal, setShowPricesModal] = useState(false);
-  const [tempPrices, setTempPrices] = useState<any>({});
 
   useEffect(() => {
     if (poId) {
@@ -205,85 +202,75 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
     setShowSerialsModal(false);
   };
 
-  const openPricesModal = (index: number) => {
-    setActiveItemIndex(index);
-    const item = items[index];
-    setTempPrices({
-      newRetailPrice: item.newRetailPrice || 0,
-      newOfferPrice: item.newOfferPrice || 0,
-      newWholesalePrice: item.newWholesalePrice || 0,
-      newOnlinePrice: item.newOnlinePrice || 0,
-      newTaxClass: item.newTaxClass || '',
-    });
-    setShowPricesModal(true);
-  };
-
-  const savePrices = () => {
+  const saveSerials = () => {
     if (activeItemIndex !== null) {
-      setItems(prev => {
-        const updated = [...prev];
-        updated[activeItemIndex] = { ...updated[activeItemIndex], ...tempPrices };
-        return updated;
-      });
+      updateItem(activeItemIndex, 'serials', tempSerials);
     }
-    setShowPricesModal(false);
+    setShowSerialsModal(false);
   };
 
   return (
     <>
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6 max-w-[1400px] mx-auto pb-24">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full mx-auto pb-12 px-4 md:px-6">
       {/* Header */}
-      <div className="flex items-center justify-between sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b py-3 -mx-6 px-6 shadow-sm">
+      <div className="flex items-center justify-between sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b py-2 shadow-sm -mx-4 px-4 md:-mx-6 md:px-6">
         <div className="flex items-center gap-3">
-          <Button type="button" variant="ghost" size="icon" onClick={() => router.back()}>
+          <Button type="button" variant="ghost" size="icon" onClick={() => router.back()} className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-xl font-bold">Receive Goods</h1>
-            <p className="text-xs text-muted-foreground">Receive goods against an approved Purchase Order. This action updates stock immediately.</p>
+            <h1 className="text-lg font-bold">Receive Goods</h1>
+            <p className="text-[11px] text-muted-foreground hidden sm:block">Receive goods against an approved Purchase Order.</p>
           </div>
         </div>
-        <Button type="submit" disabled={loading || poLoading} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
-          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PackageCheck className="mr-2 h-4 w-4" />}
+        <Button type="submit" disabled={loading || poLoading} size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs">
+          {loading ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <PackageCheck className="mr-2 h-3 w-3" />}
           Receive & Lock Stock
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4">
-        {/* Main Section */}
-        <div className="md:col-span-3 space-y-6">
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Source Purchase Order <span className="text-red-500">*</span></Label>
-              <Select value={poId} onValueChange={setPoId} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Approved PO..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {approvedPOs.map(po => (
-                    <SelectItem key={(po || {}).id} value={(po || {}).id}>{(po || {}).poNumber} ({(po || {}).supplier.name})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Destination Warehouse <span className="text-red-500">*</span></Label>
-              <Select value={warehouseId} onValueChange={setWarehouseId} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select destination..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {warehouses.map(w => (
-                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+      {/* Top Controls: PO, Warehouse, Notes in a compact grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4 mt-2">
+        <div className="space-y-1">
+          <Label className="text-xs">Source Purchase Order <span className="text-red-500">*</span></Label>
+          <Select value={poId} onValueChange={setPoId} required>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Select PO..." />
+            </SelectTrigger>
+            <SelectContent>
+              {approvedPOs.map(po => (
+                <SelectItem key={(po || {}).id} value={(po || {}).id}>{(po || {}).poNumber} ({(po || {}).supplier.name})</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="space-y-1">
+          <Label className="text-xs">Destination Warehouse <span className="text-red-500">*</span></Label>
+          <Select value={warehouseId} onValueChange={setWarehouseId} required>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Select Warehouse..." />
+            </SelectTrigger>
+            <SelectContent>
+              {warehouses.map(w => (
+                <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-          <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+        <div className="space-y-1 md:col-span-1 xl:col-span-2">
+          <Label className="text-xs">Receipt Notes</Label>
+          <Input 
+            value={note} 
+            onChange={(e) => setNote(e.target.value)} 
+            placeholder="Condition, driver details, references..." 
+            className="h-8 text-xs"
+          />
+        </div>
+      </div>
+
+      <div className="rounded-lg border bg-card shadow-sm overflow-hidden flex-1">
             <div className="p-4 border-b bg-muted/20">
               <h3 className="font-semibold flex items-center gap-2">
                 <PackageCheck className="h-5 w-5 text-primary" /> Inspect & Receive Items
@@ -292,14 +279,12 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
             
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-muted/10">
+                <TableHeader className="bg-muted/30">
                   <TableRow>
-                    <TableHead className="w-[200px]">Product</TableHead>
-                    <TableHead className="text-center w-[80px]">Pending</TableHead>
-                    <TableHead className="w-[90px] text-center">Receive</TableHead>
-                    <TableHead className="w-[90px] text-center">Reject</TableHead>
-                    <TableHead className="w-[90px] text-center bg-green-500/10 text-green-700">Accept</TableHead>
-                    <TableHead className="w-[280px]">Advanced Tracking</TableHead>
+                    <TableHead className="w-[200px] min-w-[200px] text-xs">Product Details</TableHead>
+                    <TableHead className="w-[220px] min-w-[220px] text-xs">Qty (Pending / Recv / Rej)</TableHead>
+                    <TableHead className="w-[380px] min-w-[380px] text-xs">Selling Prices Updates</TableHead>
+                    <TableHead className="w-[200px] min-w-[200px] text-xs">Advanced Tracking</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -320,36 +305,70 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
                   {!poLoading && items.map((item, index) => (
                     <TableRow key={item.poItemId} className={item.pendingQty === 0 ? "opacity-50 bg-muted/30" : ""}>
                       <TableCell>
-                        <div className="font-medium text-sm">{item.name}</div>
-                        {item.variantName && <div className="text-xs text-muted-foreground">{item.variantName}</div>}
-                        <div className="text-[10px] font-mono text-muted-foreground">{item.sku}</div>
-                        <div className="flex gap-1 mt-1">
-                          {item.product?.trackSerials && <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-sm font-semibold">SERIALS</span>}
-                          {item.product?.trackBatch && <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-sm font-semibold">BATCH</span>}
+                        <div className="font-medium text-xs truncate max-w-[200px]" title={item.name}>{item.name}</div>
+                        {item.variantName && <div className="text-[10px] text-muted-foreground">{item.variantName}</div>}
+                        <div className="text-[9px] font-mono text-muted-foreground">{item.sku}</div>
+                        {item.landedCost !== undefined && (
+                           <div className="text-[10px] font-medium text-indigo-600 bg-indigo-50 inline-block px-1 rounded mt-1">Landed: ৳{item.landedCost.toFixed(2)}</div>
+                        )}
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <div className="text-center w-12">
+                            <div className="text-xs font-mono font-medium">{item.pendingQty}</div>
+                            <div className="text-[9px] text-muted-foreground leading-none">Pend</div>
+                          </div>
+                          <div className="flex flex-col gap-1 w-16">
+                            <Input 
+                              type="number" min="0" max={item.pendingQty} className="h-6 text-xs text-center px-1"
+                              value={item.receivedQty}
+                              onChange={(e) => updateItem(index, 'receivedQty', parseInt(e.target.value) || 0)}
+                              disabled={item.pendingQty === 0}
+                              title="Receive Qty"
+                            />
+                            <div className="text-[9px] text-center text-muted-foreground leading-none">Recv</div>
+                          </div>
+                          <div className="flex flex-col gap-1 w-16">
+                            <Input 
+                              type="number" min="0" max={item.receivedQty} className="h-6 text-xs text-center px-1 text-red-500"
+                              value={item.rejectedQty}
+                              onChange={(e) => updateItem(index, 'rejectedQty', parseInt(e.target.value) || 0)}
+                              disabled={item.pendingQty === 0}
+                              title="Reject Qty"
+                            />
+                            <div className="text-[9px] text-center text-red-400 leading-none">Rej</div>
+                          </div>
+                          <div className="text-center w-12 bg-green-50 rounded px-1 py-0.5">
+                            <div className="text-xs font-bold text-green-600">{item.acceptedQty}</div>
+                            <div className="text-[9px] text-green-600 leading-none">Acc</div>
+                          </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-center font-mono font-medium">
-                        {item.pendingQty}
-                        <div className="text-[10px] text-muted-foreground mt-0.5">{item.previouslyReceivedQty} / {item.orderedQty}</div>
-                      </TableCell>
+
                       <TableCell>
-                        <Input 
-                          type="number" min="0" max={item.pendingQty} className="h-8 text-center"
-                          value={item.receivedQty}
-                          onChange={(e) => updateItem(index, 'receivedQty', parseInt(e.target.value) || 0)}
-                          disabled={item.pendingQty === 0}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" min="0" max={item.receivedQty} className="h-8 text-center text-red-500"
-                          value={item.rejectedQty}
-                          onChange={(e) => updateItem(index, 'rejectedQty', parseInt(e.target.value) || 0)}
-                          disabled={item.pendingQty === 0}
-                        />
-                      </TableCell>
-                      <TableCell className="text-center font-bold text-green-600 bg-green-500/5">
-                        {item.acceptedQty}
+                        <div className="grid grid-cols-5 gap-1.5 bg-muted/20 p-1.5 rounded border border-dashed">
+                          <div className="flex flex-col gap-0.5">
+                            <Label className="text-[9px] text-muted-foreground">Retail ৳</Label>
+                            <Input type="number" className="h-6 text-[10px] px-1" value={item.newRetailPrice || ''} onChange={(e) => updateItem(index, 'newRetailPrice', parseFloat(e.target.value) || 0)} disabled={item.pendingQty === 0}/>
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <Label className="text-[9px] text-muted-foreground">Offer ৳</Label>
+                            <Input type="number" className="h-6 text-[10px] px-1" value={item.newOfferPrice || ''} onChange={(e) => updateItem(index, 'newOfferPrice', parseFloat(e.target.value) || 0)} disabled={item.pendingQty === 0}/>
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <Label className="text-[9px] text-muted-foreground">W/S ৳</Label>
+                            <Input type="number" className="h-6 text-[10px] px-1" value={item.newWholesalePrice || ''} onChange={(e) => updateItem(index, 'newWholesalePrice', parseFloat(e.target.value) || 0)} disabled={item.pendingQty === 0}/>
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <Label className="text-[9px] text-muted-foreground">Online ৳</Label>
+                            <Input type="number" className="h-6 text-[10px] px-1" value={item.newOnlinePrice || ''} onChange={(e) => updateItem(index, 'newOnlinePrice', parseFloat(e.target.value) || 0)} disabled={item.pendingQty === 0}/>
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <Label className="text-[9px] text-muted-foreground">Tax Class</Label>
+                            <Input type="text" className="h-6 text-[10px] px-1" placeholder="Exempt" value={item.newTaxClass || ''} onChange={(e) => updateItem(index, 'newTaxClass', e.target.value)} disabled={item.pendingQty === 0}/>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-2">
@@ -386,16 +405,6 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
                             </Button>
                           )}
 
-                          <Button 
-                            type="button" 
-                            variant="outline"
-                            size="sm" 
-                            className="h-7 text-xs text-green-600 border-green-200 bg-green-50 hover:bg-green-100 mt-1 w-full justify-start"
-                            disabled={item.pendingQty === 0}
-                            onClick={() => openPricesModal(index)}
-                          >
-                            <Tag className="w-3 h-3 mr-1" /> Update Selling Prices
-                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -404,21 +413,6 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
               </Table>
             </div>
           </div>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          <div className="rounded-xl border bg-card p-6 shadow-sm">
-            <h2 className="text-sm font-semibold mb-3">Receipt Notes</h2>
-            <Textarea 
-              value={note} 
-              onChange={(e) => setNote(e.target.value)} 
-              placeholder="Delivery condition, driver details, reference codes..." 
-              className="min-h-[120px] text-sm"
-            />
-          </div>
-        </div>
-      </div>
     </form>
 
     {/* Serials Input Modal */}
@@ -469,77 +463,6 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
       </div>
     )}
 
-    {/* Price Input Modal */}
-    {showPricesModal && activeItemIndex !== null && (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div className="bg-background rounded-xl shadow-lg w-full max-w-md overflow-hidden flex flex-col">
-          <div className="p-4 border-b bg-muted/30">
-            <h3 className="font-semibold flex justify-between items-center">
-              <span>Update Selling Prices</span>
-              {items[activeItemIndex]?.landedCost !== undefined && (
-                <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md font-medium">
-                  Landed Cost: ৳{items[activeItemIndex].landedCost.toFixed(2)}
-                </span>
-              )}
-            </h3>
-            <p className="text-xs text-muted-foreground mt-1.5">
-              Adjust prices for <strong>{items[activeItemIndex].name}</strong>. These will be updated globally when GRN is submitted.
-            </p>
-          </div>
-          
-          <div className="p-4 space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Retail Price (Regular)</Label>
-              <Input 
-                type="number" 
-                value={tempPrices.newRetailPrice} 
-                onChange={(e) => setTempPrices({...tempPrices, newRetailPrice: parseFloat(e.target.value) || 0})}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Offer Price</Label>
-              <Input 
-                type="number" 
-                value={tempPrices.newOfferPrice} 
-                onChange={(e) => setTempPrices({...tempPrices, newOfferPrice: parseFloat(e.target.value) || 0})}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Wholesale Price</Label>
-              <Input 
-                type="number" 
-                value={tempPrices.newWholesalePrice} 
-                onChange={(e) => setTempPrices({...tempPrices, newWholesalePrice: parseFloat(e.target.value) || 0})}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Online Price</Label>
-              <Input 
-                type="number" 
-                value={tempPrices.newOnlinePrice} 
-                onChange={(e) => setTempPrices({...tempPrices, newOnlinePrice: parseFloat(e.target.value) || 0})}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Tax Class</Label>
-              <Input 
-                type="text" 
-                value={tempPrices.newTaxClass} 
-                onChange={(e) => setTempPrices({...tempPrices, newTaxClass: e.target.value})}
-                placeholder="e.g. Standard, Exempt"
-              />
-            </div>
-          </div>
-
-          <div className="p-4 border-t flex justify-end gap-2 bg-muted/10">
-            <Button variant="outline" onClick={() => setShowPricesModal(false)}>Cancel</Button>
-            <Button onClick={savePrices} className="bg-green-600 hover:bg-green-700 text-white">
-              Save Prices
-            </Button>
-          </div>
-        </div>
-      </div>
-    )}
     </>
   );
 }
