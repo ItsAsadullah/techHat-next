@@ -7,13 +7,13 @@ import Link from 'next/link';
 interface PurchaseNotesCardProps {
   note: string;
   setNote: (note: string) => void;
-  attachment?: string;
-  setAttachment?: (url: string) => void;
+  attachments?: string[];
+  setAttachments?: (urls: string[]) => void;
 }
 
-export function PurchaseNotesCard({ note, setNote, attachment, setAttachment }: PurchaseNotesCardProps) {
+export function PurchaseNotesCard({ note, setNote, attachments = [], setAttachments }: PurchaseNotesCardProps) {
   const uploadOptions = useMemo<CloudinaryUploadWidgetOptions>(() => ({
-    multiple: false,
+    multiple: true,
     resourceType: "auto",
     clientAllowedFormats: ["png", "jpeg", "jpg", "webp", "pdf"],
     folder: "purchases/vouchers",
@@ -22,7 +22,15 @@ export function PurchaseNotesCard({ note, setNote, attachment, setAttachment }: 
 
   const handleSuccess = (result: any) => {
     if (typeof result.info === 'object' && result.info.secure_url) {
-      if (setAttachment) setAttachment(result.info.secure_url);
+      if (setAttachments) {
+        setAttachments(prev => [...(prev || []), result.info.secure_url]);
+      }
+    }
+  };
+
+  const removeAttachment = (indexToRemove: number) => {
+    if (setAttachments) {
+      setAttachments(attachments.filter((_, idx) => idx !== indexToRemove));
     }
   };
   return (
@@ -47,47 +55,51 @@ export function PurchaseNotesCard({ note, setNote, attachment, setAttachment }: 
             <Paperclip className="w-3.5 h-3.5" /> Attachments
           </label>
           
-          {attachment ? (
-            <div className="flex items-center justify-between p-3 border rounded-lg bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800">
-              <div className="flex items-center gap-3 overflow-hidden">
-                <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 rounded-md shrink-0">
-                  <FileIcon className="w-5 h-5" />
-                </div>
-                <div className="truncate">
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">Voucher Document</p>
-                  <Link href={attachment} target="_blank" className="text-xs text-indigo-600 hover:underline flex items-center gap-1 mt-0.5">
-                    View full attachment <ExternalLink className="w-3 h-3" />
-                  </Link>
-                </div>
-              </div>
-              <button 
-                type="button" 
-                onClick={() => setAttachment && setAttachment('')}
-                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <CldUploadWidget
-              signatureEndpoint="/api/cloudinary/sign"
-              onSuccess={handleSuccess}
-              options={uploadOptions}
-            >
-              {({ open }) => (
-                <div 
-                  onClick={() => open()}
-                  className="border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-lg p-6 text-center hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors cursor-pointer group"
-                >
-                  <div className="mx-auto w-10 h-10 bg-gray-50 dark:bg-gray-900 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900 flex items-center justify-center rounded-full mb-3 transition-colors">
-                    <Upload className="w-5 h-5 text-gray-400 group-hover:text-indigo-600" />
+          {attachments.length > 0 && (
+            <div className="space-y-2 mb-4">
+              {attachments.map((url, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 rounded-md shrink-0">
+                      <FileIcon className="w-5 h-5" />
+                    </div>
+                    <div className="truncate">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">Voucher Document {idx + 1}</p>
+                      <Link href={url} target="_blank" className="text-xs text-indigo-600 hover:underline flex items-center gap-1 mt-0.5">
+                        View full attachment <ExternalLink className="w-3 h-3" />
+                      </Link>
+                    </div>
                   </div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Click to upload voucher</p>
-                  <p className="text-xs text-gray-400 mt-1">Invoice, Quotation, PDF or Image (Max 5MB)</p>
+                  <button 
+                    type="button" 
+                    onClick={() => removeAttachment(idx)}
+                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-              )}
-            </CldUploadWidget>
+              ))}
+            </div>
           )}
+
+          <CldUploadWidget
+            signatureEndpoint="/api/cloudinary/sign"
+            onSuccess={handleSuccess}
+            options={uploadOptions}
+          >
+            {({ open }) => (
+              <div 
+                onClick={() => open()}
+                className="border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-lg p-6 text-center hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors cursor-pointer group"
+              >
+                <div className="mx-auto w-10 h-10 bg-gray-50 dark:bg-gray-900 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900 flex items-center justify-center rounded-full mb-3 transition-colors">
+                  <Upload className="w-5 h-5 text-gray-400 group-hover:text-indigo-600" />
+                </div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Click to upload vouchers</p>
+                <p className="text-xs text-gray-400 mt-1">Invoice, Quotation, PDF or Image (Max 5MB)</p>
+              </div>
+            )}
+          </CldUploadWidget>
         </div>
       </div>
     </div>

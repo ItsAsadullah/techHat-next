@@ -44,7 +44,15 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
     initialData?.expectedDeliveryDate ? new Date(initialData.expectedDeliveryDate).toISOString().split('T')[0] : ''
   );
   const [note, setNote] = useState<string>(initialData?.note || '');
-  const [attachment, setAttachment] = useState<string>(initialData?.attachment || '');
+  const [attachments, setAttachments] = useState<string[]>(() => {
+    try {
+      if (!initialData?.attachment) return [];
+      const parsed = JSON.parse(initialData.attachment);
+      return Array.isArray(parsed) ? parsed : [initialData.attachment];
+    } catch {
+      return initialData?.attachment ? [initialData.attachment] : [];
+    }
+  });
   const [status, setStatus] = useState<'DRAFT' | 'SUBMITTED' | 'APPROVED'>(initialData?.status || 'DRAFT');
 
   // Costs State
@@ -205,7 +213,7 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
           subtotal: i.subtotal,
         })),
         note,
-        attachment
+        attachment: attachments.length > 0 ? JSON.stringify(attachments) : undefined
       };
 
       let res;
@@ -310,7 +318,7 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
               />
             )}
 
-            <PurchaseNotesCard note={note} setNote={setNote} attachment={attachment} setAttachment={setAttachment} />
+            <PurchaseNotesCard note={note} setNote={setNote} attachments={attachments} setAttachments={setAttachments} />
 
           </div>
 
