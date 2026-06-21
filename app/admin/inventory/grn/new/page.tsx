@@ -15,7 +15,7 @@ export default async function NewGRNPage() {
   ]);
 
   return (
-    <div className="p-6">
+    <div className="p-2 md:p-4 w-full">
       <GRNForm 
         approvedPOs={poRes.success ? (poRes.data || []) : []} 
         warehouses={warehouseRes.success ? (warehouseRes.data || []) : []} 

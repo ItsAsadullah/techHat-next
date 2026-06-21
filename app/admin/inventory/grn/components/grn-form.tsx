@@ -204,9 +204,9 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
 
   return (
     <>
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full mx-auto pb-12 px-4 md:px-6">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full pb-12">
       {/* Header */}
-      <div className="flex items-center justify-between sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b py-2 shadow-sm -mx-4 px-4 md:-mx-6 md:px-6">
+      <div className="flex items-center justify-between sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b py-2 shadow-sm">
         <div className="flex items-center gap-3">
           <Button type="button" variant="ghost" size="icon" onClick={() => router.back()} className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
@@ -275,7 +275,7 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
                 <TableHeader className="bg-muted/30">
                   <TableRow>
                     <TableHead className="w-[200px] min-w-[200px] text-xs">Product Details</TableHead>
-                    <TableHead className="w-[220px] min-w-[220px] text-xs">Qty (Pending / Recv / Rej)</TableHead>
+                    <TableHead className="w-[260px] min-w-[260px] text-xs">Qty (Pending / Receive / Reject)</TableHead>
                     <TableHead className="w-[380px] min-w-[380px] text-xs">Selling Prices Updates</TableHead>
                     <TableHead className="w-[200px] min-w-[200px] text-xs">Advanced Tracking</TableHead>
                   </TableRow>
@@ -308,9 +308,9 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
                       
                       <TableCell>
                         <div className="flex items-center gap-1.5">
-                          <div className="text-center w-12">
+                          <div className="text-center w-14">
                             <div className="text-xs font-mono font-medium">{item.pendingQty}</div>
-                            <div className="text-[9px] text-muted-foreground leading-none">Pend</div>
+                            <div className="text-[10px] text-muted-foreground leading-none">Pending</div>
                           </div>
                           <div className="flex flex-col gap-1 w-16">
                             <Input 
@@ -320,7 +320,7 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
                               disabled={item.pendingQty === 0}
                               title="Receive Qty"
                             />
-                            <div className="text-[9px] text-center text-muted-foreground leading-none">Recv</div>
+                            <div className="text-[10px] text-center text-muted-foreground leading-none">Receive</div>
                           </div>
                           <div className="flex flex-col gap-1 w-16">
                             <Input 
@@ -330,11 +330,11 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
                               disabled={item.pendingQty === 0}
                               title="Reject Qty"
                             />
-                            <div className="text-[9px] text-center text-red-400 leading-none">Rej</div>
+                            <div className="text-[10px] text-center text-red-400 leading-none">Reject</div>
                           </div>
-                          <div className="text-center w-12 bg-green-50 rounded px-1 py-0.5">
+                          <div className="text-center w-14 bg-green-50 rounded px-1 py-0.5">
                             <div className="text-xs font-bold text-green-600">{item.acceptedQty}</div>
-                            <div className="text-[9px] text-green-600 leading-none">Acc</div>
+                            <div className="text-[10px] text-green-600 leading-none">Accept</div>
                           </div>
                         </div>
                       </TableCell>
@@ -342,23 +342,23 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
                       <TableCell>
                         <div className="grid grid-cols-5 gap-1.5 bg-muted/20 p-1.5 rounded border border-dashed">
                           <div className="flex flex-col gap-0.5">
-                            <Label className="text-[9px] text-muted-foreground">Retail ৳</Label>
+                            <Label className="text-[10px] text-muted-foreground">Retail</Label>
                             <Input type="number" className="h-6 text-[10px] px-1" value={item.newRetailPrice || ''} onChange={(e) => updateItem(index, 'newRetailPrice', parseFloat(e.target.value) || 0)} disabled={item.pendingQty === 0}/>
                           </div>
                           <div className="flex flex-col gap-0.5">
-                            <Label className="text-[9px] text-muted-foreground">Offer ৳</Label>
+                            <Label className="text-[10px] text-muted-foreground">Offer</Label>
                             <Input type="number" className="h-6 text-[10px] px-1" value={item.newOfferPrice || ''} onChange={(e) => updateItem(index, 'newOfferPrice', parseFloat(e.target.value) || 0)} disabled={item.pendingQty === 0}/>
                           </div>
                           <div className="flex flex-col gap-0.5">
-                            <Label className="text-[9px] text-muted-foreground">W/S ৳</Label>
+                            <Label className="text-[10px] text-muted-foreground">Wholesale</Label>
                             <Input type="number" className="h-6 text-[10px] px-1" value={item.newWholesalePrice || ''} onChange={(e) => updateItem(index, 'newWholesalePrice', parseFloat(e.target.value) || 0)} disabled={item.pendingQty === 0}/>
                           </div>
                           <div className="flex flex-col gap-0.5">
-                            <Label className="text-[9px] text-muted-foreground">Online ৳</Label>
+                            <Label className="text-[10px] text-muted-foreground">Online</Label>
                             <Input type="number" className="h-6 text-[10px] px-1" value={item.newOnlinePrice || ''} onChange={(e) => updateItem(index, 'newOnlinePrice', parseFloat(e.target.value) || 0)} disabled={item.pendingQty === 0}/>
                           </div>
                           <div className="flex flex-col gap-0.5">
-                            <Label className="text-[9px] text-muted-foreground">Tax Class</Label>
+                            <Label className="text-[10px] text-muted-foreground">Tax Class</Label>
                             <Input type="text" className="h-6 text-[10px] px-1" placeholder="Exempt" value={item.newTaxClass || ''} onChange={(e) => updateItem(index, 'newTaxClass', e.target.value)} disabled={item.pendingQty === 0}/>
                           </div>
                         </div>
