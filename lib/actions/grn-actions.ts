@@ -264,8 +264,23 @@ export async function submitGRN(grnId: string, itemPricingInputs?: GRNItemInput[
                   offerPrice: productUpdateData.offerPrice 
                 } 
               });
-              // Still update wholesale/online/tax on the base product
+
+              // Auto-sync starting price to the main product
+              const allVariants = await tx.variant.findMany({
+                where: { productId: item.productId },
+                select: { price: true, offerPrice: true }
+              });
+              
+              const validPrices = allVariants.map(v => v.price || 0).filter(p => p > 0);
+              const validOfferPrices = allVariants.map(v => v.offerPrice || 0).filter(p => p > 0);
+              
+              const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
+              const minOfferPrice = validOfferPrices.length > 0 ? Math.min(...validOfferPrices) : 0;
+
+              // Still update wholesale/online/tax on the base product + starting prices
               const baseProductUpdate: any = {};
+              if (minPrice > 0) baseProductUpdate.price = minPrice;
+              if (minOfferPrice > 0) baseProductUpdate.offerPrice = minOfferPrice;
               if (productUpdateData.wholesalePrice !== undefined) baseProductUpdate.wholesalePrice = productUpdateData.wholesalePrice;
               if (productUpdateData.onlinePrice !== undefined) baseProductUpdate.onlinePrice = productUpdateData.onlinePrice;
               if (productUpdateData.taxClass !== undefined) baseProductUpdate.taxClass = productUpdateData.taxClass;
