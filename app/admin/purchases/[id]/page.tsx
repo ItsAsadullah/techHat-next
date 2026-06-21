@@ -96,17 +96,18 @@ export default function PurchaseOrderDetailsPage() {
             <Download className="mr-2 h-4 w-4" /> PDF
           </Button>
 
+          {['DRAFT', 'SUBMITTED'].includes(po.status) && (
+            <Button variant="outline" size="sm" asChild className="print:hidden">
+              <Link href={`/admin/purchases/edit/${po.id}`}>
+                <Edit className="mr-2 h-4 w-4" /> Edit
+              </Link>
+            </Button>
+          )}
+
           {po.status === 'DRAFT' && (
-            <>
-              <Button variant="outline" size="sm" asChild className="print:hidden">
-                <Link href={`/admin/purchases/edit/${po.id}`}>
-                  <Edit className="mr-2 h-4 w-4" /> Edit
-                </Link>
-              </Button>
-              <Button size="sm" onClick={() => handleStatusChange('SUBMITTED')} disabled={actionLoading} className="print:hidden">
-                <Send className="mr-2 h-4 w-4" /> Submit PO
-              </Button>
-            </>
+            <Button size="sm" onClick={() => handleStatusChange('SUBMITTED')} disabled={actionLoading} className="print:hidden">
+              <Send className="mr-2 h-4 w-4" /> Submit PO
+            </Button>
           )}
 
           {po.status === 'SUBMITTED' && (
@@ -180,9 +181,15 @@ export default function PurchaseOrderDetailsPage() {
                   <span>Subtotal</span>
                   <span className="font-mono">৳{po.totalAmount}</span>
                 </div>
+                {po.items.reduce((acc: number, item: any) => acc + (item.discount || 0), 0) > 0 && (
+                  <div className="flex justify-between text-red-500">
+                    <span>Item Discounts</span>
+                    <span className="font-mono">-৳{po.items.reduce((acc: number, item: any) => acc + (item.discount || 0), 0)}</span>
+                  </div>
+                )}
                 {po.discount > 0 && (
                   <div className="flex justify-between text-red-500">
-                    <span>Discount</span>
+                    <span>Global Discount</span>
                     <span className="font-mono">-৳{po.discount}</span>
                   </div>
                 )}
