@@ -10,9 +10,10 @@ export const metadata: Metadata = {
   description: 'Edit a draft purchase order',
 };
 
-export default async function EditPurchaseOrderPage({ params }: { params: { id: string } }) {
+export default async function EditPurchaseOrderPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const [poRes, suppliersRes, warehousesRes] = await Promise.all([
-    getPurchaseOrderById(params.id),
+    getPurchaseOrderById(id),
     getSupplierOptions(),
     getWarehouseOptions()
   ]);
@@ -21,12 +22,12 @@ export default async function EditPurchaseOrderPage({ params }: { params: { id: 
     notFound();
   }
 
-  // Only allow editing if status is DRAFT
-  if (poRes.data.status !== 'DRAFT') {
+  // Allow editing if status is DRAFT or SUBMITTED
+  if (poRes.data.status !== 'DRAFT' && poRes.data.status !== 'SUBMITTED') {
     return (
       <div className="p-12 text-center">
         <h1 className="text-2xl font-bold mb-2">Editing Disabled</h1>
-        <p className="text-muted-foreground">Only DRAFT Purchase Orders can be edited. This PO is marked as {poRes.data.status}.</p>
+        <p className="text-muted-foreground">Only DRAFT or SUBMITTED Purchase Orders can be edited. This PO is marked as {poRes.data.status}.</p>
       </div>
     );
   }
