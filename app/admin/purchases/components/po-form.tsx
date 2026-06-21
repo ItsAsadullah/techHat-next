@@ -115,6 +115,20 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
   }, [supplierId]);
 
   const addProductToPO = (product: any, variant: any = null) => {
+    // If added via AI recommendations (we only have IDs), we need full fetch. 
+    // But for Smart Selector, we have the full product object.
+    if (typeof product === 'string') {
+      toast.info("Fetching product details...");
+      searchProductsForPO(product).then(res => {
+         if(res.success && res.data && res.data.length > 0) {
+           const p = res.data[0];
+           const v = variant ? p.variants.find((v:any)=>v.id===variant) : null;
+           addProductToPO(p, v);
+         }
+      });
+      return;
+    }
+
     setItems(prev => {
       const existingItemIndex = prev.findIndex(item => 
         item.productId === (product.id || product) && 
@@ -124,22 +138,9 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
       if (existingItemIndex >= 0) {
         const newItems = [...prev];
         newItems[existingItemIndex].quantity += 1;
-        toast.success(`Increased quantity.`);
+        // Do not call toast inside the state updater to avoid rendering issues
+        setTimeout(() => toast.success('Increased quantity.'), 0);
         return newItems;
-      }
-
-      // If added via AI recommendations (we only have IDs), we need full fetch. 
-      // But for Smart Selector, we have the full product object.
-      if (typeof product === 'string') {
-        toast.info("Fetching product details...");
-        searchProductsForPO(product).then(res => {
-           if(res.success && res.data && res.data.length > 0) {
-             const p = res.data[0];
-             const v = variant ? p.variants.find((v:any)=>v.id===variant) : null;
-             addProductToPO(p, v);
-           }
-        });
-        return prev;
       }
 
       return [
