@@ -77,9 +77,9 @@ export function WorkspaceHeader({ isEditMode, poNumber, status = 'DRAFT', loadin
         )}
 
         {(status === 'DRAFT' || status === 'SUBMITTED') && (
-          <Button type="button" onClick={() => onSubmit(status === 'DRAFT' ? 'SUBMITTED' : 'APPROVED')} disabled={loading} className="gap-2 shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (status === 'DRAFT' ? <Send className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />)}
-            {status === 'DRAFT' ? 'Submit PO' : 'Approve PO'}
+          <Button type="button" onClick={() => onSubmit('APPROVED')} disabled={loading} className="gap-2 shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+            Approve PO
           </Button>
         )}
       </div>
