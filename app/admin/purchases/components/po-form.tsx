@@ -39,7 +39,7 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
 
   // Core Form State
   const [supplierId, setSupplierId] = useState(initialData?.supplierId || '');
-  const [warehouseId, setWarehouseId] = useState(initialData?.warehouseId || '');
+  const [warehouseId, setWarehouseId] = useState(initialData?.warehouseId || (warehouses?.length > 0 ? warehouses[0].id : ''));
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState(
     initialData?.expectedDeliveryDate ? new Date(initialData.expectedDeliveryDate).toISOString().split('T')[0] : ''
   );
