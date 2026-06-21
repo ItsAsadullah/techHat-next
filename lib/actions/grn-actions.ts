@@ -177,17 +177,38 @@ export async function submitGRN(grnId: string) {
 
       let totalInventoryValue = 0;
 
+      // --- LANDED COST ENGINE ---
+      // 1. Calculate Total Base Value of the Purchase Order
+      let poTotalBaseValue = 0;
+      for (const pi of grn.purchaseOrder.items) {
+        const netUnitCost = pi.unitCost - (pi.discount || 0); // discount is per-unit
+        poTotalBaseValue += (pi.quantity * netUnitCost);
+      }
+
+      // 2. Calculate Total Global Extra Costs (Shipping + Other - Global Discount)
+      const globalExtraCost = (grn.purchaseOrder.shippingCost || 0) + (grn.purchaseOrder.otherCost || 0) - (grn.purchaseOrder.discount || 0);
+
+      // 3. Calculate Landed Cost Multiplier
+      // If base value is 0 (e.g., all free items), fallback to 1 to prevent division by zero
+      const landedCostMultiplier = poTotalBaseValue > 0 ? (poTotalBaseValue + globalExtraCost) / poTotalBaseValue : 1;
+
       // Process each GRN Item using the canonical Stock Ledger Engine
       for (const item of grn.items) {
         if (item.acceptedQty <= 0) continue;
 
-        // Prefer unitCost stored on GRN item, fallback to PO item cost
+        // Find matching PO Item to get exact discount/unit cost
         const poItem = grn.purchaseOrder.items.find(
           pi => pi.productId === item.productId &&
             (pi.variantId ?? null) === (item.variantId ?? null)
         );
-        const unitCost = (item as any).unitCost || poItem?.unitCost || 0;
-        totalInventoryValue += (item.acceptedQty * unitCost);
+
+        // 4. Calculate Net Unit Cost for this specific item
+        const netUnitCost = poItem ? (poItem.unitCost - (poItem.discount || 0)) : ((item as any).unitCost || 0);
+
+        // 5. Apply Landed Cost Multiplier to get the final exact cost per piece
+        const landedUnitCost = netUnitCost * landedCostMultiplier;
+
+        totalInventoryValue += (item.acceptedQty * landedUnitCost);
 
         // Update PO Item Received Qty for PO status tracking
         if (poItem) {
@@ -208,8 +229,8 @@ export async function submitGRN(grnId: string) {
             variantId: item.variantId || null,
             inQty: item.acceptedQty,
             outQty: 0,
-            unitCost,
-            remarks: `GRN ${grn.grnNumber} received against PO ${grn.purchaseOrder.poNumber}`,
+            unitCost: landedUnitCost,
+            remarks: `GRN ${grn.grnNumber} received against PO ${grn.purchaseOrder.poNumber} (Landed Cost)`,
           },
           tx
         );
