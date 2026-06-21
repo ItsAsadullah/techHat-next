@@ -133,7 +133,7 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
       if (typeof product === 'string') {
         toast.info("Fetching product details...");
         searchProductsForPO(product).then(res => {
-           if(res.success && res.data.length > 0) {
+           if(res.success && res.data && res.data.length > 0) {
              const p = res.data[0];
              const v = variant ? p.variants.find((v:any)=>v.id===variant) : null;
              addProductToPO(p, v);
