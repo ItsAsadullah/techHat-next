@@ -461,6 +461,7 @@ export async function getProduct(id: string) {
           v.name = sanitizeString(v.name);
           v.sku = sanitizeString(v.sku);
           v.upc = sanitizeString(v.upc);
+          v.cost = v.costPrice || 0;
         });
       }
 

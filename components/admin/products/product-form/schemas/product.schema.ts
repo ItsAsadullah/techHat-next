@@ -133,6 +133,7 @@ export const productSchema = z.object({
       upc: z.string().nullable().optional(),
       price:          z.number(),
       offerPrice: z.number().nullable().optional(),
+      cost: z.number().nullable().optional(),
       // Read-only ERP fields — kept for display in variant table, never edited
       stock:          z.number().default(0),
       hasSerial:      z.boolean().default(false),
