@@ -322,6 +322,16 @@ const VariantRow = memo(({
       </td>
       <td className="px-3 py-2">
         <div className="flex flex-col gap-1.5">
+          <div className="relative" title="Landed Cost">
+            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px]">৳</span>
+            <Input
+              className="h-7 text-xs w-[85px] pl-4 bg-muted/30 border-dashed"
+              type="number"
+              step="0.01"
+              placeholder="Cost"
+              {...register(`variants.${index}.cost`, { valueAsNumber: true })}
+            />
+          </div>
           <div className="relative" title="Retail Price">
             <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px]">৳</span>
             <Input
@@ -370,8 +380,9 @@ const VariantRow = memo(({
         </td>
       )}
       <td className="px-3 py-2">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] font-medium text-gray-400">Ledger Driven</span>
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="text-xs font-mono font-medium">{variant.stock || 0}</span>
+          <span className="text-[9px] font-medium text-muted-foreground bg-muted/50 px-1.5 rounded">Ledger Driven</span>
         </div>
         <input type="hidden" {...register(`variants.${index}.stock`, { valueAsNumber: true })} />
       </td>
@@ -636,7 +647,7 @@ export function ProductVariantSection({ attributesList = [], categoryAttributes 
                 <tr className="bg-muted/30 border-b text-left">
                   <th className="px-3 py-2 font-medium text-xs text-muted-foreground">Variant</th>
                   <th className="px-3 py-2 font-medium text-xs text-muted-foreground">SKU</th>
-                  <th className="px-3 py-2 font-medium text-xs text-muted-foreground">Price</th>
+                  <th className="px-3 py-2 font-medium text-xs text-muted-foreground">Cost & Prices</th>
                   <th className="px-3 py-2 font-medium text-xs text-muted-foreground">Color</th>
                   <th className="px-3 py-2 font-medium text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
