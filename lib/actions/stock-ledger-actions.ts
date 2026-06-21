@@ -88,7 +88,7 @@ export async function createStockLedgerEntry(
     orderBy: { createdAt: 'desc' }
   });
 
-  const warehouseOpeningQty = lastLedger ? lastLedger.closingQty : 0;
+  const warehouseOpeningQty = lastLedger ? lastLedger.balanceQty : 0;
   const warehouseClosingQty = warehouseOpeningQty + inQty - outQty;
 
   if (warehouseClosingQty < 0) {
@@ -100,9 +100,9 @@ export async function createStockLedgerEntry(
     data: {
       referenceType: params.referenceType,
       referenceId: params.referenceId,
-      warehouseId: params.warehouseId,
-      productId: params.productId,
-      variantId: params.variantId || null,
+      warehouse: { connect: { id: params.warehouseId } },
+      product: { connect: { id: params.productId } },
+      variant: params.variantId ? { connect: { id: params.variantId } } : undefined,
       inQty: inQty,
       outQty: outQty,
       balanceQty: warehouseClosingQty,
