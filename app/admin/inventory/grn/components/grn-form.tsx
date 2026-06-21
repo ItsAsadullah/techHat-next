@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Save, Loader2, ArrowLeft, PackageCheck } from 'lucide-react';
+import { Save, Loader2, ArrowLeft, PackageCheck, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,6 +48,9 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
   const [showSerialsModal, setShowSerialsModal] = useState(false);
   const [activeItemIndex, setActiveItemIndex] = useState<number | null>(null);
   const [tempSerials, setTempSerials] = useState<string[]>([]);
+  
+  const [showPricesModal, setShowPricesModal] = useState(false);
+  const [tempPrices, setTempPrices] = useState<any>({});
 
   useEffect(() => {
     if (poId) {
@@ -80,7 +83,12 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
         batchNumber: '',
         imei: '',
         serialNumber: '',
-        unitCost: pi.unitCost
+        unitCost: pi.unitCost,
+        newRetailPrice: pi.variant?.price || pi.product?.price || 0,
+        newOfferPrice: pi.variant?.offerPrice || pi.product?.offerPrice || 0,
+        newWholesalePrice: pi.product?.wholesalePrice || 0,
+        newOnlinePrice: pi.product?.onlinePrice || 0,
+        newTaxClass: pi.product?.taxClass || '',
       }));
       setItems(newItems);
     } else {
@@ -125,7 +133,12 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
           batchNumber: i.batchNumber || undefined,
           imei: i.imei || undefined,
           serialNumber: i.serialNumber || undefined,
-          unitCost: i.unitCost
+          unitCost: i.unitCost,
+          newRetailPrice: i.newRetailPrice,
+          newOfferPrice: i.newOfferPrice,
+          newWholesalePrice: i.newWholesalePrice,
+          newOnlinePrice: i.newOnlinePrice,
+          newTaxClass: i.newTaxClass,
         }))
       };
 
@@ -171,6 +184,30 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
       updateItem(activeItemIndex, 'serials', tempSerials);
     }
     setShowSerialsModal(false);
+  };
+
+  const openPricesModal = (index: number) => {
+    setActiveItemIndex(index);
+    const item = items[index];
+    setTempPrices({
+      newRetailPrice: item.newRetailPrice || 0,
+      newOfferPrice: item.newOfferPrice || 0,
+      newWholesalePrice: item.newWholesalePrice || 0,
+      newOnlinePrice: item.newOnlinePrice || 0,
+      newTaxClass: item.newTaxClass || '',
+    });
+    setShowPricesModal(true);
+  };
+
+  const savePrices = () => {
+    if (activeItemIndex !== null) {
+      setItems(prev => {
+        const updated = [...prev];
+        updated[activeItemIndex] = { ...updated[activeItemIndex], ...tempPrices };
+        return updated;
+      });
+    }
+    setShowPricesModal(false);
   };
 
   return (
@@ -329,6 +366,17 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
                               }
                             </Button>
                           )}
+
+                          <Button 
+                            type="button" 
+                            variant="outline"
+                            size="sm" 
+                            className="h-7 text-xs text-green-600 border-green-200 bg-green-50 hover:bg-green-100 mt-1 w-full justify-start"
+                            disabled={item.pendingQty === 0}
+                            onClick={() => openPricesModal(index)}
+                          >
+                            <Tag className="w-3 h-3 mr-1" /> Update Selling Prices
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -396,6 +444,71 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
             <Button variant="outline" onClick={() => setShowSerialsModal(false)}>Cancel</Button>
             <Button onClick={saveSerials} disabled={tempSerials.some(s => !s.trim())}>
               Save Serials
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Price Input Modal */}
+    {showPricesModal && activeItemIndex !== null && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="bg-background rounded-xl shadow-lg w-full max-w-md overflow-hidden flex flex-col">
+          <div className="p-4 border-b bg-muted/30">
+            <h3 className="font-semibold">Update Selling Prices</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Adjust prices for <strong>{items[activeItemIndex].name}</strong>. These will be updated globally when GRN is submitted.
+            </p>
+          </div>
+          
+          <div className="p-4 space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Retail Price (Regular)</Label>
+              <Input 
+                type="number" 
+                value={tempPrices.newRetailPrice} 
+                onChange={(e) => setTempPrices({...tempPrices, newRetailPrice: parseFloat(e.target.value) || 0})}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Offer Price</Label>
+              <Input 
+                type="number" 
+                value={tempPrices.newOfferPrice} 
+                onChange={(e) => setTempPrices({...tempPrices, newOfferPrice: parseFloat(e.target.value) || 0})}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Wholesale Price</Label>
+              <Input 
+                type="number" 
+                value={tempPrices.newWholesalePrice} 
+                onChange={(e) => setTempPrices({...tempPrices, newWholesalePrice: parseFloat(e.target.value) || 0})}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Online Price</Label>
+              <Input 
+                type="number" 
+                value={tempPrices.newOnlinePrice} 
+                onChange={(e) => setTempPrices({...tempPrices, newOnlinePrice: parseFloat(e.target.value) || 0})}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Tax Class</Label>
+              <Input 
+                type="text" 
+                value={tempPrices.newTaxClass} 
+                onChange={(e) => setTempPrices({...tempPrices, newTaxClass: e.target.value})}
+                placeholder="e.g. Standard, Exempt"
+              />
+            </div>
+          </div>
+
+          <div className="p-4 border-t flex justify-end gap-2 bg-muted/10">
+            <Button variant="outline" onClick={() => setShowPricesModal(false)}>Cancel</Button>
+            <Button onClick={savePrices} className="bg-green-600 hover:bg-green-700 text-white">
+              Save Prices
             </Button>
           </div>
         </div>

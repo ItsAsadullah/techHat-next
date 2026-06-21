@@ -98,8 +98,8 @@ export async function getPurchaseOrderById(id: string) {
         warehouse: true,
         items: {
           include: {
-            product: { select: { id: true, name: true, sku: true, stock: true } },
-            variant: { select: { id: true, name: true, sku: true, stock: true } }
+            product: { select: { id: true, name: true, sku: true, stock: true, price: true, offerPrice: true, wholesalePrice: true, onlinePrice: true, taxClass: true } },
+            variant: { select: { id: true, name: true, sku: true, stock: true, price: true, offerPrice: true } }
           }
         },
         goodsReceiveNotes: {
