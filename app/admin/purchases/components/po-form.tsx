@@ -210,7 +210,7 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
         }
       } else {
         res = await createPurchaseOrder(payload);
-        if (res.success && submitStatus !== 'DRAFT') {
+        if (res.success && res.data && submitStatus !== 'DRAFT') {
            await updatePurchaseOrderStatus(res.data.id, submitStatus);
         }
       }
