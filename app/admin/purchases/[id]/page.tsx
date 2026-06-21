@@ -344,9 +344,15 @@ export default function PurchaseOrderDetailsPage() {
                   <td className="py-1.5 text-gray-600 font-medium">Subtotal</td>
                   <td className="py-1.5 text-right font-mono">৳{po.totalAmount}</td>
                 </tr>
+                {po.items.reduce((acc: number, item: any) => acc + (item.discount || 0), 0) > 0 && (
+                  <tr>
+                    <td className="py-1.5 text-gray-600 font-medium">Item Discounts</td>
+                    <td className="py-1.5 text-right font-mono text-red-600">-৳{po.items.reduce((acc: number, item: any) => acc + (item.discount || 0), 0)}</td>
+                  </tr>
+                )}
                 {po.discount > 0 && (
                   <tr>
-                    <td className="py-1.5 text-gray-600 font-medium">Discount</td>
+                    <td className="py-1.5 text-gray-600 font-medium">Global Discount</td>
                     <td className="py-1.5 text-right font-mono text-red-600">-৳{po.discount}</td>
                   </tr>
                 )}

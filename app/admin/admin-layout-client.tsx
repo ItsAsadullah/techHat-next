@@ -323,7 +323,7 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
 
         {/* ════ SIDEBAR ════ */}
         <aside className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-transform duration-300",
+          "fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-transform duration-300 print:hidden",
           "lg:static lg:translate-x-0 lg:w-64 lg:z-auto",
           drawerOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}>
@@ -407,7 +407,7 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
 
           {/* Header */}
           <header className={cn(
-            "h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-3 lg:px-5 shrink-0 z-30",
+            "h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-3 lg:px-5 shrink-0 z-30 print:hidden",
             isPOS ? "hidden lg:flex" : ""
           )}>
             <div className="flex items-center gap-2 min-w-0">
