@@ -43,7 +43,8 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState(
     initialData?.expectedDeliveryDate ? new Date(initialData.expectedDeliveryDate).toISOString().split('T')[0] : ''
   );
-  const [note, setNote] = useState(initialData?.note || '');
+  const [note, setNote] = useState<string>(initialData?.note || '');
+  const [attachment, setAttachment] = useState<string>(initialData?.attachment || '');
   const [status, setStatus] = useState<'DRAFT' | 'SUBMITTED' | 'APPROVED'>(initialData?.status || 'DRAFT');
 
   // Costs State
@@ -202,7 +203,9 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
           discount: i.discount,
           tax: i.tax,
           subtotal: i.subtotal,
-        }))
+        })),
+        note,
+        attachment
       };
 
       let res;
@@ -307,7 +310,7 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
               />
             )}
 
-            <PurchaseNotesCard note={note} setNote={setNote} />
+            <PurchaseNotesCard note={note} setNote={setNote} attachment={attachment} setAttachment={setAttachment} />
 
           </div>
 

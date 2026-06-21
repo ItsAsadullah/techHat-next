@@ -26,6 +26,7 @@ export interface PurchaseOrderFormData {
   otherCost: number;
   grandTotal: number;
   note?: string;
+  attachment?: string;
   items: POItemInput[];
 }
 
@@ -233,6 +234,7 @@ export async function createPurchaseOrder(data: PurchaseOrderFormData) {
         otherCost: data.otherCost,
         grandTotal: data.grandTotal,
         note: data.note,
+        attachment: data.attachment,
         status: 'DRAFT',
         items: {
           create: data.items.map(item => ({
@@ -279,6 +281,7 @@ export async function updatePurchaseOrder(id: string, data: PurchaseOrderFormDat
         otherCost: data.otherCost,
         grandTotal: data.grandTotal,
         note: data.note,
+        attachment: data.attachment,
         items: {
           create: data.items.map(item => ({
             productId: item.productId,

@@ -22,7 +22,17 @@ interface IntelligenceSidebarProps {
 export function IntelligenceSidebar({ totals, shippingCost, setShippingCost, otherCost, setOtherCost, globalDiscount, setGlobalDiscount, intelligence }: IntelligenceSidebarProps) {
   
   const totalItemsCount = totals.formattedItems.reduce((acc, item) => acc + item.quantity, 0);
-  const avgCost = totals.formattedItems.length > 0 ? (totals.subtotal / totalItemsCount) : 0;
+
+  // --- LIVE LANDED COST CALCULATION ---
+  let poTotalBaseValue = 0;
+  totals.formattedItems.forEach(item => {
+    const perUnitDiscount = item.quantity > 0 ? (item.discount || 0) / item.quantity : 0;
+    const netUnitCost = item.unitCost - perUnitDiscount;
+    poTotalBaseValue += (item.quantity * netUnitCost);
+  });
+
+  const globalExtraCost = (shippingCost || 0) + (otherCost || 0) - (globalDiscount || 0);
+  const landedCostMultiplier = poTotalBaseValue > 0 ? (poTotalBaseValue + globalExtraCost) / poTotalBaseValue : 1;
 
   return (
     <div className="space-y-6">
@@ -99,12 +109,31 @@ export function IntelligenceSidebar({ totals, shippingCost, setShippingCost, oth
             <p className="text-[10px] uppercase text-gray-500 font-semibold mb-1">Total Units</p>
             <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{totalItemsCount}</p>
           </div>
-          <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-800 col-span-2">
-            <p className="text-[10px] uppercase text-gray-500 font-semibold mb-1 flex justify-between">
-              <span>Avg Unit Cost</span>
+          <div className="col-span-2 mt-2 space-y-3">
+            <p className="text-[10px] uppercase text-gray-500 font-semibold border-b border-gray-100 dark:border-gray-800 pb-1 flex justify-between">
+              <span>Landed Cost Breakdown</span>
               <DollarSign className="w-3 h-3 text-emerald-500" />
             </p>
-            <p className="text-lg font-bold font-mono text-gray-900 dark:text-gray-100">৳{avgCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+            {totals.formattedItems.length > 0 ? (
+              <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                {totals.formattedItems.map((item, idx) => {
+                  const perUnitDiscount = item.quantity > 0 ? (item.discount || 0) / item.quantity : 0;
+                  const netUnitCost = item.unitCost - perUnitDiscount;
+                  const landedUnitCost = netUnitCost * landedCostMultiplier;
+                  
+                  return (
+                    <div key={idx} className="flex justify-between items-center text-xs bg-gray-50 dark:bg-gray-900/50 p-2 rounded border border-gray-100 dark:border-gray-800">
+                      <span className="truncate w-3/5 font-medium text-gray-700 dark:text-gray-300">{item.name}</span>
+                      <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                        ৳{landedUnitCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}<span className="text-[9px] text-gray-400 font-normal">/pc</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-4">Add items to see landed cost</p>
+            )}
           </div>
         </div>
       </div>
