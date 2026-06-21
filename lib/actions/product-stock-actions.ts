@@ -75,6 +75,7 @@ export async function getProducts(params: ProductFilterParams) {
         slug: true,
         sku: true,
         price: true,
+        offerPrice: true,
         costPrice: true,
         minStock: true,
         status: true,
