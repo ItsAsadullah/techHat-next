@@ -278,6 +278,10 @@ export async function createProduct(formData: FormData) {
             imageUrl = mapped.url;
           }
         }
+        
+        if (!imageUrl && v.image) {
+          imageUrl = v.image;
+        }
 
         const newVariant = await tx.variant.create({
           data: {
@@ -745,6 +749,10 @@ export async function updateProduct(id: string, formData: FormData) {
             productImageId = mapped.id;
             imageUrl = mapped.url;
           }
+        }
+
+        if (!imageUrl && v.image) {
+          imageUrl = v.image;
         }
 
         const newVariant = await tx.variant.create({
