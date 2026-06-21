@@ -321,14 +321,27 @@ const VariantRow = memo(({
         />
       </td>
       <td className="px-3 py-2">
-        <div className="relative">
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">৳</span>
-          <Input
-            className="h-7 text-xs w-[90px] pl-5"
-            type="number"
-            step="0.01"
-            {...register(`variants.${index}.price`, { valueAsNumber: true })}
-          />
+        <div className="flex flex-col gap-1.5">
+          <div className="relative" title="Retail Price">
+            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px]">৳</span>
+            <Input
+              className="h-7 text-xs w-[85px] pl-4 bg-background"
+              type="number"
+              step="0.01"
+              placeholder="Retail"
+              {...register(`variants.${index}.price`, { valueAsNumber: true })}
+            />
+          </div>
+          <div className="relative" title="Offer Price">
+            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px]">৳</span>
+            <Input
+              className="h-7 text-xs w-[85px] pl-4 bg-background"
+              type="number"
+              step="0.01"
+              placeholder="Offer"
+              {...register(`variants.${index}.offerPrice`, { valueAsNumber: true })}
+            />
+          </div>
         </div>
       </td>
       {hasColorAttr && (
