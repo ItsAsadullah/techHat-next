@@ -83,7 +83,7 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
     let totalTax = 0;
 
     const formattedItems = items.map(item => {
-      const lineDiscount = (item.discount || 0) * item.quantity;
+      const lineDiscount = item.discount || 0;
       const itemSubtotal = (item.quantity * item.unitCost) + (item.tax || 0) - lineDiscount;
       subtotal += (item.quantity * item.unitCost);
       itemDiscountTotal += lineDiscount;

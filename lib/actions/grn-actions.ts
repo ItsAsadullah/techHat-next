@@ -181,7 +181,8 @@ export async function submitGRN(grnId: string) {
       // 1. Calculate Total Base Value of the Purchase Order
       let poTotalBaseValue = 0;
       for (const pi of grn.purchaseOrder.items) {
-        const netUnitCost = pi.unitCost - (pi.discount || 0); // discount is per-unit
+        const perUnitDiscount = pi.quantity > 0 ? (pi.discount || 0) / pi.quantity : 0;
+        const netUnitCost = pi.unitCost - perUnitDiscount; // discount is flat line total
         poTotalBaseValue += (pi.quantity * netUnitCost);
       }
 
@@ -203,7 +204,8 @@ export async function submitGRN(grnId: string) {
         );
 
         // 4. Calculate Net Unit Cost for this specific item
-        const netUnitCost = poItem ? (poItem.unitCost - (poItem.discount || 0)) : ((item as any).unitCost || 0);
+        const perUnitDiscount = poItem && poItem.quantity > 0 ? (poItem.discount || 0) / poItem.quantity : 0;
+        const netUnitCost = poItem ? (poItem.unitCost - perUnitDiscount) : ((item as any).unitCost || 0);
 
         // 5. Apply Landed Cost Multiplier to get the final exact cost per piece
         const landedUnitCost = netUnitCost * landedCostMultiplier;
