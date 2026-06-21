@@ -62,7 +62,14 @@ export function WorkspaceHeader({ isEditMode, poNumber, status = 'DRAFT', loadin
           </>
         )}
 
-        {status === 'DRAFT' && (
+        {isEditMode && (status === 'DRAFT' || status === 'SUBMITTED') && (
+          <Button type="button" variant="outline" onClick={() => onSubmit(status as 'DRAFT' | 'SUBMITTED')} disabled={loading} className="gap-2 shadow-sm border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-400 dark:hover:bg-blue-900/20">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Save Changes
+          </Button>
+        )}
+
+        {!isEditMode && status === 'DRAFT' && (
           <Button type="button" variant="outline" onClick={() => onSubmit('DRAFT')} disabled={loading} className="gap-2 shadow-sm border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-400 dark:hover:bg-blue-900/20">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save Draft
