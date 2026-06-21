@@ -36,23 +36,60 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // If user logged in without "Remember Me", sign them out when they open
   // a fresh browser session (sessionStorage is cleared on browser close).
   useEffect(() => {
+    const hasBrowserSession = document.cookie.includes('browser_session=1');
+    const hasHeartbeat = sessionStorage.getItem('session-heartbeat');
     const noRemember = localStorage.getItem('no-remember-me') === '1';
-    const heartbeat = sessionStorage.getItem('session-heartbeat');
-    if (noRemember && !heartbeat) {
-      // Browser was reopened — sign out and clean up flag
-      supabase.auth.getSession().then(({ data }) => {
+
+    // If both are missing, it's a completely fresh browser start or new tab without cookies
+    if (!hasBrowserSession && !hasHeartbeat) {
+      supabase.auth.getSession().then(async ({ data }) => {
         if (data.session) {
-          supabase.auth.signOut().then(() => {
+          let shouldSignOut = noRemember;
+          
+          if (!shouldSignOut) {
+            let isAdmin = false;
+            const role = data.session.user?.app_metadata?.app_role;
+            if (role === 'admin' || role === 'super_admin') {
+              isAdmin = true;
+            } else {
+              try {
+                const res = await fetch('/api/account/role');
+                if (res.ok) {
+                  const json = await res.json();
+                  isAdmin = json.isAdmin;
+                }
+              } catch(e) {}
+            }
+            if (isAdmin) shouldSignOut = true;
+          }
+
+          if (shouldSignOut) {
+            await supabase.auth.signOut();
             localStorage.removeItem('no-remember-me');
-          });
-        } else {
-          localStorage.removeItem('no-remember-me');
+          } else {
+            document.cookie = "browser_session=1; path=/";
+            sessionStorage.setItem('session-heartbeat', '1');
+          }
         }
       });
-    } else if (heartbeat) {
-      // Active tab — refresh heartbeat so navigation within the site doesn't lose it
+    } else {
+      // Session is active, ensure both flags are present
+      document.cookie = "browser_session=1; path=/";
       sessionStorage.setItem('session-heartbeat', '1');
     }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        document.cookie = "browser_session=1; path=/";
+        sessionStorage.setItem('session-heartbeat', '1');
+      } else if (event === 'SIGNED_OUT') {
+        document.cookie = "browser_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        sessionStorage.removeItem('session-heartbeat');
+        localStorage.removeItem('no-remember-me');
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   return (

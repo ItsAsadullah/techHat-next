@@ -23,7 +23,11 @@ function makePrismaClient() {
     }
 
     const client = new PrismaClient({
-      datasourceUrl: url.toString(),
+      datasources: {
+        db: {
+          url: url.toString(),
+        },
+      },
     })
 
     // Add query logging extension for performance debugging
@@ -54,7 +58,11 @@ function makePrismaClient() {
     return client
   } catch (e) {
     return new PrismaClient({
-        datasourceUrl: databaseUrl,
+      datasources: {
+        db: {
+          url: databaseUrl,
+        },
+      },
     })
   }
 }

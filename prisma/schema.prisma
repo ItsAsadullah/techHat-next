@@ -126,11 +126,46 @@ model User {
   orders   Order[]
   reviews  Review[]
   wishlist Wishlist[]
+  addresses CustomerAddress[]
+  notificationPreference NotificationPreference?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("users")
+}
+
+model CustomerAddress {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  label     String?
+  type      String   @default("home")
+  name      String
+  phone     String
+  address   String
+  division  String
+  district  String
+  upazila   String?
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("customer_addresses")
+}
+
+model NotificationPreference {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  settings  Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
 }
 
 // --------------------------------------
@@ -426,6 +461,8 @@ model Product {
   warehouseTransferItems WarehouseTransferItem[]
   productAuditLogs       ProductAuditLog[]
   supplierProducts       SupplierProduct[]
+  productBatches         ProductBatch[]
+  productSerials         ProductSerial[]
 
   @@index([name])
   @@index([categoryId, status])
@@ -535,6 +572,7 @@ model Variant {
   purchaseOrderItems     PurchaseOrderItem[]
   purchaseReturnItems    PurchaseReturnItem[]
   warehouseTransferItems WarehouseTransferItem[]
+  variantBatches         ProductBatch[]
 
   @@map("product_variants")
 }
@@ -867,23 +905,48 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model ProductBatch {
+  id                String    @id @default(uuid())
+  productId         String    @map("product_id")
+  variantId         String?   @map("variant_id")
+  batchNumber       String    @map("batch_number")
+  manufacturingDate DateTime? @map("manufacturing_date")
+  expiryDate        DateTime? @map("expiry_date")
+  stock             Int       @default(0)
+
+  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant Variant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, variantId, batchNumber])
+  @@map("product_batches")
+}
+
 model ProductSerial {
-  id           String       @id @default(uuid())
-  variantId    String
-  serialNumber String
-  status       SerialStatus @default(AVAILABLE)
+  id              String       @id @default(uuid())
+  productId       String       @map("product_id")
+  variantId       String?      @map("variant_id")
+  serialNumber    String       @map("serial_number")
+  status          SerialStatus @default(AVAILABLE)
+  warrantyEndDate DateTime?    @map("warranty_end_date")
+
+  // Origin info
+  grnItemId String? @map("grn_item_id")
 
   // Sales Info
   isSold  Boolean   @default(false)
   soldAt  DateTime?
   orderId String? // Link to order if sold
 
-  variant Variant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant Variant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([variantId, serialNumber])
+  @@unique([productId, serialNumber])
   @@map("product_serials")
 }
 
@@ -1142,6 +1205,11 @@ model Supplier {
   supplierLedgers  SupplierLedger[]
   supplierProducts SupplierProduct[]
   PurchaseReturn   PurchaseReturn[]
+
+  // Intelligence Metrics
+  creditLimit      Float              @default(0) @map("credit_limit")
+  rating           Float?
+  riskScore        Int?               @map("risk_score")
 
   @@map("suppliers")
 }
@@ -1418,7 +1486,13 @@ model GoodsReceiveNoteItem {
   rejectedQty  Int      @default(0) @map("rejected_qty")
   acceptedQty  Int      @map("accepted_qty")
   unitCost     Float    @default(0) @map("unit_cost")
+  
+  // Advanced Tracking
   batchNumber  String?  @map("batch_number")
+  mfgDate      DateTime? @map("mfg_date")
+  expiryDate   DateTime? @map("expiry_date")
+  serials      Json?    // Array of string serial numbers
+  
   imei         String?
   serialNumber String?  @map("serial_number")
   createdAt    DateTime @default(now()) @map("created_at")
@@ -1724,4 +1798,14 @@ model AiLearningLog {
   createdAt       DateTime @default(now())
 
   @@map("ai_learning_logs")
+}
+
+model NewsletterSubscriber {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  isActive     Boolean  @default(true) @map("is_active")
+  subscribedAt DateTime @default(now()) @map("subscribed_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("newsletter_subscribers")
 }

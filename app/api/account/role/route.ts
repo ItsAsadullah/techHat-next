@@ -10,7 +10,6 @@ const supabaseAdmin = createClient(
 
 /** Prisma Role enum values that grant admin access */
 const ADMIN_ROLES = ['SUPER_ADMIN', 'STAFF'];
-const ADMIN_EMAILS = ['techhat.shop@gmail.com'];
 
 /**
  * GET /api/account/role
@@ -35,7 +34,12 @@ export async function GET(request: NextRequest) {
 
     if (token) {
       const { data, error } = await supabaseAdmin.auth.getUser(token);
-      if (!error && data.user) user = data.user as any;
+      if (!error && data.user) {
+        user = {
+          email: data.user.email,
+          app_metadata: data.user.app_metadata as { app_role?: string },
+        };
+      }
     }
 
     // --- Fallback: cookie-based session ---
@@ -52,16 +56,16 @@ export async function GET(request: NextRequest) {
         }
       );
       const { data, error } = await supabase.auth.getUser();
-      if (!error && data.user) user = data.user as any;
+      if (!error && data.user) {
+        user = {
+          email: data.user.email,
+          app_metadata: data.user.app_metadata as { app_role?: string },
+        };
+      }
     }
 
     if (!user) {
       return NextResponse.json({ role: 'customer', isAdmin: false });
-    }
-
-    // Explicit email override for the TechHat admin mailbox.
-    if (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) {
-      return NextResponse.json({ role: 'super_admin', isAdmin: true });
     }
 
     // 1. JWT claim (fastest — set by custom_access_token_hook if enabled)

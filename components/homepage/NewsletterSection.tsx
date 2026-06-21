@@ -8,13 +8,30 @@ export default function NewsletterSection() {
   const [email, setEmail] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && agreed) {
-      // TODO: Integrate with newsletter service
+    if (!email || !agreed || submitting) return;
+
+    setSubmitting(true);
+    setError('');
+    try {
+      const response = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Subscription failed.');
+
       setSubmitted(true);
       setEmail('');
+    } catch (subscriptionError) {
+      setError(subscriptionError instanceof Error ? subscriptionError.message : 'Subscription failed.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -56,18 +73,19 @@ export default function NewsletterSection() {
                   />
                   <button
                     type="submit"
-                    disabled={!agreed}
+                    disabled={!agreed || submitting}
                     className={cn(
                       'px-7 py-3.5 rounded-full text-sm font-semibold transition-all flex items-center justify-center gap-2',
-                      agreed
+                      agreed && !submitting
                         ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/30'
                         : 'bg-gray-700 text-gray-400 cursor-not-allowed'
                     )}
                   >
-                    Subscribe
+                    {submitting ? 'Subscribing…' : 'Subscribe'}
                     <Send className="w-4 h-4" />
                   </button>
                 </div>
+                {error && <p className="text-sm text-red-400" role="alert">{error}</p>}
 
                 <label className="flex items-center justify-center gap-2 cursor-pointer">
                   <input

@@ -22,7 +22,6 @@ interface Address {
   isDefault: boolean;
 }
 
-const STORAGE_KEY = 'techhat_addresses';
 const ADDRESS_TYPES = [
   { value: 'home', label: 'Home', icon: Home },
   { value: 'work', label: 'Work', icon: Briefcase },
@@ -47,9 +46,10 @@ function SelectInput({ value, onChange, options, placeholder }: { value: string,
 
 function AddressForm({ initial, onSave, onCancel }: {
   initial?: Address | null;
-  onSave: (a: Address) => void;
+  onSave: (a: Omit<Address, 'id'>) => Promise<void>;
   onCancel: () => void;
 }) {
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Omit<Address, 'id' | 'isDefault'>>({
     label: initial?.label || '',
     type: initial?.type || 'home',
@@ -71,13 +71,18 @@ function AddressForm({ initial, onSave, onCancel }: {
       : [],
     [form.division, form.district]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.phone || !form.address || !form.division || !form.district) {
       toast.error('Please fill in all required fields');
       return;
     }
-    onSave({ ...form, id: initial?.id || Date.now().toString(), isDefault: initial?.isDefault || false } as Address);
+    setSaving(true);
+    try {
+      await onSave({ ...form, isDefault: initial?.isDefault || false });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -161,9 +166,9 @@ function AddressForm({ initial, onSave, onCancel }: {
           className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
           Cancel
         </button>
-        <button type="submit"
+        <button type="submit" disabled={saving}
           className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-200 transition-all">
-          {initial ? 'Update Address' : 'Save Address'}
+          {saving ? 'Saving…' : initial ? 'Update Address' : 'Save Address'}
         </button>
       </div>
     </form>
@@ -174,38 +179,70 @@ export default function AddressesPage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Address | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) setAddresses(JSON.parse(stored));
+    fetch('/api/account/addresses')
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Could not load addresses.');
+        setAddresses(result.addresses || []);
+      })
+      .catch((error) => toast.error(error instanceof Error ? error.message : 'Could not load addresses.'))
+      .finally(() => setLoading(false));
   }, []);
 
-  const saveAll = (list: Address[]) => {
-    setAddresses(list);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  };
-
-  const handleSave = (addr: Address) => {
-    let list: Address[];
-    if (editing) {
-      list = addresses.map(a => a.id === addr.id ? addr : a);
-      toast.success('Address updated');
-    } else {
-      list = [...addresses, addr];
-      toast.success('Address saved');
+  const handleSave = async (addr: Omit<Address, 'id'>) => {
+    const response = await fetch(editing ? `/api/account/addresses/${editing.id}` : '/api/account/addresses', {
+      method: editing ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(addr),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      toast.error(result.error || 'Could not save address.');
+      return;
     }
-    saveAll(list);
+    setAddresses((current) => {
+      const next = editing
+        ? current.map((item) => item.id === editing.id ? result.address : item)
+        : [...current, result.address];
+      return next
+        .map((item) => result.address.isDefault ? { ...item, isDefault: item.id === result.address.id } : item)
+        .sort((a, b) => Number(b.isDefault) - Number(a.isDefault));
+    });
+    toast.success(editing ? 'Address updated' : 'Address saved');
     setShowForm(false);
     setEditing(null);
   };
 
-  const handleDelete = (id: string) => {
-    saveAll(addresses.filter(a => a.id !== id));
+  const handleDelete = async (id: string) => {
+    const response = await fetch(`/api/account/addresses/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const result = await response.json();
+      toast.error(result.error || 'Could not remove address.');
+      return;
+    }
+    const remaining = addresses.filter((address) => address.id !== id);
+    if (remaining.length > 0 && !remaining.some((address) => address.isDefault)) {
+      remaining[0] = { ...remaining[0], isDefault: true };
+    }
+    setAddresses(remaining);
     toast.success('Address removed');
   };
 
-  const handleSetDefault = (id: string) => {
-    saveAll(addresses.map(a => ({ ...a, isDefault: a.id === id })));
+  const handleSetDefault = async (id: string) => {
+    const response = await fetch(`/api/account/addresses/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isDefault: true }),
+    });
+    if (!response.ok) {
+      const result = await response.json();
+      toast.error(result.error || 'Could not update default address.');
+      return;
+    }
+    setAddresses(addresses.map(a => ({ ...a, isDefault: a.id === id })));
     toast.success('Default address updated');
   };
 
@@ -264,7 +301,11 @@ export default function AddressesPage() {
       </AnimatePresence>
 
       {/* Addresses List */}
-      {addresses.length === 0 && !showForm ? (
+      {loading ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 py-16 text-center text-sm text-gray-400">
+          Loading addresses…
+        </div>
+      ) : addresses.length === 0 && !showForm ? (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 py-16 text-center">
           <MapPin className="w-12 h-12 text-gray-200 mx-auto mb-3" />
           <p className="font-semibold text-gray-500">No saved addresses</p>

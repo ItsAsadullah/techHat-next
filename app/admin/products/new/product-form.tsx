@@ -204,8 +204,14 @@ export default function ProductForm({ categories, brands, attributesList, catego
   const barcode = form.watch('barcode');
   const status = form.watch('status');
   const productVariantType = form.watch('productVariantType');
-  const galleryImages = form.watch('images') || [];
-  const setGalleryImages = (imgs: any) => form.setValue('images', imgs, { shouldDirty: true });
+  const watchedImages = form.watch('images') || [];
+  const galleryImages: GalleryImage[] = watchedImages.map((img, index) => ({
+    id: img.id || `image-${index}`,
+    url: img.url,
+    isThumbnail: img.isThumbnail ?? index === 0,
+    alt: img.alt ?? null,
+  }));
+  const setGalleryImages = (imgs: GalleryImage[]) => form.setValue('images', imgs as ProductFormValues['images'], { shouldDirty: true });
 
   const statusCfg = statusConfig[status] ?? statusConfig['DRAFT'];
 

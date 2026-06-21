@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-const ADMIN_EMAILS = ['techhat.shop@gmail.com'];
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -91,6 +90,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         localStorage.setItem('no-remember-me', '1');
       }
       sessionStorage.setItem('session-heartbeat', '1');
+      document.cookie = "browser_session=1; path=/";
 
       // ── Credential Management API ──────────────────────────────────────────
       // Explicitly tell the browser to save this password. This is the
@@ -117,7 +117,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
         });
         const roleData = await roleRes.json();
-        if (roleData.isAdmin || ADMIN_EMAILS.includes(email.toLowerCase())) {
+        if (roleData.isAdmin) {
           window.location.href = '/admin/dashboard';
           return;
         }
@@ -207,6 +207,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
     try {
+      // Set session markers before redirecting to OAuth provider.
+      // This ensures that when the user returns, Providers.tsx doesn't mistake the
+      // return navigation for a fresh browser open and log them out immediately.
+      document.cookie = "browser_session=1; path=/";
+      sessionStorage.setItem('session-heartbeat', '1');
+      if (!rememberMe) {
+        localStorage.setItem('no-remember-me', '1');
+      }
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {

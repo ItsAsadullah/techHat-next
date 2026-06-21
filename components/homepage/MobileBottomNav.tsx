@@ -11,7 +11,6 @@ import AuthModal from '@/components/AuthModal';
 import Image from 'next/image';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-const ADMIN_EMAILS = ['techhat.shop@gmail.com'];
 
 interface Category {
   id: string;
@@ -42,22 +41,40 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  const isTechHatAdminEmail = (email?: string | null) =>
-    !!email && ADMIN_EMAILS.includes(email.toLowerCase());
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+
+    const checkRole = async (session: any) => {
+      if (!session?.user) {
+        setIsAdmin(false);
+        return;
+      }
+      const role = session.user.app_metadata?.app_role;
+      if (role === 'admin' || role === 'super_admin') {
+        setIsAdmin(true);
+      } else {
+        try {
+          const res = await fetch('/api/account/role');
+          if (res.ok) {
+            const data = await res.json();
+            setIsAdmin(data.isAdmin === true);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      const role = session?.user?.app_metadata?.app_role;
-      setIsAdmin(role === 'admin' || role === 'super_admin');
+      checkRole(session);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      const role = session?.user?.app_metadata?.app_role;
-      setIsAdmin(role === 'admin' || role === 'super_admin');
+      checkRole(session);
     });
 
     // Listen for hamburger click from top header
@@ -273,7 +290,7 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
                     <p className="text-sm font-semibold text-gray-800 truncate">{user.user_metadata?.full_name || user.email?.split('@')[0]}</p>
                     <p className="text-xs text-gray-400 truncate">{user.email}</p>
                   </div>
-                  {isAdmin || isTechHatAdminEmail(user.email) ? (
+                  {isAdmin ? (
                     <Link href="/admin/dashboard" onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 rounded-xl hover:bg-gray-50">
                       <LayoutDashboard className="w-4 h-4 text-indigo-500" /> Admin Panel
@@ -321,7 +338,7 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
               <p className="text-xs text-gray-400 truncate">{user.email}</p>
             </div>
             <div className="py-1">
-              {isAdmin || isTechHatAdminEmail(user.email) ? (
+              {isAdmin ? (
                 <Link href="/admin/dashboard" onClick={() => setAccountMenuOpen(false)}
                   className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
                   <LayoutDashboard className="w-4 h-4 text-indigo-500" /> Admin Panel

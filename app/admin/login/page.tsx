@@ -122,6 +122,11 @@ export default function AdminLogin() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      
+      // Explicitly set session markers to prevent Providers.tsx from auto-logging out the admin
+      document.cookie = "browser_session=1; path=/";
+      sessionStorage.setItem('session-heartbeat', '1');
+
       setTerminalLines(prev => [...prev, '> IDENTITY VERIFIED. ACCESS GRANTED.', '> LOADING RESTRICTED AREA...']);
       setTimeout(() => {
         window.location.href = '/admin/dashboard';

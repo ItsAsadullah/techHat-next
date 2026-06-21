@@ -2,9 +2,10 @@ import { getSupplierStatement } from '@/lib/actions/supplier-statement-actions';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Printer, ChevronLeft } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { PrintButton } from '@/components/admin/print-button';
 
 export default async function SupplierStatementPage({ params, searchParams }: { params: { id: string }, searchParams: { from?: string, to?: string } }) {
   const { id } = params;
@@ -25,9 +26,7 @@ export default async function SupplierStatementPage({ params, searchParams }: { 
             Back to Supplier
           </Button>
         </Link>
-        <Button onClick={() => {}} className="gap-2" /* Need client component wrapper for actual print window */>
-          <Printer className="h-4 w-4" /> Print Statement
-        </Button>
+        <PrintButton label="Print Statement" />
       </div>
 
       <Card className="print:shadow-none print:border-none print:m-0">

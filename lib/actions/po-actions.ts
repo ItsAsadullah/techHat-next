@@ -133,6 +133,9 @@ export async function searchProductsForPO(query: string) {
         name: true,
         sku: true,
         costPrice: true,
+        lastPurchaseCost: true,
+        reorderPoint: true,
+        reservedStock: true,
         images: true,
         productImages: {
           take: 1,
@@ -144,6 +147,7 @@ export async function searchProductsForPO(query: string) {
             name: true,
             sku: true,
             costPrice: true,
+            lastPurchaseCost: true,
             image: true,
           }
         }
@@ -163,10 +167,12 @@ export async function searchProductsForPO(query: string) {
       ...p,
       images: p.productImages?.length > 0 ? p.productImages : (p.images && p.images.length > 0 ? p.images.map((url: string) => ({ url })) : []),
       stock: stockMap.get(p.id)?.availableStock || 0,
+      incomingStock: 0, // In real scenario, calculate from pending POs
       variants: p.variants.map((v: any) => ({
         ...v,
         images: v.image ? [{ url: v.image }] : [],
         stock: stockMap.get(`${p.id}-${v.id}`)?.availableStock || 0,
+        incomingStock: 0,
       })),
     }));
 

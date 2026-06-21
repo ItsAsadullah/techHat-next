@@ -89,34 +89,34 @@ export default function PurchaseOrderDetailsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Printer className="mr-2 h-4 w-4" /> Print
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Download className="mr-2 h-4 w-4" /> PDF
           </Button>
 
           {po.status === 'DRAFT' && (
             <>
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild className="print:hidden">
                 <Link href={`/admin/purchases/edit/${po.id}`}>
                   <Edit className="mr-2 h-4 w-4" /> Edit
                 </Link>
               </Button>
-              <Button size="sm" onClick={() => handleStatusChange('SUBMITTED')} disabled={actionLoading}>
+              <Button size="sm" onClick={() => handleStatusChange('SUBMITTED')} disabled={actionLoading} className="print:hidden">
                 <Send className="mr-2 h-4 w-4" /> Submit PO
               </Button>
             </>
           )}
 
           {po.status === 'SUBMITTED' && (
-            <Button size="sm" onClick={() => handleStatusChange('APPROVED')} disabled={actionLoading}>
+            <Button size="sm" onClick={() => handleStatusChange('APPROVED')} disabled={actionLoading} className="print:hidden">
               <CheckCircle className="mr-2 h-4 w-4" /> Approve PO
             </Button>
           )}
 
           {po.status === 'APPROVED' && (
-            <Button size="sm" asChild>
+            <Button size="sm" asChild className="print:hidden">
               <Link href={`/admin/inventory/grn/new?poId=${po.id}`}>
                 <Package className="mr-2 h-4 w-4" /> Receive Goods (GRN)
               </Link>
@@ -124,14 +124,14 @@ export default function PurchaseOrderDetailsPage() {
           )}
 
           {['DRAFT', 'SUBMITTED', 'APPROVED'].includes(po.status) && (
-            <Button variant="destructive" size="sm" onClick={() => handleStatusChange('CANCELLED')} disabled={actionLoading}>
+            <Button variant="destructive" size="sm" onClick={() => handleStatusChange('CANCELLED')} disabled={actionLoading} className="print:hidden">
               <XCircle className="mr-2 h-4 w-4" /> Cancel
             </Button>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:hidden">
         {/* Main Details */}
         <div className="md:col-span-2 space-y-6">
           <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
@@ -255,6 +255,141 @@ export default function PurchaseOrderDetailsPage() {
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">{po.note}</p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Printable Area - Hidden on Screen, Visible on Print */}
+      <div className="hidden print:block font-sans text-black">
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media print {
+            @page { size: A4; margin: 15mm; }
+            body { margin: 0; padding: 0; background: white; }
+            .print\\:hidden { display: none !important; }
+            .print\\:block { display: block !important; }
+          }
+        `}} />
+        
+        <div className="flex justify-between items-start border-b-2 border-gray-900 pb-6 mb-8">
+          <div>
+            <h1 className="text-3xl font-black uppercase tracking-wider text-gray-900 mb-1">Purchase Order</h1>
+            <p className="text-gray-500 font-medium">TechHat ERP</p>
+          </div>
+          <div className="text-right">
+            <h2 className="text-xl font-bold">{po.poNumber}</h2>
+            <div className="text-sm text-gray-600 mt-1">
+              <p>Date: {new Date(po.createdAt).toLocaleDateString()}</p>
+              <p>Status: {po.status.replace('_', ' ')}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-12 mb-8">
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 border-b border-gray-300 pb-1 mb-3">Supplier Details</h3>
+            <p className="font-bold text-lg">{po.supplier.name}</p>
+            {po.supplier.companyName && <p className="text-gray-700">{po.supplier.companyName}</p>}
+            <p className="text-gray-700">{po.supplier.phone}</p>
+            {po.supplier.email && <p className="text-gray-700">{po.supplier.email}</p>}
+            {po.supplier.address && <p className="text-gray-700 mt-1">{po.supplier.address}</p>}
+          </div>
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 border-b border-gray-300 pb-1 mb-3">Shipping Details</h3>
+            <p className="font-bold text-lg">TechHat Warehouse</p>
+            <p className="text-gray-700">{po.warehouse?.name || 'Main Warehouse'}</p>
+            <p className="text-gray-700 mt-2"><span className="font-semibold">Expected Delivery:</span> {po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate).toLocaleDateString() : 'N/A'}</p>
+          </div>
+        </div>
+
+        <div className="mb-8 border border-gray-300 rounded-lg overflow-hidden">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-gray-100 text-gray-800">
+              <tr>
+                <th className="py-3 px-4 font-bold text-sm border-b border-gray-300">#</th>
+                <th className="py-3 px-4 font-bold text-sm border-b border-gray-300">Item Description</th>
+                <th className="py-3 px-4 font-bold text-sm text-center border-b border-gray-300">Qty</th>
+                <th className="py-3 px-4 font-bold text-sm text-right border-b border-gray-300">Unit Price</th>
+                <th className="py-3 px-4 font-bold text-sm text-right border-b border-gray-300">Line Total</th>
+              </tr>
+            </thead>
+            <tbody className="text-sm">
+              {po.items.map((item: any, idx: number) => (
+                <tr key={item.id} className="border-b border-gray-200 last:border-0">
+                  <td className="py-3 px-4 text-gray-600">{idx + 1}</td>
+                  <td className="py-3 px-4">
+                    <p className="font-semibold text-gray-900">{item.product.name}</p>
+                    {item.variant && <p className="text-gray-600 text-xs mt-0.5">{item.variant.name}</p>}
+                    <p className="text-gray-400 text-[10px] font-mono mt-0.5">SKU: {item.variant?.sku || item.product.sku}</p>
+                  </td>
+                  <td className="py-3 px-4 text-center font-mono">{item.quantity}</td>
+                  <td className="py-3 px-4 text-right font-mono">৳{item.unitCost}</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold">৳{item.subtotal}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex justify-end mb-12">
+          <div className="w-[300px]">
+            <table className="w-full text-sm">
+              <tbody>
+                <tr>
+                  <td className="py-1.5 text-gray-600 font-medium">Subtotal</td>
+                  <td className="py-1.5 text-right font-mono">৳{po.totalAmount}</td>
+                </tr>
+                {po.discount > 0 && (
+                  <tr>
+                    <td className="py-1.5 text-gray-600 font-medium">Discount</td>
+                    <td className="py-1.5 text-right font-mono text-red-600">-৳{po.discount}</td>
+                  </tr>
+                )}
+                {po.tax > 0 && (
+                  <tr>
+                    <td className="py-1.5 text-gray-600 font-medium">Tax</td>
+                    <td className="py-1.5 text-right font-mono">+৳{po.tax}</td>
+                  </tr>
+                )}
+                {po.shippingCost > 0 && (
+                  <tr>
+                    <td className="py-1.5 text-gray-600 font-medium">Shipping</td>
+                    <td className="py-1.5 text-right font-mono">+৳{po.shippingCost}</td>
+                  </tr>
+                )}
+                {po.otherCost > 0 && (
+                  <tr>
+                    <td className="py-1.5 text-gray-600 font-medium">Other Costs</td>
+                    <td className="py-1.5 text-right font-mono">+৳{po.otherCost}</td>
+                  </tr>
+                )}
+                <tr className="border-t-2 border-gray-900">
+                  <td className="py-3 font-bold text-base">Grand Total</td>
+                  <td className="py-3 text-right font-mono font-bold text-lg">৳{po.grandTotal}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {po.note && (
+          <div className="mb-16">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 border-b border-gray-300 pb-1 mb-3">Notes & Terms</h3>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">{po.note}</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-24 mt-24">
+          <div className="border-t border-gray-400 pt-2 text-center">
+            <p className="font-bold text-sm">Authorized Signature</p>
+            <p className="text-xs text-gray-500 mt-1">TechHat Management</p>
+          </div>
+          <div className="border-t border-gray-400 pt-2 text-center">
+            <p className="font-bold text-sm">Supplier Signature</p>
+            <p className="text-xs text-gray-500 mt-1">Acceptance of Order</p>
+          </div>
+        </div>
+
+        <div className="mt-12 text-center text-[10px] text-gray-400 border-t border-gray-200 pt-4">
+          This is a computer-generated document. No signature is required for digital transmission.
         </div>
       </div>
     </div>

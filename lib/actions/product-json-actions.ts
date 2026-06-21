@@ -65,7 +65,7 @@ export async function createProductJSON(payload: {
   seoTitle?: string;
   metaDescription?: string;
   slug?: string;
-  images?: { id: string; url: string; isThumbnail: boolean }[];
+  images?: { id: string; url: string; isThumbnail: boolean; alt?: string | null }[];
   variants?: any[];
   attributes?: any[];
   productSpecs?: { key: string; value: string }[];

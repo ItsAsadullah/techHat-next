@@ -98,20 +98,17 @@ export async function createStockLedgerEntry(
   // 4. Create Immutable Ledger Entry
   const ledgerEntry = await db.stockLedger.create({
     data: {
-      date: new Date(),
       referenceType: params.referenceType,
       referenceId: params.referenceId,
       warehouseId: params.warehouseId,
       productId: params.productId,
       variantId: params.variantId || null,
-      openingQty: warehouseOpeningQty,
       inQty: inQty,
       outQty: outQty,
-      closingQty: warehouseClosingQty,
+      balanceQty: warehouseClosingQty,
       unitCost: transactionUnitCost,
       totalValue: totalValue,
-      remarks: params.remarks,
-      createdBy: params.createdBy
+      note: params.remarks
     }
   });
 

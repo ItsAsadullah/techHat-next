@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   HardDrive,
   ArrowRight,
-  CheckCircle2,
+  CircleGauge,
   Zap,
   Globe2,
   Home,
@@ -178,9 +178,9 @@ export default async function SettingsPage() {
             Manage every aspect of your business — store, catalog, operations, and system.
           </p>
         </div>
-        <span className="flex items-center gap-1.5 text-xs font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 px-3 py-1.5 rounded-full">
-          <CheckCircle2 className="w-3.5 h-3.5" />
-          All systems normal
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded-full">
+          <CircleGauge className="w-3.5 h-3.5" />
+          Settings overview
         </span>
       </div>
 

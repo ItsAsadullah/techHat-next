@@ -2,12 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, Loader2, ArrowLeft, Plus, Trash2, Search as SearchIcon, Package } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -15,15 +11,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { createPurchaseOrder, updatePurchaseOrder, PurchaseOrderFormData, searchProductsForPO, POItemInput } from '@/lib/actions/po-actions';
+import { Input } from '@/components/ui/input';
+
+// Actions
+import { createPurchaseOrder, updatePurchaseOrder, PurchaseOrderFormData, searchProductsForPO, updatePurchaseOrderStatus } from '@/lib/actions/po-actions';
+import { getSupplierIntelligence, getAIAssistantRecommendations } from '@/lib/actions/supplier-intelligence';
+
+// Subcomponents
+import { WorkspaceHeader } from './WorkspaceHeader';
+import { SupplierIntelligenceCard } from './SupplierIntelligenceCard';
+import { SmartProductSelector } from './SmartProductSelector';
+import { PurchaseTable } from './PurchaseTable';
+import { IntelligenceSidebar } from './IntelligenceSidebar';
+import { AIAssistantCard } from './AIAssistantCard';
+import { PurchaseNotesCard } from './PurchaseNotesCard';
 
 interface POFormProps {
   initialData?: any;
@@ -32,7 +33,7 @@ interface POFormProps {
   warehouses: any[];
 }
 
-export function PurchaseOrderForm({ initialData, isEditMode, suppliers, warehouses }: POFormProps) {
+export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, warehouses }: POFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -43,6 +44,7 @@ export function PurchaseOrderForm({ initialData, isEditMode, suppliers, warehous
     initialData?.expectedDeliveryDate ? new Date(initialData.expectedDeliveryDate).toISOString().split('T')[0] : ''
   );
   const [note, setNote] = useState(initialData?.note || '');
+  const [status, setStatus] = useState<'DRAFT' | 'SUBMITTED' | 'APPROVED'>(initialData?.status || 'DRAFT');
 
   // Costs State
   const [shippingCost, setShippingCost] = useState<number>(initialData?.shippingCost || 0);
@@ -61,14 +63,17 @@ export function PurchaseOrderForm({ initialData, isEditMode, suppliers, warehous
       unitCost: item.unitCost,
       discount: item.discount || 0,
       tax: item.tax || 0,
+      currentStock: item.variant?.stock || item.product?.stock || 0,
+      lastPurchaseCost: item.variant?.lastPurchaseCost || item.product?.lastPurchaseCost || 0,
+      incomingStock: 0,
+      reservedStock: item.product?.reservedStock || 0
     })) || []
   );
 
-  // Product Search State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  // Intelligence State
+  const [supplierIntell, setSupplierIntell] = useState<any>(null);
+  const [aiRecs, setAiRecs] = useState<any>(null);
+  const [isLoadingIntell, setIsLoadingIntell] = useState(false);
 
   // Derived Totals
   const totals = useMemo(() => {
@@ -89,52 +94,52 @@ export function PurchaseOrderForm({ initialData, isEditMode, suppliers, warehous
     return { subtotal, totalDiscount, totalTax, grandTotal, formattedItems };
   }, [items, shippingCost, otherCost]);
 
-  // Product Search Effect
+  // Load Intelligence on Supplier Change
   useEffect(() => {
-    const delayDebounceFn = setTimeout(async () => {
-      setIsSearching(true);
-      const res = await searchProductsForPO(searchQuery);
-      if (res.success) setSearchResults(res.data || []);
-      setIsSearching(false);
-    }, 200);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery]);
-
-  const filteredSearchResults = useMemo(() => {
-    const results = [];
-    for (const product of searchResults) {
-      const hasVariants = product.variants && product.variants.length > 0;
-      
-      if (hasVariants) {
-        const remainingVariants = product.variants.filter((v: any) => 
-          !items.some(item => item.productId === product.id && item.variantId === v.id)
-        );
-        if (remainingVariants.length > 0) {
-          results.push({ ...product, variants: remainingVariants });
-        }
-      } else {
-        const isAdded = items.some(item => item.productId === product.id && !item.variantId);
-        if (!isAdded) {
-          results.push(product);
-        }
-      }
+    if (!supplierId) {
+      setSupplierIntell(null);
+      setAiRecs(null);
+      return;
     }
-    return results;
-  }, [searchResults, items]);
+    const loadIntell = async () => {
+      setIsLoadingIntell(true);
+      const [intellRes, aiRes] = await Promise.all([
+        getSupplierIntelligence(supplierId),
+        getAIAssistantRecommendations(supplierId)
+      ]);
+      if (intellRes.success) setSupplierIntell(intellRes.data);
+      if (aiRes.success) setAiRecs(aiRes.data);
+      setIsLoadingIntell(false);
+    };
+    loadIntell();
+  }, [supplierId]);
 
   const addProductToPO = (product: any, variant: any = null) => {
     setItems(prev => {
       const existingItemIndex = prev.findIndex(item => 
-        item.productId === product.id && 
+        item.productId === (product.id || product) && 
         item.variantId === (variant ? variant.id : null)
       );
 
       if (existingItemIndex >= 0) {
         const newItems = [...prev];
         newItems[existingItemIndex].quantity += 1;
-        toast.success(`Increased quantity of ${variant ? variant.name : product.name}`);
+        toast.success(`Increased quantity.`);
         return newItems;
+      }
+
+      // If added via AI recommendations (we only have IDs), we need full fetch. 
+      // But for Smart Selector, we have the full product object.
+      if (typeof product === 'string') {
+        toast.info("Fetching product details...");
+        searchProductsForPO(product).then(res => {
+           if(res.success && res.data.length > 0) {
+             const p = res.data[0];
+             const v = variant ? p.variants.find((v:any)=>v.id===variant) : null;
+             addProductToPO(p, v);
+           }
+        });
+        return prev;
       }
 
       return [
@@ -150,12 +155,14 @@ export function PurchaseOrderForm({ initialData, isEditMode, suppliers, warehous
           unitCost: variant ? (variant.costPrice || product.costPrice || 0) : (product.costPrice || 0),
           discount: 0,
           tax: 0,
+          currentStock: variant ? variant.stock : product.stock,
+          lastPurchaseCost: variant ? variant.lastPurchaseCost : product.lastPurchaseCost,
+          incomingStock: variant ? variant.incomingStock : product.incomingStock,
+          reservedStock: product.reservedStock || 0,
+          image: variant?.images?.[0]?.url || product?.images?.[0]?.url || null
         }
       ];
     });
-    setSearchQuery('');
-    setIsSearchFocused(false);
-    document.getElementById('product-search-input')?.blur();
   };
 
   const updateItem = (id: string, field: string, value: number) => {
@@ -166,8 +173,7 @@ export function PurchaseOrderForm({ initialData, isEditMode, suppliers, warehous
     setItems(prev => prev.filter(item => item.id !== id));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (submitStatus: 'DRAFT' | 'SUBMITTED' | 'APPROVED') => {
     if (!supplierId) return toast.error('Please select a supplier.');
     if (items.length === 0) return toast.error('Please add at least one item to the PO.');
 
@@ -199,13 +205,19 @@ export function PurchaseOrderForm({ initialData, isEditMode, suppliers, warehous
       let res;
       if (isEditMode && initialData?.id) {
         res = await updatePurchaseOrder(initialData.id, payload);
+        if (res.success && submitStatus !== 'DRAFT' && submitStatus !== status) {
+          await updatePurchaseOrderStatus(initialData.id, submitStatus);
+        }
       } else {
         res = await createPurchaseOrder(payload);
+        if (res.success && submitStatus !== 'DRAFT') {
+           await updatePurchaseOrderStatus(res.data.id, submitStatus);
+        }
       }
 
       if (res.success) {
-        toast.success(isEditMode ? 'Purchase Order updated!' : 'Purchase Order created!');
-        router.push(isEditMode ? `/admin/purchases/${initialData.id}` : '/admin/purchases');
+        toast.success(`Purchase Order ${submitStatus.toLowerCase()}!`);
+        router.push('/admin/purchases');
       } else {
         toast.error(res.error || 'Something went wrong.');
       }
@@ -218,312 +230,101 @@ export function PurchaseOrderForm({ initialData, isEditMode, suppliers, warehous
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6 max-w-[1400px] mx-auto pb-24">
-      {/* Header */}
-      <div className="flex items-center justify-between sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b py-3 -mx-6 px-6 shadow-sm">
-        <div className="flex items-center gap-3">
-          <Button type="button" variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold">{isEditMode ? `Edit PO: ${initialData?.poNumber}` : 'New Purchase Order'}</h1>
-            <p className="text-xs text-muted-foreground">
-              {isEditMode ? 'Modify draft purchase order details.' : 'Draft a new purchase order for a supplier.'}
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>
-            Discard
-          </Button>
-          <Button type="submit" disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            {isEditMode ? 'Save PO' : 'Create Draft PO'}
-          </Button>
-        </div>
-      </div>
+    <div className="flex flex-col min-h-screen bg-gray-50/50 dark:bg-gray-950 pb-24">
+      <WorkspaceHeader 
+        isEditMode={isEditMode} 
+        poNumber={initialData?.poNumber} 
+        status={status} 
+        loading={loading} 
+        onDiscard={() => router.back()} 
+        onSubmit={handleSubmit} 
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4">
-        {/* Main Section (Left 3 Cols) */}
-        <div className="md:col-span-3 space-y-6">
+      <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 md:p-6 lg:p-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Top Bar Details */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2 col-span-1">
-              <Label>Supplier <span className="text-red-500">*</span></Label>
-              <Select value={supplierId} onValueChange={setSupplierId} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select supplier..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {suppliers.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 col-span-1">
-              <Label>Expected Delivery Date</Label>
-              <Input type="date" value={expectedDeliveryDate} onChange={e => setExpectedDeliveryDate(e.target.value)} />
-            </div>
-            <div className="space-y-2 col-span-1">
-              <Label>Target Warehouse</Label>
-              <Select value={warehouseId} onValueChange={setWarehouseId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select warehouse..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {warehouses.map(w => (
-                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Product Items Table */}
-          <div className="rounded-xl border bg-card shadow-sm">
-            <div className="p-4 border-b bg-muted/20 rounded-t-xl">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Package className="h-5 w-5 text-primary" /> Purchase Items
-              </h3>
-            </div>
+          {/* Main Workspace (70%) */}
+          <div className="lg:col-span-8 xl:col-span-9 space-y-6">
             
-            {/* Search Input for Products */}
-            <div className="p-4 border-b relative">
-              <div className="relative">
-                <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="product-search-input"
-                  placeholder="Search products by name or SKU to add..."
-                  className="pl-9 h-10"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onFocus={() => setIsSearchFocused(true)}
-                  onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-                />
-                {isSearching && <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />}
-              </div>
-              
-              {/* Dropdown Results */}
-              {isSearchFocused && filteredSearchResults.length > 0 && (
-                <div className="absolute top-full left-4 right-4 mt-1 bg-popover text-popover-foreground border rounded-lg shadow-xl z-50 max-h-[350px] overflow-y-auto divide-y">
-                  {filteredSearchResults.map((product) => (
-                    <div key={product.id} className="p-1">
-                      {product.variants?.length > 0 ? (
-                        <div className="space-y-1">
-                          <div className="text-xs font-semibold px-3 py-1.5 text-muted-foreground uppercase tracking-wider bg-muted/30 rounded flex items-center gap-2">
-                            {product.images?.[0]?.url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={product.images[0].url} alt={product.name} className="w-5 h-5 rounded object-cover" />
-                            ) : (
-                              <Package className="h-4 w-4" />
-                            )}
-                            {product.name}
-                          </div>
-                          {product.variants.map((v: any) => (
-                            <button
-                              key={v.id}
-                              type="button"
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                addProductToPO(product, v);
-                              }}
-                              className="w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-md flex justify-between items-center transition-colors group"
-                            >
-                              <div className="flex items-center gap-3">
-                                {v.images?.[0]?.url ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={v.images[0].url} alt={v.name} className="w-8 h-8 rounded border object-cover" />
-                                ) : (
-                                  <div className="w-8 h-8 rounded border bg-muted/50 flex items-center justify-center">
-                                    <Package className="h-4 w-4 text-muted-foreground" />
-                                  </div>
-                                )}
-                                <div>
-                                  <div className="font-medium">{v.name}</div>
-                                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                                    <span className="font-mono bg-muted px-1.5 py-0.5 rounded">{v.sku}</span>
-                                    <span className={v.stock <= 0 ? 'text-red-500 font-medium' : 'text-emerald-600 dark:text-emerald-400'}>
-                                      Stock: {v.stock}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <div className="text-xs text-muted-foreground mb-0.5">Cost Price</div>
-                                <div className="text-sm font-mono font-medium">৳{v.costPrice || product.costPrice || 0}</div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            addProductToPO(product);
-                          }}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-md flex justify-between items-center transition-colors"
-                        >
-                          <div className="flex items-center gap-3">
-                            {product.images?.[0]?.url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={product.images[0].url} alt={product.name} className="w-8 h-8 rounded border object-cover" />
-                            ) : (
-                              <div className="w-8 h-8 rounded border bg-muted/50 flex items-center justify-center">
-                                <Package className="h-4 w-4 text-muted-foreground" />
-                              </div>
-                            )}
-                            <div>
-                              <div className="font-medium">{product.name}</div>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                                <span className="font-mono bg-muted px-1.5 py-0.5 rounded">{product.sku}</span>
-                                <span className={product.stock <= 0 ? 'text-red-500 font-medium' : 'text-emerald-600 dark:text-emerald-400'}>
-                                  Stock: {product.stock}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xs text-muted-foreground mb-0.5">Cost Price</div>
-                            <div className="text-sm font-mono font-medium">৳{product.costPrice || 0}</div>
-                          </div>
-                        </button>
-                      )}
-                    </div>
-                  ))}
+            {/* Core Details Card */}
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-6 shadow-sm">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier <span className="text-red-500">*</span></Label>
+                  <Select value={supplierId} onValueChange={setSupplierId} disabled={isEditMode && status !== 'DRAFT'}>
+                    <SelectTrigger className="h-12 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+                      <SelectValue placeholder="Select supplier..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {suppliers.map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
-            </div>
-
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-muted/10">
-                  <TableRow>
-                    <TableHead className="w-[300px]">Product / SKU</TableHead>
-                    <TableHead className="w-[120px]">Qty</TableHead>
-                    <TableHead className="w-[140px]">Unit Cost (৳)</TableHead>
-                    <TableHead className="w-[120px]">Disc (৳)</TableHead>
-                    <TableHead className="w-[120px]">Tax (৳)</TableHead>
-                    <TableHead className="w-[120px] text-right">Total (৳)</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {totals.formattedItems.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        No items added yet. Search products to add.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {totals.formattedItems.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        <div className="font-medium text-sm">{item.name}</div>
-                        {item.variantName && <div className="text-xs text-muted-foreground">{item.variantName}</div>}
-                        <div className="text-[10px] font-mono text-muted-foreground mt-0.5">{item.sku}</div>
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" min="1" className="h-8 w-20"
-                          value={item.quantity}
-                          onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 1)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" min="0" step="0.01" className="h-8"
-                          value={item.unitCost}
-                          onChange={(e) => updateItem(item.id, 'unitCost', parseFloat(e.target.value) || 0)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" min="0" step="0.01" className="h-8"
-                          value={item.discount}
-                          onChange={(e) => updateItem(item.id, 'discount', parseFloat(e.target.value) || 0)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" min="0" step="0.01" className="h-8"
-                          value={item.tax}
-                          onChange={(e) => updateItem(item.id, 'tax', parseFloat(e.target.value) || 0)}
-                        />
-                      </TableCell>
-                      <TableCell className="text-right font-mono font-medium">
-                        {item.subtotal.toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeItem(item.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar Cost Calculations (Right Col) */}
-        <div className="space-y-6">
-          <div className="rounded-xl border bg-card p-6 shadow-sm">
-            <h2 className="text-sm font-semibold mb-4 border-b pb-2">Order Summary</h2>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between items-center text-muted-foreground">
-                <span>Subtotal</span>
-                <span className="font-mono">৳{totals.subtotal.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center text-red-500">
-                <span>Discount Total</span>
-                <span className="font-mono">-৳{totals.totalDiscount.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center text-muted-foreground">
-                <span>Tax Total</span>
-                <span className="font-mono">+৳{totals.totalTax.toLocaleString()}</span>
-              </div>
-              
-              <div className="pt-2 mt-2 border-t space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Shipping Cost (+)</Label>
-                  <Input 
-                    type="number" min="0" step="0.01" className="h-8"
-                    value={shippingCost}
-                    onChange={(e) => setShippingCost(parseFloat(e.target.value) || 0)}
-                  />
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Expected Delivery</Label>
+                  <Input type="date" className="h-12 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800" value={expectedDeliveryDate} onChange={e => setExpectedDeliveryDate(e.target.value)} disabled={status !== 'DRAFT'} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Other Costs (+)</Label>
-                  <Input 
-                    type="number" min="0" step="0.01" className="h-8"
-                    value={otherCost}
-                    onChange={(e) => setOtherCost(parseFloat(e.target.value) || 0)}
-                  />
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Target Warehouse</Label>
+                  <Select value={warehouseId} onValueChange={setWarehouseId} disabled={status !== 'DRAFT'}>
+                    <SelectTrigger className="h-12 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+                      <SelectValue placeholder="Select warehouse..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {warehouses.map(w => (
+                        <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-
-              <div className="flex justify-between items-center font-bold text-lg pt-4 mt-2 border-t">
-                <span>Grand Total</span>
-                <span className="font-mono text-primary">৳{totals.grandTotal.toLocaleString()}</span>
-              </div>
             </div>
-          </div>
 
-          <div className="rounded-xl border bg-card p-6 shadow-sm">
-            <h2 className="text-sm font-semibold mb-3">Internal Notes</h2>
-            <Textarea 
-              value={note} 
-              onChange={(e) => setNote(e.target.value)} 
-              placeholder="Terms, conditions, or internal references..." 
-              className="min-h-[120px]"
+            {status === 'DRAFT' && (
+              <SmartProductSelector 
+                searchProducts={searchProductsForPO} 
+                onAddProduct={addProductToPO} 
+                addedItems={items} 
+              />
+            )}
+
+            <PurchaseTable 
+              items={totals.formattedItems} 
+              updateItem={updateItem} 
+              removeItem={removeItem} 
             />
+
+            {supplierId && status === 'DRAFT' && (
+              <AIAssistantCard 
+                recommendations={aiRecs} 
+                isLoading={isLoadingIntell} 
+                onAddProduct={addProductToPO} 
+              />
+            )}
+
+            <PurchaseNotesCard note={note} setNote={setNote} />
+
           </div>
+
+          {/* Intelligence Sidebar (30%) */}
+          <div className="lg:col-span-4 xl:col-span-3">
+            <div className="sticky top-[100px] space-y-6">
+              {supplierId && <SupplierIntelligenceCard intelligence={supplierIntell} isLoading={isLoadingIntell} />}
+              <IntelligenceSidebar 
+                totals={totals}
+                shippingCost={shippingCost}
+                setShippingCost={setShippingCost}
+                otherCost={otherCost}
+                setOtherCost={setOtherCost}
+                intelligence={supplierIntell}
+              />
+            </div>
+          </div>
+
         </div>
       </div>
-    </form>
+    </div>
   );
 }

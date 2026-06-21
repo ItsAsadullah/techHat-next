@@ -12,7 +12,13 @@ export interface GRNItemInput {
   rejectedQty: number;
   acceptedQty: number;
   unitCost: number; // Required — cost at time of receipt from PO
+  
+  // Advanced Tracking
   batchNumber?: string;
+  mfgDate?: Date;
+  expiryDate?: Date;
+  serials?: string[];
+  
   imei?: string;
   serialNumber?: string;
 }
@@ -128,7 +134,11 @@ export async function createGRN(data: GRNFormData) {
               rejectedQty: item.rejectedQty,
               acceptedQty: item.acceptedQty,
               unitCost: item.unitCost, // Stored for accurate MAC calculation at submit time
+              
               batchNumber: item.batchNumber,
+              mfgDate: item.mfgDate,
+              expiryDate: item.expiryDate,
+              serials: item.serials || null,
               imei: item.imei,
               serialNumber: item.serialNumber,
             }))
@@ -150,7 +160,7 @@ export async function submitGRN(grnId: string) {
       const grn = await tx.goodsReceiveNote.findUnique({
         where: { id: grnId },
         include: {
-          items: true,
+          items: { include: { product: true } },
           purchaseOrder: { include: { items: true } }
         }
       });
@@ -202,6 +212,62 @@ export async function submitGRN(grnId: string) {
           },
           tx
         );
+        
+        // Advanced Inventory Tracking Processing
+        if (item.product.trackSerials && item.serials) {
+          const serialsArray = typeof item.serials === 'string' ? JSON.parse(item.serials) : item.serials;
+          if (Array.isArray(serialsArray) && serialsArray.length > 0) {
+            let warrantyEndDate = null;
+            if (item.product.trackWarranty && item.product.warrantyMonths) {
+              const d = new Date();
+              d.setMonth(d.getMonth() + item.product.warrantyMonths);
+              warrantyEndDate = d;
+            }
+            
+            const serialRecords = serialsArray.map((s: string) => ({
+              productId: item.productId,
+              variantId: item.variantId || null,
+              serialNumber: s,
+              status: 'AVAILABLE' as any,
+              warrantyEndDate,
+              grnItemId: item.id
+            }));
+            
+            await tx.productSerial.createMany({ 
+              data: serialRecords, 
+              skipDuplicates: true 
+            });
+          }
+        }
+        
+        if (item.product.trackBatch && item.batchNumber) {
+          // Prisma syntax for composite unique requires the exact model shape or we can just findFirst and update/create manually to be safe with nullable fields.
+          const existingBatch = await tx.productBatch.findFirst({
+            where: {
+              productId: item.productId,
+              variantId: item.variantId || null,
+              batchNumber: item.batchNumber
+            }
+          });
+          
+          if (existingBatch) {
+            await tx.productBatch.update({
+              where: { id: existingBatch.id },
+              data: { stock: { increment: item.acceptedQty } }
+            });
+          } else {
+            await tx.productBatch.create({
+              data: {
+                productId: item.productId,
+                variantId: item.variantId || null,
+                batchNumber: item.batchNumber,
+                manufacturingDate: item.mfgDate,
+                expiryDate: item.expiryDate,
+                stock: item.acceptedQty
+              }
+            });
+          }
+        }
       }
 
       // Update PO Status

@@ -240,12 +240,21 @@ export async function getInventoryDashboardStats() {
         status: 'ACTIVE',
         variants: { none: {} } // only products without variants
       },
-      select: { stock: true, lastPurchaseCost: true, costPrice: true },
+      select: { id: true, name: true, sku: true, stock: true, minStock: true, lastPurchaseCost: true, costPrice: true },
     });
     
     // 2. All Variants
     const variants = await prisma.variant.findMany({
-      select: { stock: true, costPrice: true },
+      where: { product: { status: 'ACTIVE' } },
+      select: {
+        id: true,
+        name: true,
+        sku: true,
+        stock: true,
+        minStock: true,
+        costPrice: true,
+        product: { select: { name: true } },
+      },
     });
 
     let totalStockValue = 0;
@@ -261,6 +270,29 @@ export async function getInventoryDashboardStats() {
       totalStockQty += v.stock;
       totalStockValue += (v.stock * (v.costPrice || 0));
     }
+
+    const lowStockItems = [
+      ...simpleProducts
+        .filter((product) => product.stock <= product.minStock)
+        .map((product) => ({
+          id: product.id,
+          name: product.name,
+          detail: product.sku || 'Simple product',
+          stock: product.stock,
+          minStock: product.minStock,
+        })),
+      ...variants
+        .filter((variant) => variant.stock <= variant.minStock)
+        .map((variant) => ({
+          id: variant.id,
+          name: variant.product.name,
+          detail: variant.name || variant.sku || 'Variant',
+          stock: variant.stock,
+          minStock: variant.minStock,
+        })),
+    ]
+      .sort((a, b) => a.stock - b.stock)
+      .slice(0, 8);
 
     // Recent GRNs
     const recentGRNs = await prisma.goodsReceiveNote.findMany({
@@ -312,7 +344,8 @@ export async function getInventoryDashboardStats() {
         totalIncomingStock,
         totalDamagedStock,
         totalStockValue,
-        recentGRNs
+        recentGRNs,
+        lowStockItems,
       }
     };
   } catch (error: any) {

@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { memo, useCallback, useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { CldUploadWidget } from 'next-cloudinary';
+import { CldUploadWidget, type CloudinaryUploadWidgetOptions } from 'next-cloudinary';
 import NextImage from 'next/image';
 import { ImagePlus, PaintBucket, ImageIcon, Upload, Trash } from 'lucide-react';
 import { MediaLibrary } from '@/components/admin/media-library';
@@ -48,13 +48,12 @@ function VariantImageUploader({
 }) {
   const [libraryOpen, setLibraryOpen] = useState(false);
 
-  const uploadOptions = useMemo(() => ({
+  const uploadOptions = useMemo<CloudinaryUploadWidgetOptions>(() => ({
     maxFiles: 1,
-    resourceType: "image" as const,
+    resourceType: "image",
     clientAllowedFormats: ["png", "jpeg", "jpg", "webp"],
     folder: "products/variants",
     sources: ['local', 'url', 'camera', 'google_drive'],
-    singleUploadAutoClose: false
   }), []);
 
   const handleSuccess = useCallback((result: any) => {
@@ -248,7 +247,7 @@ const VariantRow = memo(({
   setValue: any;
 }) => {
   const { watch, getValues } = useFormContext<ProductFormValues>();
-  const currentImage = watch(`variants.${index}.image`);
+  const currentImage = watch(`variants.${index}.image`) ?? null;
   const currentColor = watch(`variants.${index}.customColor`);
   const hasColorAttr = variant.attributes && Object.keys(variant.attributes).some(k => k.toLowerCase() === 'color');
 

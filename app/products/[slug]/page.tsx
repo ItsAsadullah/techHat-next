@@ -271,6 +271,7 @@ export default async function ProductPage({ params }: Props) {
     slug: product.slug,
     image: getImageUrl((product.productImages?.find((img: any) => img.isThumbnail) || product.productImages?.[0])?.url) || '',
     description: processContent(product.description),
+    shortDesc: processContent(product.shortDesc),
     price: product.price,
     offerPrice: product.offerPrice,
     costPrice: product.costPrice,

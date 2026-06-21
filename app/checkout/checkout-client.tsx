@@ -63,8 +63,6 @@ const EMPTY_FORM: DeliveryForm = {
   customerName: '', customerPhone: '', customerEmail: '',
   division: '', district: '', upazila: '', shippingAddress: '', orderNote: '',
 };
-const STORAGE_KEY = 'techhat_addresses';
-
 const BANK_INFO = {
   bankName: 'Dutch-Bangla Bank Limited (DBBL)',
   accountName: 'TechHat Bangladesh Ltd.',
@@ -177,17 +175,19 @@ export default function CheckoutClient({ paymentSettings, hotline }: { paymentSe
 
   // ─── Load saved addresses ─────────────────────────────
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const addrs: SavedAddress[] = JSON.parse(raw);
+    if (authLoading || !user) return;
+    fetch('/api/account/addresses')
+      .then(async (response) => {
+        if (!response.ok) return;
+        const result = await response.json();
+        const addrs: SavedAddress[] = result.addresses || [];
         setSavedAddresses(addrs);
-        const def = addrs.find(a => a.isDefault);
+        const def = addrs.find((address) => address.isDefault);
         if (def) applyAddress(def);
-      }
-    } catch { /* ignore */ }
+      })
+      .catch(() => { /* saved addresses are optional at checkout */ });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [authLoading, user]);
 
   // ─── Scroll top on step change ────────────────────────
   useEffect(() => {
@@ -386,31 +386,38 @@ export default function CheckoutClient({ paymentSettings, hotline }: { paymentSe
           order_id: data.orderNumber,
         });
 
-        // Auto-save address to localStorage
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY) || '[]';
-          const addrs = JSON.parse(raw);
-          const isExisting = addrs.some((a: any) => 
-            a.phone === form.customerPhone.trim() && a.address === form.shippingAddress.trim()
-          );
-          if (!isExisting) {
-            const newAddr = {
-              id: Date.now().toString(),
-              label: 'Recent Order',
-              type: 'home',
-              name: form.customerName.trim(),
-              phone: form.customerPhone.trim(),
-              address: form.shippingAddress.trim(),
-              division: form.division,
-              district: form.district,
-              upazila: form.upazila || '',
-              isDefault: true,
-            };
-            const newAddrs = addrs.map((a: any) => ({ ...a, isDefault: false }));
-            newAddrs.push(newAddr);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(newAddrs));
-          }
-        } catch { /* ignore */ }
+        // Auto-save signed-in customer address for faster future checkout.
+        if (user) {
+          try {
+            const isExisting = savedAddresses.some((address) =>
+              address.phone === form.customerPhone.trim() && address.address === form.shippingAddress.trim()
+            );
+            if (!isExisting) {
+              const response = await fetch('/api/account/addresses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  label: 'Recent Order',
+                  type: 'home',
+                  name: form.customerName.trim(),
+                  phone: form.customerPhone.trim(),
+                  address: form.shippingAddress.trim(),
+                  division: form.division,
+                  district: form.district,
+                  upazila: form.upazila || '',
+                  isDefault: true,
+                }),
+              });
+              if (response.ok) {
+                const result = await response.json();
+                setSavedAddresses((current) => [
+                  ...current.map((address) => ({ ...address, isDefault: false })),
+                  result.address,
+                ]);
+              }
+            }
+          } catch { /* address persistence should not block order success */ }
+        }
 
         removeSelectedFromCart();
         setOrderSuccess({
@@ -893,7 +900,7 @@ export default function CheckoutClient({ paymentSettings, hotline }: { paymentSe
                         />
                       )}
                       {paymentSettings.enabled.card && (
-                        <PayOption selected={paymentMethod === 'CARD'} onClick={() => setPaymentMethod('CARD')}
+                        <PayOption selected={false} onClick={() => undefined} disabled
                           icon={<CreditCard className="w-5 h-5 text-purple-600" />} iconBg="bg-purple-100"
                           title="Card Payment" sub="Visa, MasterCard, Amex"
                           badge="Coming Soon" badgeColor="bg-gray-200 text-gray-500"
@@ -1252,13 +1259,13 @@ function SelectInput({ value, onChange, placeholder, options, disabled, hasError
   );
 }
 
-function PayOption({ selected, onClick, icon, iconBg, title, sub, badge, badgeColor }: {
+function PayOption({ selected, onClick, icon, iconBg, title, sub, badge, badgeColor, disabled = false }: {
   selected: boolean; onClick: () => void; icon: React.ReactNode; iconBg: string;
-  title: string; sub: string; badge?: string; badgeColor?: string;
+  title: string; sub: string; badge?: string; badgeColor?: string; disabled?: boolean;
 }) {
   return (
-    <button type="button" onClick={onClick}
-      className={`w-full text-left p-3.5 rounded-xl border-2 transition-all ${selected ? 'border-blue-500 bg-blue-50/60 shadow-sm' : 'border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-white'}`}
+    <button type="button" onClick={onClick} disabled={disabled}
+      className={`w-full text-left p-3.5 rounded-xl border-2 transition-all disabled:cursor-not-allowed disabled:opacity-60 ${selected ? 'border-blue-500 bg-blue-50/60 shadow-sm' : 'border-gray-200 bg-gray-50 enabled:hover:border-gray-300 enabled:hover:bg-white'}`}
     >
       <div className="flex items-center gap-3">
         <div className={`w-10 h-10 flex-shrink-0 rounded-xl flex items-center justify-center ${iconBg}`}>{icon}</div>

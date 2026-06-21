@@ -1,28 +1,50 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { ProductLifecycleStatus } from '@prisma/client';
 
 // ─── Status helpers ───
 // isActive mapping removed as status is now the source of truth
 
+
 /**
  * Generate a unique SKU using a DB-level sequence.
- * Format: {prefix}-{6-digit-padded-counter}
- * Example: TH-HOC-000042
- * Concurrency-safe via Prisma transaction + optimistic update.
+ * Format: TH-{CategoryShortCode}-{Model}-{6-digit-padded-counter}
+ * Example: TH-ROU-F3-000042
  */
-export async function generateSKU(prefix: string): Promise<{ success: boolean; sku?: string; error?: string }> {
+export async function generateSKU(
+  categoryId?: string,
+  model?: string
+): Promise<{ success: boolean; sku?: string; error?: string }> {
   try {
-    const cleanPrefix = prefix
-      .replace(/[^a-zA-Z0-9-]/g, '')
-      .toUpperCase()
-      .substring(0, 10);
+    let catCode = 'GEN';
+    
+    if (categoryId) {
+      const category = await prisma.category.findUnique({
+        where: { id: categoryId },
+        select: { shortCode: true, name: true }
+      });
+      if (category) {
+        if (category.shortCode) {
+          catCode = category.shortCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        } else {
+          catCode = category.name.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
+        }
+      }
+    }
+
+    const cleanModel = model ? model.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase() : '';
+    
+    // Build prefix
+    const prefixParts = ['TH', catCode];
+    if (cleanModel) prefixParts.push(cleanModel);
+    
+    const prefix = prefixParts.join('-');
 
     const count = await prisma.product.count();
     const paddedNum = String(count + 1).padStart(6, '0');
-    const sku = `${cleanPrefix}-${paddedNum}`;
+    const sku = `${prefix}-${paddedNum}`;
 
     return { success: true, sku };
   } catch (error: any) {
@@ -86,7 +108,7 @@ export async function updateProductStatus(
   try {
     const current = await prisma.product.findUnique({
       where: { id },
-      select: { status: true, name: true },
+      select: { status: true, name: true, slug: true },
     });
 
     if (!current) return { success: false, error: 'Product not found' };
@@ -114,6 +136,15 @@ export async function updateProductStatus(
 
     revalidatePath('/admin/products');
     revalidatePath(`/admin/products/${id}`);
+    
+    // Revalidate storefront caches
+    if (current.slug) {
+      revalidatePath(`/products/${current.slug}`);
+      revalidateTag(`product-${current.slug}`);
+    }
+    revalidatePath('/products');
+    revalidateTag('products');
+
     return { success: true };
   } catch (error: any) {
     console.error('updateProductStatus error:', error);

@@ -1,18 +1,18 @@
 'use client';
 
-import { useRef, useState, useCallback, useMemo } from 'react';
+import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Image as ImageIcon, X, Star, GripVertical, Upload } from 'lucide-react';
 import NextImage from 'next/image';
-import { CldUploadWidget } from 'next-cloudinary';
+import { CldUploadWidget, type CloudinaryUploadWidgetOptions } from 'next-cloudinary';
 import { MediaLibrary } from '@/components/admin/media-library';
 
 export interface GalleryImage {
   id: string;
   url: string;
   isThumbnail: boolean;
-  alt?: string;
+  alt?: string | null;
 }
 
 interface Props {
@@ -24,6 +24,12 @@ export function ProductMediaSection({ images, setImages }: Props) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const dragSourceIndex = useRef<number>(-1);
+
+  // Keep a ref of the latest images to prevent race conditions during batch uploads
+  const latestImagesRef = useRef(images);
+  useEffect(() => {
+    latestImagesRef.current = images;
+  }, [images]);
 
   // ── Thumbnail ─────────────────────────────────────────────────────────────
   const handleSetThumbnail = useCallback((id: string) => {
@@ -59,10 +65,13 @@ export function ProductMediaSection({ images, setImages }: Props) {
     const newImages = urlArray.map((url, i) => ({
       id: Math.random().toString(36).substring(2, 11) + i,
       url,
-      isThumbnail: images.length === 0 && i === 0,
+      isThumbnail: latestImagesRef.current.length === 0 && i === 0,
     }));
-    setImages([...images, ...newImages]);
-  }, [images, setImages]);
+    
+    const updated = [...latestImagesRef.current, ...newImages];
+    latestImagesRef.current = updated;
+    setImages(updated);
+  }, [setImages]);
 
   const handleDragOver = (e: React.DragEvent, id: string) => {
     e.preventDefault();
@@ -93,13 +102,12 @@ export function ProductMediaSection({ images, setImages }: Props) {
     dragSourceIndex.current = -1;
   };
 
-  const uploadOptions = useMemo(() => ({
+  const uploadOptions = useMemo<CloudinaryUploadWidgetOptions>(() => ({
     multiple: true,
-    resourceType: "image" as const,
+    resourceType: "image",
     clientAllowedFormats: ["png", "jpeg", "jpg", "webp"],
     folder: "products/gallery",
     sources: ['local', 'url', 'camera', 'google_drive', 'image_search', 'unsplash'],
-    singleUploadAutoClose: false
   }), []);
 
   const handleSuccess = useCallback((result: any) => {
@@ -107,11 +115,14 @@ export function ProductMediaSection({ images, setImages }: Props) {
       const newImage: GalleryImage = {
         id: Math.random().toString(36).substring(2, 11),
         url: result.info.secure_url,
-        isThumbnail: images.length === 0,
+        isThumbnail: latestImagesRef.current.length === 0,
       };
-      setImages([...images, newImage]);
+      
+      const updated = [...latestImagesRef.current, newImage];
+      latestImagesRef.current = updated; // instantly update for the next callback
+      setImages(updated);
     }
-  }, [images, setImages]);
+  }, [setImages]);
 
   return (
     <div className="space-y-6">
@@ -234,24 +245,8 @@ export function ProductMediaSection({ images, setImages }: Props) {
         <div className="flex gap-2">
           <CldUploadWidget
             signatureEndpoint="/api/cloudinary/sign"
-            onSuccess={(result) => {
-              if (typeof result.info === 'object' && result.info.secure_url) {
-                const newImage: GalleryImage = {
-                  id: Math.random().toString(36).substring(2, 11),
-                  url: result.info.secure_url,
-                  isThumbnail: false,
-                };
-                const isThumbnail = images.length === 0;
-                setImages([...images, { ...newImage, isThumbnail }]);
-              }
-            }}
-            options={{
-              multiple: true,
-              resourceType: "image",
-              clientAllowedFormats: ["png", "jpeg", "jpg", "webp"],
-              folder: "products/gallery",
-              sources: ['local', 'url', 'camera', 'google_drive', 'image_search', 'unsplash']
-            }}
+            onSuccess={handleSuccess}
+            options={uploadOptions}
           >
             {({ open }) => (
               <div
@@ -281,24 +276,8 @@ export function ProductMediaSection({ images, setImages }: Props) {
         <div className="grid grid-cols-2 gap-4">
           <CldUploadWidget
             signatureEndpoint="/api/cloudinary/sign"
-            onSuccess={(result) => {
-              if (typeof result.info === 'object' && result.info.secure_url) {
-                const newImage: GalleryImage = {
-                  id: Math.random().toString(36).substring(2, 11),
-                  url: result.info.secure_url,
-                  isThumbnail: false,
-                };
-                const isThumbnail = images.length === 0;
-                setImages([...images, { ...newImage, isThumbnail }]);
-              }
-            }}
-            options={{
-              multiple: true,
-              resourceType: "image",
-              clientAllowedFormats: ["png", "jpeg", "jpg", "webp"],
-              folder: "products/gallery",
-              sources: ['local', 'url', 'camera', 'google_drive', 'image_search', 'unsplash']
-            }}
+            onSuccess={handleSuccess}
+            options={uploadOptions}
           >
             {({ open }) => (
               <div

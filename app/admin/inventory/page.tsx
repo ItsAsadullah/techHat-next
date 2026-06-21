@@ -1,6 +1,6 @@
 import { getInventoryDashboardStats } from '@/lib/actions/warehouse-actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Package, Warehouse, DollarSign, Activity, Settings2, Plus, ArrowRight } from 'lucide-react';
+import { Package, DollarSign, Activity, ArrowRight, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { InventoryInstructions } from './inventory-instructions';
@@ -129,20 +129,40 @@ export default async function InventoryDashboard() {
           </CardContent>
         </Card>
 
-        {/* Stock Alerts (Placeholder for now) */}
+        {/* Stock Alerts */}
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>Low Stock Alerts</CardTitle>
             <CardDescription>Products running below reorder threshold.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center justify-center py-10 text-center border border-dashed rounded-lg bg-muted/20">
-              <Package className="h-10 w-10 text-muted-foreground mb-3 opacity-50" />
-              <h3 className="font-semibold text-sm">All Stock Levels Healthy</h3>
-              <p className="text-xs text-muted-foreground max-w-[200px] mt-1">
-                We'll notify you when items fall below their minimum stock threshold.
-              </p>
-            </div>
+            {stats?.lowStockItems?.length ? (
+              <div className="space-y-3">
+                {stats.lowStockItems.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between gap-4 border-b pb-3 last:border-0 last:pb-0">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{item.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{item.detail}</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs font-semibold text-amber-700">
+                      <AlertTriangle className="h-4 w-4" />
+                      {item.stock} / {item.minStock}
+                    </div>
+                  </div>
+                ))}
+                <Button variant="outline" size="sm" className="w-full" asChild>
+                  <Link href="/admin/products?stock=low">Review low-stock products</Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-center border border-dashed rounded-lg bg-muted/20">
+                <Package className="h-10 w-10 text-emerald-500 mb-3 opacity-70" />
+                <h3 className="font-semibold text-sm">All Stock Levels Healthy</h3>
+                <p className="text-xs text-muted-foreground max-w-[220px] mt-1">
+                  No active product or variant is at or below its reorder threshold.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

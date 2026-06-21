@@ -48,16 +48,35 @@ export default function MainHeader({
 
   useEffect(() => {
     setMounted(true);
+
+    const checkRole = async (session: any) => {
+      if (!session?.user) {
+        setIsAdmin(false);
+        return;
+      }
+      const role = session.user.app_metadata?.app_role;
+      if (role === 'admin' || role === 'super_admin') {
+        setIsAdmin(true);
+      } else {
+        try {
+          const res = await fetch('/api/account/role');
+          if (res.ok) {
+            const data = await res.json();
+            setIsAdmin(data.isAdmin === true);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      // Check admin role from JWT app_metadata — no network call needed
-      const role = session?.user?.app_metadata?.app_role;
-      setIsAdmin(role === 'admin' || role === 'super_admin');
+      checkRole(session);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      const role = session?.user?.app_metadata?.app_role;
-      setIsAdmin(role === 'admin' || role === 'super_admin');
+      checkRole(session);
     });
     return () => subscription.unsubscribe();
   }, []);

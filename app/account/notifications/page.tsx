@@ -1,9 +1,9 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, Package, Tag, MessageCircle, Star, Save, CheckCircle2 } from 'lucide-react';
+import { Bell, Package, Tag, MessageCircle, Save, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const NOTIF_SETTINGS = [
@@ -40,21 +40,43 @@ const NOTIF_SETTINGS = [
 ];
 
 export default function NotificationsPage() {
-  const [prefs, setPrefs] = useState<Record<string, boolean>>(() => {
-    try {
-      const s = localStorage.getItem('techhat_notif_prefs');
-      return s ? JSON.parse(s) : { order_placed: true, order_shipped: true, order_delivered: true, order_cancelled: true, security: true };
-    } catch { return { order_placed: true, order_shipped: true, order_delivered: true, order_cancelled: true, security: true }; }
-  });
+  const [prefs, setPrefs] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/account/notifications')
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Could not load preferences.');
+        setPrefs(result.preferences || {});
+      })
+      .catch((error) => toast.error(error instanceof Error ? error.message : 'Could not load preferences.'))
+      .finally(() => setLoading(false));
+  }, []);
 
   const toggle = (key: string) => setPrefs(p => ({ ...p, [key]: !p[key] }));
 
-  const handleSave = () => {
-    localStorage.setItem('techhat_notif_prefs', JSON.stringify(prefs));
-    setSaved(true);
-    toast.success('Notification preferences saved!');
-    setTimeout(() => setSaved(false), 3000);
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const response = await fetch('/api/account/notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferences: prefs }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not save preferences.');
+      setPrefs(result.preferences);
+      setSaved(true);
+      toast.success('Notification preferences saved!');
+      setTimeout(() => setSaved(false), 3000);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save preferences.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -96,6 +118,7 @@ export default function NotificationsPage() {
                   </div>
                   <button
                     onClick={() => toggle(item.key)}
+                    disabled={loading}
                     className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
                       prefs[item.key] ? 'bg-blue-600' : 'bg-gray-200'
                     }`}
@@ -113,13 +136,14 @@ export default function NotificationsPage() {
 
       <button
         onClick={handleSave}
+        disabled={loading || saving}
         className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold transition-all max-w-2xl ${
           saved
             ? 'bg-green-500 text-white'
             : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-200 hover:from-blue-700 hover:to-indigo-700'
         }`}
       >
-        {saved ? <><CheckCircle2 className="w-4 h-4" />Saved!</> : <><Save className="w-4 h-4" />Save Preferences</>}
+        {saving ? 'Saving…' : saved ? <><CheckCircle2 className="w-4 h-4" />Saved!</> : <><Save className="w-4 h-4" />Save Preferences</>}
       </button>
     </div>
   );

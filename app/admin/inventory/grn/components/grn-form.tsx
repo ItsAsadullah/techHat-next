@@ -44,6 +44,11 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
   const [note, setNote] = useState('');
   const [items, setItems] = useState<any[]>([]);
 
+  // Advanced Tracking Modal State
+  const [showSerialsModal, setShowSerialsModal] = useState(false);
+  const [activeItemIndex, setActiveItemIndex] = useState<number | null>(null);
+  const [tempSerials, setTempSerials] = useState<string[]>([]);
+
   useEffect(() => {
     if (poId) {
       loadPO(poId);
@@ -138,7 +143,32 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
     }
   };
 
+  const openSerialsModal = (index: number) => {
+    setActiveItemIndex(index);
+    const item = items[index];
+    const needed = item.acceptedQty;
+    let currentSerials = item.serials || [];
+    
+    // Auto-adjust the array size
+    if (currentSerials.length > needed) {
+      currentSerials = currentSerials.slice(0, needed);
+    } else if (currentSerials.length < needed) {
+      currentSerials = [...currentSerials, ...Array(needed - currentSerials.length).fill('')];
+    }
+    
+    setTempSerials(currentSerials);
+    setShowSerialsModal(true);
+  };
+
+  const saveSerials = () => {
+    if (activeItemIndex !== null) {
+      updateItem(activeItemIndex, 'serials', tempSerials);
+    }
+    setShowSerialsModal(false);
+  };
+
   return (
+    <>
     <form onSubmit={handleSubmit} className="flex flex-col gap-6 max-w-[1400px] mx-auto pb-24">
       {/* Header */}
       <div className="flex items-center justify-between sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b py-3 -mx-6 px-6 shadow-sm">
@@ -202,12 +232,12 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
               <Table>
                 <TableHeader className="bg-muted/10">
                   <TableRow>
-                    <TableHead className="w-[250px]">Product</TableHead>
-                    <TableHead className="text-center">Pending</TableHead>
-                    <TableHead className="w-[100px] text-center">Receive</TableHead>
-                    <TableHead className="w-[100px] text-center">Reject</TableHead>
-                    <TableHead className="text-center bg-green-500/10 text-green-700">Accept</TableHead>
-                    <TableHead className="w-[150px]">Serial / IMEI</TableHead>
+                    <TableHead className="w-[200px]">Product</TableHead>
+                    <TableHead className="text-center w-[80px]">Pending</TableHead>
+                    <TableHead className="w-[90px] text-center">Receive</TableHead>
+                    <TableHead className="w-[90px] text-center">Reject</TableHead>
+                    <TableHead className="w-[90px] text-center bg-green-500/10 text-green-700">Accept</TableHead>
+                    <TableHead className="w-[280px]">Advanced Tracking</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -226,15 +256,19 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
                     </TableRow>
                   )}
                   {!poLoading && items.map((item, index) => (
-                    <TableRow key={item.poItemId} className={item.pendingQty === 0 ? "opacity-50" : ""}>
+                    <TableRow key={item.poItemId} className={item.pendingQty === 0 ? "opacity-50 bg-muted/30" : ""}>
                       <TableCell>
                         <div className="font-medium text-sm">{item.name}</div>
                         {item.variantName && <div className="text-xs text-muted-foreground">{item.variantName}</div>}
                         <div className="text-[10px] font-mono text-muted-foreground">{item.sku}</div>
+                        <div className="flex gap-1 mt-1">
+                          {item.product?.trackSerials && <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-sm font-semibold">SERIALS</span>}
+                          {item.product?.trackBatch && <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-sm font-semibold">BATCH</span>}
+                        </div>
                       </TableCell>
                       <TableCell className="text-center font-mono font-medium">
                         {item.pendingQty}
-                        <div className="text-[10px] text-muted-foreground mt-0.5">{item.previouslyReceivedQty} / {item.orderedQty} rec.</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">{item.previouslyReceivedQty} / {item.orderedQty}</div>
                       </TableCell>
                       <TableCell>
                         <Input 
@@ -256,12 +290,40 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
                         {item.acceptedQty}
                       </TableCell>
                       <TableCell>
-                        <Input 
-                          type="text" placeholder="Serial/IMEI" className="h-8 text-xs font-mono"
-                          value={item.serialNumber}
-                          onChange={(e) => updateItem(index, 'serialNumber', e.target.value)}
-                          disabled={item.pendingQty === 0}
-                        />
+                        <div className="flex flex-col gap-2">
+                          {item.product?.trackBatch && (
+                            <div className="grid grid-cols-2 gap-1 bg-muted/30 p-2 rounded-md border border-dashed">
+                              <Input 
+                                type="text" placeholder="Batch No." className="h-7 text-xs font-mono"
+                                value={item.batchNumber || ''}
+                                onChange={(e) => updateItem(index, 'batchNumber', e.target.value)}
+                                disabled={item.pendingQty === 0}
+                              />
+                              <Input 
+                                type="date" className="h-7 text-xs"
+                                value={item.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : ''}
+                                onChange={(e) => updateItem(index, 'expiryDate', e.target.value ? new Date(e.target.value) : undefined)}
+                                disabled={item.pendingQty === 0}
+                              />
+                            </div>
+                          )}
+                          
+                          {item.product?.trackSerials && (
+                            <Button 
+                              type="button" 
+                              variant={item.serials?.length === item.acceptedQty && item.acceptedQty > 0 ? "default" : "outline"}
+                              size="sm" 
+                              className={`h-7 text-xs ${item.serials?.length === item.acceptedQty && item.acceptedQty > 0 ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                              disabled={item.acceptedQty === 0}
+                              onClick={() => openSerialsModal(index)}
+                            >
+                              {item.serials?.length === item.acceptedQty && item.acceptedQty > 0 
+                                ? `✅ ${item.acceptedQty} Serials Provided` 
+                                : `Provide ${item.acceptedQty} Serials`
+                              }
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -285,5 +347,54 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
         </div>
       </div>
     </form>
+
+    {/* Serials Input Modal */}
+    {showSerialsModal && activeItemIndex !== null && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="bg-background rounded-xl shadow-lg w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="p-4 border-b bg-muted/30">
+            <h3 className="font-semibold">Enter Serial Numbers / IMEI</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Provide {items[activeItemIndex].acceptedQty} serial numbers for <strong>{items[activeItemIndex].name}</strong>.
+            </p>
+          </div>
+          
+          <div className="p-4 overflow-y-auto space-y-3 flex-1">
+            {tempSerials.map((serial, sIdx) => (
+              <div key={sIdx} className="flex items-center gap-3">
+                <span className="w-6 text-xs text-muted-foreground text-right">{sIdx + 1}.</span>
+                <Input 
+                  autoFocus={sIdx === 0}
+                  placeholder={`Serial/IMEI #${sIdx + 1}`}
+                  className="h-9 font-mono uppercase"
+                  value={serial}
+                  onChange={(e) => {
+                    const newS = [...tempSerials];
+                    newS[sIdx] = e.target.value;
+                    setTempSerials(newS);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const nextInput = document.getElementById(`serial-input-${sIdx + 1}`);
+                      if (nextInput) nextInput.focus();
+                    }
+                  }}
+                  id={`serial-input-${sIdx}`}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="p-4 border-t flex justify-end gap-2 bg-muted/10">
+            <Button variant="outline" onClick={() => setShowSerialsModal(false)}>Cancel</Button>
+            <Button onClick={saveSerials} disabled={tempSerials.some(s => !s.trim())}>
+              Save Serials
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

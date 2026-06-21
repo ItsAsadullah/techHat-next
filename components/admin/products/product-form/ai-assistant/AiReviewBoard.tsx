@@ -183,7 +183,7 @@ export function AiReviewBoard({ data, onClose, onRegenerate }: AiReviewBoardProp
                 <label htmlFor="chk-long" className="font-medium">Full Description (HTML)</label>
               </div>
               <div className="pl-7 text-sm text-muted-foreground border-l-2 border-muted ml-2 pb-2 max-h-60 overflow-y-auto">
-                <div className="prose prose-sm dark:prose-invert" dangerouslySetInnerHTML={{ __ShortHtmlSafely: data.description.long, __html: data.description.long }} />
+                <div className="prose prose-sm dark:prose-invert" dangerouslySetInnerHTML={{ __html: data.description.long }} />
               </div>
             </div>
           )}
@@ -206,7 +206,7 @@ export function AiReviewBoard({ data, onClose, onRegenerate }: AiReviewBoardProp
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">{spec.value}</span>
                       {spec.conflictDetected && (
-                        <AlertTriangle className="h-4 w-4 text-amber-500" title="Conflict detected in sources" />
+                        <AlertTriangle className="h-4 w-4 text-amber-500" aria-label="Conflict detected in sources" />
                       )}
                     </div>
                   </div>

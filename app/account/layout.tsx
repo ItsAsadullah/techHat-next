@@ -21,8 +21,6 @@ import {
   Ticket,
 } from 'lucide-react';
 
-const ADMIN_EMAILS = ['techhat.shop@gmail.com'];
-
 const navItems = [
   { href: '/account', label: 'Overview', icon: LayoutDashboard, exact: true },
   { href: '/account/orders', label: 'My Orders', icon: Package },
@@ -48,9 +46,17 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
         router.replace('/?auth=login');
         return;
       }
-      if (session.user.email && ADMIN_EMAILS.includes(session.user.email.toLowerCase())) {
-        router.replace('/admin/dashboard');
-        return;
+      try {
+        const roleResponse = await fetch('/api/account/role', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const role = await roleResponse.json();
+        if (role.isAdmin) {
+          router.replace('/admin/dashboard');
+          return;
+        }
+      } catch {
+        // If the role endpoint is temporarily unavailable, keep the user in the customer account area.
       }
       setUser(session.user);
       setLoading(false);
@@ -61,10 +67,6 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
       if (!session) {
         router.replace('/?auth=login');
       } else {
-        if (session.user.email && ADMIN_EMAILS.includes(session.user.email.toLowerCase())) {
-          router.replace('/admin/dashboard');
-          return;
-        }
         setUser(session.user);
       }
     });

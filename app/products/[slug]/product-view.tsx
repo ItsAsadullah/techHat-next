@@ -89,6 +89,11 @@ interface ProductReview {
   createdAt: string;
 }
 
+interface ProductFaq {
+  question: string;
+  answer: string;
+}
+
 interface ReviewStats {
   averageRating: number;
   totalReviews: number;
@@ -135,6 +140,7 @@ interface Product {
   specs: ProductSpec[];
   reviews: ProductReview[];
   reviewStats: ReviewStats;
+  faqs: ProductFaq[];
 }
 
 interface RelatedProduct {
