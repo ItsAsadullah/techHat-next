@@ -163,10 +163,10 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
         const submitRes = await submitGRN((res as any).data.id, payload.items);
         if (submitRes.success) {
           toast.success('Goods received and inventory updated successfully!');
-          router.push('/admin/purchases');
+          router.push('/admin/inventory/grn');
         } else {
           toast.error(submitRes.error || 'GRN created but failed to finalize.');
-          router.push('/admin/purchases');
+          router.push('/admin/inventory/grn');
         }
       } else {
         toast.error(('error' in res ? res.error : 'Error') || 'Something went wrong.');
