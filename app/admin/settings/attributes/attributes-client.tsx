@@ -27,7 +27,7 @@ export function AttributesClient({ initialAttributes }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAttribute, setSelectedAttribute] = useState<any | null>(null);
   
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleCreate = () => {

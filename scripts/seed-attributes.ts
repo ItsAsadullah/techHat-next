@@ -177,8 +177,9 @@ async function main() {
         data: {
           name: attr.name,
           slug: attr.slug,
-          type: attr.type,
-          isActive: true
+          uiType: attr.type === 'color' ? 'COLOR_SWATCH' : attr.type === 'radio' ? 'RADIO' : 'DROPDOWN',
+          dataType: 'STRING' as any,
+          status: 'ACTIVE'
         }
       });
       attributeId = newAttr.id;
@@ -198,9 +199,9 @@ async function main() {
           data: {
             attributeId: attributeId,
             value: val.value,
+            label: val.value,
             colorCode: val.colorCode || null,
-            displayOrder: index,
-            isActive: true
+            displayOrder: index
           }
         });
       }

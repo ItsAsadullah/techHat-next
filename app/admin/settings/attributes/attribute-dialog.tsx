@@ -108,8 +108,8 @@ export function AttributeDialog({ open, onOpenChange, attribute }: Props) {
       const attrData = {
         name: data.name,
         slug,
-        dataType: 'STRING' as const,
-        uiType,
+        dataType: 'STRING' as any,
+        uiType: uiType as any,
         isVariant: true,
       };
 

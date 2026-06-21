@@ -172,7 +172,7 @@ export async function createProduct(formData: FormData) {
         const firstDuplicate = existingSerials[0];
         return {
           success: false,
-          error: `Serial number "${firstDuplicate.serialNumber}" already exists in product "${firstDuplicate.variant.product.name}".`,
+          error: `Serial number "${firstDuplicate.serialNumber}" already exists in product "${firstDuplicate.variant?.product?.name || 'Unknown'}".`,
           duplicateSerial: firstDuplicate.serialNumber
         };
       }
@@ -624,7 +624,7 @@ export async function updateProduct(id: string, formData: FormData) {
         const firstDuplicate = existingSerials[0];
         return {
           success: false,
-          error: `Serial number "${firstDuplicate.serialNumber}" already exists in product "${firstDuplicate.variant.product.name}".`,
+          error: `Serial number "${firstDuplicate.serialNumber}" already exists in product "${firstDuplicate.variant?.product?.name || 'Unknown'}".`,
           duplicateSerial: firstDuplicate.serialNumber
         };
       }

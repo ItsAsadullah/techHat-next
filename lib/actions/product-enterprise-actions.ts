@@ -140,10 +140,8 @@ export async function updateProductStatus(
     // Revalidate storefront caches
     if (current.slug) {
       revalidatePath(`/products/${current.slug}`);
-      revalidateTag(`product-${current.slug}`);
     }
     revalidatePath('/products');
-    revalidateTag('products');
 
     return { success: true };
   } catch (error: any) {

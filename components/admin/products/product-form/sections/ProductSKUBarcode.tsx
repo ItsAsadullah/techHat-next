@@ -23,7 +23,7 @@ export function ProductSKUBarcode() {
   const handleGenerateSKU = useCallback(async () => {
     setGeneratingSku(true);
     try {
-      const res = await generateSKU(categoryId, model);
+      const res = await generateSKU(categoryId || undefined, model || undefined);
       if (res.success && res.sku) {
         setValue('sku', res.sku, { shouldDirty: true });
         setValue('barcode', res.sku, { shouldDirty: true });

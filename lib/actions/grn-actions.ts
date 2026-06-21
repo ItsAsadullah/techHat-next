@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { createStockLedgerEntry } from '@/lib/actions/stock-ledger-actions';
 import { AccountingEngine } from '@/lib/services/accounting-engine';
@@ -128,8 +129,8 @@ export async function createGRN(data: GRNFormData) {
           status: 'DRAFT',
           items: {
             create: data.items.map(item => ({
-              productId: item.productId,
-              variantId: item.variantId || null,
+              product: { connect: { id: item.productId } },
+              variant: item.variantId ? { connect: { id: item.variantId } } : undefined,
               receivedQty: item.receivedQty,
               rejectedQty: item.rejectedQty,
               acceptedQty: item.acceptedQty,
@@ -138,7 +139,7 @@ export async function createGRN(data: GRNFormData) {
               batchNumber: item.batchNumber,
               mfgDate: item.mfgDate,
               expiryDate: item.expiryDate,
-              serials: item.serials || null,
+              serials: item.serials || Prisma.JsonNull,
               imei: item.imei,
               serialNumber: item.serialNumber,
             }))
