@@ -72,7 +72,7 @@ export default function PurchaseOrderDetailsPage() {
   return (
     <div className="flex flex-col gap-6 p-6 pb-24 max-w-[1200px] mx-auto">
       {/* Header Actions */}
-      <div className="flex items-center justify-between sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b py-3 -mx-6 px-6 shadow-sm">
+      <div className="flex items-center justify-between sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b py-3 -mx-6 px-6 shadow-sm print:hidden">
         <div className="flex items-center gap-3">
           <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push('/admin/purchases')}>
             <ArrowLeft className="h-4 w-4" />
@@ -315,6 +315,7 @@ export default function PurchaseOrderDetailsPage() {
                 <th className="py-3 px-4 font-bold text-sm border-b border-gray-300">Item Description</th>
                 <th className="py-3 px-4 font-bold text-sm text-center border-b border-gray-300">Qty</th>
                 <th className="py-3 px-4 font-bold text-sm text-right border-b border-gray-300">Unit Price</th>
+                <th className="py-3 px-4 font-bold text-sm text-right border-b border-gray-300">Discount</th>
                 <th className="py-3 px-4 font-bold text-sm text-right border-b border-gray-300">Line Total</th>
               </tr>
             </thead>
@@ -329,6 +330,7 @@ export default function PurchaseOrderDetailsPage() {
                   </td>
                   <td className="py-3 px-4 text-center font-mono">{item.quantity}</td>
                   <td className="py-3 px-4 text-right font-mono">৳{item.unitCost}</td>
+                  <td className="py-3 px-4 text-right font-mono text-red-600">{item.discount > 0 ? `-৳${item.discount}` : '-'}</td>
                   <td className="py-3 px-4 text-right font-mono font-bold">৳{item.subtotal}</td>
                 </tr>
               ))}
