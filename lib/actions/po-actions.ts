@@ -119,9 +119,12 @@ export async function getPurchaseOrderById(id: string) {
 
 export async function searchProductsForPO(query: string) {
   try {
+    const isId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query);
+
     const products = await prisma.product.findMany({
       where: query ? {
         OR: [
+          ...(isId ? [{ id: query }] : []),
           { name: { contains: query, mode: 'insensitive' } },
           { sku: { contains: query, mode: 'insensitive' } },
         ]
