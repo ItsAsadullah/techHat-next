@@ -11,6 +11,7 @@ export type ProductColumn = {
   id: string;
   name: string;
   price: number;
+  offerPrice?: number | null;
   costPrice: number;
   stock: number;
   category: string;
@@ -101,13 +102,27 @@ export const columns: ColumnDef<ProductColumn>[] = [
     accessorKey: "price",
     header: "Price",
     cell: ({ row }) => {
-      const price = parseFloat(row.original.price.toString());
+      const price = parseFloat(row.original.price?.toString() || "0");
+      const offerPrice = row.original.offerPrice ? parseFloat(row.original.offerPrice.toString()) : null;
+      
+      const displayPrice = (offerPrice && offerPrice > 0) ? offerPrice : price;
+      
       const formatted = new Intl.NumberFormat("en-BD", {
         style: "currency",
         currency: "BDT",
         maximumFractionDigits: 0
-      }).format(price);
-      return <div className="font-bold text-gray-900">{formatted}</div>;
+      }).format(displayPrice);
+
+      return (
+        <div className="flex flex-col gap-0.5">
+          <div className="font-bold text-gray-900">{formatted}</div>
+          {(offerPrice && offerPrice > 0 && offerPrice !== price) ? (
+            <div className="text-[10px] text-gray-400 line-through">
+              {new Intl.NumberFormat("en-BD", { style: "currency", currency: "BDT", maximumFractionDigits: 0 }).format(price)}
+            </div>
+          ) : null}
+        </div>
+      );
     },
   },
   {

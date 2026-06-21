@@ -53,6 +53,7 @@ export default async function ProductsPage({
     id: p.id,
     name: p.name,
     price: p.price,
+    offerPrice: (p as any).offerPrice,
     costPrice: p.costPrice,
     stock: p.stock,
     category: (p as any).category?.name || '',
