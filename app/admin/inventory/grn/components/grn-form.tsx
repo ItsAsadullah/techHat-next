@@ -182,13 +182,13 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-xl font-bold">New Goods Receive Note</h1>
-            <p className="text-xs text-muted-foreground">Draft a new receipt against an approved Purchase Order.</p>
+            <h1 className="text-xl font-bold">Receive Goods</h1>
+            <p className="text-xs text-muted-foreground">Receive goods against an approved Purchase Order. This action updates stock immediately.</p>
           </div>
         </div>
-        <Button type="submit" disabled={loading || poLoading}>
-          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          Draft GRN
+        <Button type="submit" disabled={loading || poLoading} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
+          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PackageCheck className="mr-2 h-4 w-4" />}
+          Receive & Lock Stock
         </Button>
       </div>
 
