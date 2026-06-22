@@ -471,7 +471,7 @@ export function ProductVariantSection({ attributesList = [], categoryAttributes 
       existingByName.set(v.name, v);
     }
 
-    const newVariations = combinations.map(combo => {
+    const newVariations = combinations.map((combo, index) => {
       const values = Array.isArray(combo) ? combo : [combo];
       const variantName = values.map(v => v.label).join(' / ');
 
@@ -495,8 +495,14 @@ export function ProductVariantSection({ attributesList = [], categoryAttributes 
         if (v.shortCode) return v.shortCode;
         return v.label.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
       });
+      
       const skuSuffix = skuParts.join('-');
-      const generatedSku = baseSku ? `${baseSku}-${skuSuffix}` : skuSuffix;
+      const paddedNum = String(index + 1).padStart(6, '0');
+      
+      // Make variant SKU more unique, similar to main SKU generator
+      const generatedSku = baseSku 
+        ? `${baseSku}-${skuSuffix}-${paddedNum}` 
+        : `${skuSuffix}-${paddedNum}`;
 
       return {
         id:         Math.random().toString(36).substring(2, 11),
