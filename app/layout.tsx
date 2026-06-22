@@ -57,6 +57,9 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: 'TechHat',
       ...(logoUrl ? { images: [{ url: logoUrl, width: 512, height: 512, alt: 'TechHat Logo' }] } : {}),
     },
+    verification: {
+      google: 'ZPYxZN1XQs1qJIp1W7Q80GbcbZIuZYPexmEg6m1k5gg',
+    },
   };
 }
 
