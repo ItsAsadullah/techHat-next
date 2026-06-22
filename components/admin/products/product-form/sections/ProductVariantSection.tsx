@@ -33,6 +33,7 @@ interface AttributeDef {
 interface Props {
   attributesList: AttributeDef[];
   categoryAttributes?: any[];
+  brands?: { id: string; name: string }[];
 }
 
 function VariantImageUploader({ 
@@ -405,12 +406,14 @@ const VariantRow = memo(({
 });
 VariantRow.displayName = 'VariantRow';
 
-export function ProductVariantSection({ attributesList = [], categoryAttributes = [] }: Props) {
+export function ProductVariantSection({ attributesList = [], categoryAttributes = [], brands = [] }: Props) {
   const { control, watch, register, setValue, getValues, formState: { errors } } = useFormContext<ProductFormValues>();
 
   const productVariantType = watch('productVariantType');
   const basePrice          = watch('price') || 0;
   const baseSku            = watch('sku') || '';
+  const brandId            = watch('brandId');
+  const model              = watch('model');
   const watchedAttributes  = watch('attributes') || [];
 
   const { fields: attributes, append: appendAttr, remove: removeAttr, update: updateAttr } = useFieldArray({
@@ -499,10 +502,12 @@ export function ProductVariantSection({ attributesList = [], categoryAttributes 
       const skuSuffix = skuParts.join('-');
       const paddedNum = String(index + 1).padStart(6, '0');
       
-      // Make variant SKU more unique, similar to main SKU generator
-      const generatedSku = baseSku 
-        ? `${baseSku}-${skuSuffix}-${paddedNum}` 
-        : `${skuSuffix}-${paddedNum}`;
+      const brandObj = brands.find(b => b.id === brandId);
+      const brandStr = brandObj?.name ? brandObj.name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() : 'BRD';
+      const modelStr = model ? model.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase() : 'MOD';
+      
+      // Brand-model-Variant-Serial
+      const generatedSku = `${brandStr}-${modelStr}-${skuSuffix}-${paddedNum}`;
 
       return {
         id:         Math.random().toString(36).substring(2, 11),

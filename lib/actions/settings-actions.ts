@@ -101,7 +101,7 @@ export async function upsertSetting(data: SettingData, performedBy?: string) {
       { key: data.key, oldValue: existing?.value, newValue: data.value },
       performedBy
     );
-    revalidatePath('/admin/settings');
+    revalidatePath('/', 'layout');
     return { success: true, setting };
   } catch (error: any) {
     const msg = error instanceof Error ? (error as any)?.message : 'Unknown error';
@@ -140,8 +140,7 @@ export async function upsertManySettings(
       { keys: settings.map((s) => s.key), count: settings.length },
       performedBy
     );
-    revalidatePath('/admin/settings');
-    revalidatePath('/admin/pos');
+    revalidatePath('/', 'layout');
     return { success: true };
   } catch (error: any) {
     const msg = error instanceof Error ? (error as any)?.message : 'Unknown error';
@@ -154,7 +153,7 @@ export async function deleteSetting(key: string, performedBy?: string) {
     const existing = await prisma.setting.findUnique({ where: { key } });
     await prisma.setting.delete({ where: { key } });
     await writeAuditLog('setting', 'delete', key, { key, value: existing?.value }, performedBy);
-    revalidatePath('/admin/settings');
+    revalidatePath('/', 'layout');
     return { success: true };
   } catch (error: any) {
     const msg = error instanceof Error ? (error as any)?.message : 'Unknown error';

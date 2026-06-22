@@ -19,6 +19,10 @@ export interface POSConfig {
   pos_enable_customer_db: boolean;
   pos_allow_negative_stock: boolean;
   pos_sound_effects: boolean;
+  pos_label_width: string;
+  pos_label_height: string;
+  pos_auto_print_labels: boolean;
+  pos_logo: string;
 }
 
 export const DEFAULT_POS: POSConfig = {
@@ -40,4 +44,8 @@ export const DEFAULT_POS: POSConfig = {
   pos_enable_customer_db: true,
   pos_allow_negative_stock: false,
   pos_sound_effects: true,
+  pos_label_width: '50',
+  pos_label_height: '25',
+  pos_auto_print_labels: false,
+  pos_logo: '',
 };

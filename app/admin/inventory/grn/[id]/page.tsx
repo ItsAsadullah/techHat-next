@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getGRNById, submitGRN } from '@/lib/actions/grn-actions';
+import { getPOSConfig } from '@/lib/actions/settings-actions';
 
 export default function GRNDetailsPage() {
   const params = useParams();
@@ -24,12 +25,245 @@ export default function GRNDetailsPage() {
   const [grn, setGrn] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [posConfig, setPosConfig] = useState<any>(null);
+
+  // TechHat cipher: I=1, Z=2, E=3, A=4, S=5, G=6, T=7, B=8, P=9, O=0
+  const cipherMap: Record<string, string> = { '1': 'I', '2': 'Z', '3': 'E', '4': 'A', '5': 'S', '6': 'G', '7': 'T', '8': 'B', '9': 'P', '0': 'O' };
+  const toCipher = (price: number) =>
+    Math.round(price).toString().split('').map(d => cipherMap[d] || d).join('');
+
+  const handlePrintLabels = () => {
+    if (!grn) return;
+    const labelWidth = posConfig?.pos_label_width || '50';
+    const labelHeight = posConfig?.pos_label_height || '25';
+
+    const supplierCode = grn.supplier?.supplierCode ||
+      (grn.supplier?.name || '').toUpperCase().replace(/\s+/g, '').substring(0, 4);
+
+    const logoUrl = posConfig?.pos_logo
+      ? `${posConfig.pos_logo}?t=${Date.now()}`
+      : `${window.location.origin}/images/techhat.png`;
+
+    // Build all label HTML
+    const labelsHtml = grn.items.flatMap((item: any) => {
+      const qty = item.acceptedQty || 0;
+      const category = (item.product?.category?.name || '').toUpperCase();
+      const modelName = (item.product?.model || item.product?.name || '').toUpperCase();
+      const landedCost = item.unitCost || item.product?.costPrice || 0;
+      const cipherPrice = toCipher(landedCost);
+      const sku = item.variant?.sku || item.product?.sku || 'N/A';
+      const infoLine = [category, modelName, cipherPrice, supplierCode].filter(Boolean).join('-');
+
+      return Array.from({ length: qty }, () => `
+        <div class="label">
+          <div class="brand">
+            <img src="${logoUrl}" alt="Logo" />
+            TECHHAT
+          </div>
+          <div class="info">${infoLine}</div>
+          <svg class="barcode" data-sku="${sku}"></svg>
+          <div class="sku-text">${sku}</div>
+        </div>
+      `);
+    }).join('');
+
+    const popup = window.open('', '_blank', `width=520,height=400,toolbar=0,menubar=0,scrollbars=yes`);
+    if (!popup) { toast.error('Popup blocked! Please allow popups for this site.'); return; }
+
+    popup.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Barcode Labels — ${labelWidth}×${labelHeight}mm</title>
+        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+        <style>
+          :root {
+            --page-width: ${labelWidth}mm;
+            --page-height: ${labelHeight}mm;
+            --pad-left: 5.5mm;
+            --pad-top: 1.5mm;
+          }
+          @page { size: var(--page-width) var(--page-height); margin: 0; }
+          * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+          body { background: #f5f5f5; }
+
+          .top-bar {
+            background: #18181b;
+            color: white;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+          }
+          .settings-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            background: #27272a;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+          }
+          .settings-group label { display: flex; align-items: center; gap: 6px; color: #d4d4d8; }
+          .settings-group input {
+            background: #18181b;
+            border: 1px solid #3f3f46;
+            color: white;
+            padding: 4px 6px;
+            border-radius: 4px;
+            width: 50px;
+            font-size: 12px;
+          }
+          .print-btn {
+            background: #22c55e;
+            color: white;
+            border: none;
+            padding: 8px 24px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          }
+          .print-btn:hover { background: #16a34a; }
+
+          .print-area { padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+          .label {
+            width: var(--page-width);
+            height: var(--page-height);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: var(--pad-top) 2mm 1.5mm var(--pad-left);
+            page-break-after: always;
+            overflow: hidden;
+            background: white;
+            border: 1px dashed #ccc;
+          }
+          .brand {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            font-size: 14px;
+            font-weight: 900;
+            text-align: center;
+            letter-spacing: 0.5px;
+            margin-bottom: 1.5px;
+            text-transform: uppercase;
+            white-space: nowrap;
+          }
+          .brand img {
+            height: 40px;
+            width: auto;
+            object-fit: contain;
+          }
+          .info {
+            font-size: 9.5px;
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 0.5px;
+            margin-bottom: 1px;
+          }
+          .barcode { display: block; max-width: 100%; }
+          .barcode svg { max-width: 100%; height: auto; }
+          .sku-text {
+            font-size: 6.5px;
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 0.3px;
+            margin-top: 1px;
+          }
+
+          @media print {
+            .top-bar { display: none !important; }
+            body { background: white; }
+            .label { border: none; margin: 0; }
+            .print-area { padding: 0; gap: 0; display: block; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="top-bar">
+          <div style="display:flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <div class="settings-group">
+              <span style="font-weight:bold; color:#a1a1aa; margin-right:4px;">Size (mm)</span>
+              <label>W: <input type="number" id="pageW" value="${labelWidth}"></label>
+              <label>H: <input type="number" id="pageH" value="${labelHeight}"></label>
+            </div>
+            <div class="settings-group">
+              <span style="font-weight:bold; color:#a1a1aa; margin-right:4px;">Margins (mm)</span>
+              <label>Left: <input type="number" id="padL" value="5.5" step="0.5"></label>
+              <label>Top: <input type="number" id="padT" value="1.5" step="0.5"></label>
+            </div>
+            <div class="settings-group">
+              <span style="font-weight:bold; color:#a1a1aa; margin-right:4px;">Barcode</span>
+              <label>Height: <input type="number" id="barH" value="40" step="2"></label>
+            </div>
+          </div>
+          <button class="print-btn" onclick="window.print()">🖨️ Print <span id="lcount">0</span> Labels</button>
+        </div>
+        <div class="print-area">
+          ${labelsHtml}
+        </div>
+        <script>
+          function renderBarcodes() {
+            const h = document.getElementById('barH').value;
+            document.querySelectorAll('.barcode').forEach(function(el) {
+              var sku = el.getAttribute('data-sku');
+              JsBarcode(el, sku, {
+                format: 'CODE128',
+                width: 1.2,
+                height: parseInt(h) || 40,
+                fontSize: 0,
+                margin: 0,
+                displayValue: false
+              });
+            });
+          }
+
+          window.addEventListener('load', function() {
+            renderBarcodes();
+            document.getElementById('lcount').textContent = document.querySelectorAll('.label').length;
+
+            // Live updates
+            const root = document.documentElement;
+            document.getElementById('pageW').addEventListener('input', e => {
+              root.style.setProperty('--page-width', e.target.value + 'mm');
+              // Update @page rule dynamically
+              const style = document.createElement('style');
+              style.innerHTML = \`@page { size: \${e.target.value}mm \${document.getElementById('pageH').value}mm; }\`;
+              document.head.appendChild(style);
+            });
+            document.getElementById('pageH').addEventListener('input', e => {
+              root.style.setProperty('--page-height', e.target.value + 'mm');
+              const style = document.createElement('style');
+              style.innerHTML = \`@page { size: \${document.getElementById('pageW').value}mm \${e.target.value}mm; }\`;
+              document.head.appendChild(style);
+            });
+            document.getElementById('padL').addEventListener('input', e => root.style.setProperty('--pad-left', e.target.value + 'mm'));
+            document.getElementById('padT').addEventListener('input', e => root.style.setProperty('--pad-top', e.target.value + 'mm'));
+            document.getElementById('barH').addEventListener('change', renderBarcodes);
+          });
+        <\/script>
+      </body>
+      </html>
+    `);
+    popup.document.close();
+  };
 
   useEffect(() => {
     async function load() {
       const res = await getGRNById(params.id as string);
       if (res.success) setGrn(res.data);
       else toast.error('Failed to load GRN');
+
+      const config = await getPOSConfig();
+      setPosConfig(config);
+
       setLoading(false);
     }
     load();
@@ -37,13 +271,17 @@ export default function GRNDetailsPage() {
 
   const handleSubmitGRN = async () => {
     if (!confirm('Are you sure you want to Submit this GRN? This will IMMUTABLY update the Stock Ledger and product stock quantities. This action cannot be undone.')) return;
-    
+
     setActionLoading(true);
     const res = await submitGRN(grn.id);
     if (res.success) {
       toast.success('Goods Receive Note Submitted & Locked successfully!');
       setGrn({ ...grn, status: 'SUBMITTED' });
       router.refresh();
+
+      if (posConfig?.pos_auto_print_labels) {
+        handlePrintLabels();
+      }
     } else {
       toast.error(res.error || 'Failed to submit GRN');
     }
@@ -57,6 +295,8 @@ export default function GRNDetailsPage() {
   if (!grn) {
     return <div className="p-12 text-center text-muted-foreground">GRN not found.</div>;
   }
+
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -87,8 +327,11 @@ export default function GRNDetailsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Printer className="mr-2 h-4 w-4" /> Print
+          <Button variant="outline" size="sm" onClick={handlePrintLabels}>
+            <Printer className="mr-2 h-4 w-4" /> Print Labels
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
+            <Printer className="mr-2 h-4 w-4" /> Print GRN
           </Button>
 
           {grn.status === 'DRAFT' && (
@@ -169,6 +412,7 @@ export default function GRNDetailsPage() {
           )}
         </div>
       </div>
+
     </div>
   );
 }

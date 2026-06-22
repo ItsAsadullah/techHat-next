@@ -454,6 +454,7 @@ export default function ProductForm({ categories, brands, attributesList, catego
                           <ProductVariantSection
                             attributesList={attributesList}
                             categoryAttributes={categoryAttributes}
+                            brands={brands}
                           />
                         </div>
                       )}
@@ -828,6 +829,7 @@ export default function ProductForm({ categories, brands, attributesList, catego
                       <ProductVariantSection
                         attributesList={attributesList}
                         categoryAttributes={categoryAttributes}
+                        brands={brands}
                       />
                     </div>
                   )}

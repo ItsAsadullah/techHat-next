@@ -48,13 +48,17 @@ export default function ImageUpload({
 
     setUploading(true);
     try {
-      // Compress before upload
-      const compressedDataUrl = await compressImage(file, 1600, 1600, 0.82, 1.5);
-      const compressedBlob = await fetch(compressedDataUrl).then(r => r.blob());
-      const compressedFile = new File([compressedBlob], file.name, { type: compressedBlob.type });
+      let uploadFile = file;
+
+      // Only compress if it's not an SVG
+      if (file.type !== 'image/svg+xml') {
+        const compressedDataUrl = await compressImage(file, 1600, 1600, 0.82, 1.5);
+        const compressedBlob = await fetch(compressedDataUrl).then(r => r.blob());
+        uploadFile = new File([compressedBlob], file.name, { type: compressedBlob.type });
+      }
 
       const formData = new FormData();
-      formData.append('file', compressedFile);
+      formData.append('file', uploadFile);
       formData.append('folder', folder);
 
       const response = await fetch('/api/upload', {

@@ -97,13 +97,23 @@ export async function getGRNById(id: string) {
     const grn = await prisma.goodsReceiveNote.findUnique({
       where: { id },
       include: {
-        supplier: true,
+        supplier: { select: { id: true, name: true, supplierCode: true } },
         warehouse: true,
         purchaseOrder: true,
         items: {
           include: {
-            product: { select: { id: true, name: true, sku: true, stock: true } },
-            variant: { select: { id: true, name: true, sku: true, stock: true } }
+            product: {
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+                stock: true,
+                model: true,
+                costPrice: true,
+                category: { select: { name: true } }
+              }
+            },
+            variant: { select: { id: true, name: true, sku: true, stock: true, price: true } }
           }
         }
       },

@@ -134,7 +134,7 @@ export function SupplierForm({ initialData, isEditMode }: SupplierFormProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="supplierCode">Supplier Code</Label>
-                <Input id="supplierCode" name="supplierCode" value={formData.supplierCode} onChange={handleChange} placeholder="Leave empty to auto-generate" disabled={isEditMode} />
+                <Input id="supplierCode" name="supplierCode" value={formData.supplierCode} onChange={handleChange} placeholder="Leave empty to auto-generate" />
               </div>
               <div className="space-y-2 col-span-2">
                 <Label htmlFor="companyName">Legal Company Name</Label>

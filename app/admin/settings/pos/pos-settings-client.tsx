@@ -12,10 +12,11 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import {
   Save, MonitorSpeaker, Receipt, Wallet, Tag, PackageSearch,
-  ScanBarcode, Printer, CreditCard, Layers, Settings2,
+  ScanBarcode, Printer, CreditCard, Layers, Settings2, Image as ImageIcon
 } from 'lucide-react';
 import { savePOSConfig } from '@/lib/actions/settings-actions';
 import { type POSConfig } from '@/lib/settings-types';
+import ImageUpload from '@/components/ui/image-upload';
 
 interface Props {
   initial: POSConfig;
@@ -188,6 +189,56 @@ export function POSSettingsClient({ initial }: Props) {
               className="mt-1"
             />
             <p className="text-xs text-gray-500 mt-1">Shown at the bottom — thank you message, return policy, etc.</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* ── Label Printer ───────────────────────────────────── */}
+      <Card className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Printer className="h-5 w-5 text-gray-600" />
+          <h2 className="text-base font-semibold text-gray-900">Label Printer (GRN)</h2>
+        </div>
+        <div className="space-y-4">
+          <SwitchRow
+            label="Auto-Print Barcodes"
+            desc="Automatically print barcode labels when a Goods Received Note is submitted"
+            field="pos_auto_print_labels"
+          />
+          <Separator />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <div>
+              <Label>Label Width (mm)</Label>
+              <Input
+                type="number"
+                value={cfg.pos_label_width}
+                onChange={(e) => set('pos_label_width', e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label>Label Height (mm)</Label>
+              <Input
+                type="number"
+                value={cfg.pos_label_height}
+                onChange={(e) => set('pos_label_height', e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <Separator />
+          <div>
+            <Label className="flex items-center gap-2 mb-2">
+              <ImageIcon className="h-4 w-4" />
+              Label Logo (SVG Recommended)
+            </Label>
+            <ImageUpload
+              value={cfg.pos_logo ? [cfg.pos_logo] : []}
+              onChange={(urls) => set('pos_logo', urls[0] || '')}
+              onRemove={() => set('pos_logo', '')}
+              maxImages={1}
+            />
+            <p className="text-xs text-gray-500 mt-2">This logo will be printed on the GRN thermal labels. For best quality, use a black and white SVG file.</p>
           </div>
         </div>
       </Card>
