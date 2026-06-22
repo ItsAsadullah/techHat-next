@@ -236,7 +236,6 @@ export function POSSettingsClient({ initial }: Props) {
               value={cfg.pos_logo ? [cfg.pos_logo] : []}
               onChange={(urls) => set('pos_logo', urls[0] || '')}
               onRemove={() => set('pos_logo', '')}
-              maxImages={1}
             />
             <p className="text-xs text-gray-500 mt-2">This logo will be printed on the GRN thermal labels. For best quality, use a black and white SVG file.</p>
           </div>

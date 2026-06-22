@@ -23,7 +23,7 @@ export function PurchaseNotesCard({ note, setNote, attachments = [], setAttachme
   const handleSuccess = (result: any) => {
     if (typeof result.info === 'object' && result.info.secure_url) {
       if (setAttachments) {
-        setAttachments(prev => [...(prev || []), result.info.secure_url]);
+        setAttachments([...(attachments || []), result.info.secure_url]);
       }
     }
   };

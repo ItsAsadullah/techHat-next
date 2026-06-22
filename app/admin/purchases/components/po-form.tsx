@@ -212,7 +212,6 @@ export function PurchaseOrderForm({ initialData, isEditMode = false, suppliers, 
           tax: i.tax,
           subtotal: i.subtotal,
         })),
-        note,
         attachment: attachments.length > 0 ? JSON.stringify(attachments) : undefined
       };
 
