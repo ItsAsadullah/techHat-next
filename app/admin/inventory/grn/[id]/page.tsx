@@ -315,17 +315,20 @@ export default function GRNDetailsPage() {
 
     setActionLoading(true);
     const res = await submitGRN(grn.id);
+    setActionLoading(false); // End loading first
+
     if (res.success) {
       toast.success('Goods Receive Note Submitted & Locked successfully!');
       setGrn({ ...grn, status: 'SUBMITTED' });
-      router.refresh();
-
-      // Show print confirmation modal
-      setShowPrintModal(true);
+      
+      // Delay the modal slightly to ensure DOM updates and router.refresh don't clash
+      setTimeout(() => {
+        setShowPrintModal(true);
+        router.refresh();
+      }, 300);
     } else {
       toast.error(res.error || 'Failed to submit GRN');
     }
-    setActionLoading(false);
   };
 
   if (loading) {

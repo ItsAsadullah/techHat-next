@@ -38,29 +38,32 @@ export async function POST(request: NextRequest) {
     const folder = (formData.get('folder') as string) || 'general';
     const isVideo = file.type.startsWith('video/');
     const isGif = file.type === 'image/gif' || file.name?.toLowerCase().endsWith('.gif');
+    const isIco = file.type === 'image/x-icon' || file.type === 'image/vnd.microsoft.icon' || file.name?.toLowerCase().endsWith('.ico');
 
     const useChunked = file.size >= 12 * 1024 * 1024; // 12MB+
 
     const uploadOptions: any = {
       folder: `techhat/${folder}`,
       resource_type: 'auto',
-      ...(isVideo || isGif ? {} : { format: 'webp', quality: 'auto' }),
+      ...(isVideo || isGif || isIco ? {} : { format: 'webp', quality: 'auto' }),
       ...(useChunked ? { chunk_size: 10 * 1024 * 1024 } : {}),
     };
 
-    const url = await new Promise<string>((resolve, reject) => {
+    const url = await new Promise<string>(async (resolve, reject) => {
       const cb = (error: any, result: any) => {
         if (error) reject(error);
         else resolve(result?.secure_url || '');
       };
 
-      const cloudinaryStream = useChunked
-        ? cloudinary.uploader.upload_large_stream(uploadOptions, cb)
-        : cloudinary.uploader.upload_stream(uploadOptions, cb);
-
-      const nodeStream = Readable.fromWeb(file.stream() as any);
-      nodeStream.on('error', reject);
-      nodeStream.pipe(cloudinaryStream);
+      if (useChunked) {
+        const cloudinaryStream = cloudinary.uploader.upload_large_stream(uploadOptions, cb);
+        const nodeStream = Readable.fromWeb(file.stream() as any);
+        nodeStream.on('error', reject);
+        nodeStream.pipe(cloudinaryStream);
+      } else {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        cloudinary.uploader.upload_stream(uploadOptions, cb).end(buffer);
+      }
     });
 
     return NextResponse.json({ success: true, url });
