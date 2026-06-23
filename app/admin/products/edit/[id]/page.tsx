@@ -30,7 +30,7 @@ export default async function EditProductPage({ params }: PageProps) {
     <div className="w-full">
       <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-4 md:py-6">
         <ProductForm
-          categories={rootCategories}
+          categories={categories}
           brands={brands}
           attributesList={Array.isArray(attributesResult) ? attributesResult : []}
           categoryAttributes={categoryAttributes}

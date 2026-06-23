@@ -61,7 +61,7 @@ export function AiReviewBoard({ data, onClose, onRegenerate }: AiReviewBoardProp
         setValue('productSpecs', [...existingSpecs, ...newSpecs], { shouldDirty: true });
       }
       if (selectedFields.faqs && data.faqs) {
-        const existingFaqs = getValues('faqs') || [];
+        const existingFaqs = (getValues('faqs') || []).filter((f: any) => f.question?.trim() || f.answer?.trim());
         const newFaqs = data.faqs.map((f: any) => ({ question: f.question, answer: f.answer }));
         setValue('faqs', [...existingFaqs, ...newFaqs], { shouldDirty: true });
       }

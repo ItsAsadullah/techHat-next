@@ -16,6 +16,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { getGRNById, submitGRN } from '@/lib/actions/grn-actions';
 import { getPOSConfig } from '@/lib/actions/settings-actions';
 
@@ -25,6 +35,7 @@ export default function GRNDetailsPage() {
   const [grn, setGrn] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
   const [posConfig, setPosConfig] = useState<any>(null);
 
   // TechHat cipher: I=1, Z=2, E=3, A=4, S=5, G=6, T=7, B=8, P=9, O=0
@@ -52,7 +63,11 @@ export default function GRNDetailsPage() {
       const landedCost = item.unitCost || item.product?.costPrice || 0;
       const cipherPrice = toCipher(landedCost);
       const sku = item.variant?.sku || item.product?.sku || 'N/A';
-      const infoLine = [category, modelName, cipherPrice, supplierCode].filter(Boolean).join('-');
+      
+      const parts = [modelName, cipherPrice, supplierCode].filter(Boolean).join('-');
+      const infoHtml = category 
+        ? `<span class="cat-wrapper"><span class="cat-part" contenteditable="true" spellcheck="false" title="Click to edit category">${category}</span><span class="cat-sep">-</span></span><span contenteditable="true" spellcheck="false" title="Click to edit model">${parts}</span>`
+        : `<span contenteditable="true" spellcheck="false" title="Click to edit model">${parts}</span>`;
 
       return Array.from({ length: qty }, () => `
         <div class="label">
@@ -60,7 +75,7 @@ export default function GRNDetailsPage() {
             <img src="${logoUrl}" alt="Logo" />
             TECHHAT
           </div>
-          <div class="info">${infoLine}</div>
+          <div class="info">${infoHtml}</div>
           <svg class="barcode" data-sku="${sku}"></svg>
           <div class="sku-text">${sku}</div>
         </div>
@@ -81,7 +96,7 @@ export default function GRNDetailsPage() {
             --page-width: ${labelWidth}mm;
             --page-height: ${labelHeight}mm;
             --pad-left: 5.5mm;
-            --pad-top: 1.5mm;
+            --pad-top: 0.5mm;
           }
           @page { size: var(--page-width) var(--page-height); margin: 0; }
           * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
@@ -116,6 +131,18 @@ export default function GRNDetailsPage() {
             width: 50px;
             font-size: 12px;
           }
+          .settings-toggle-btn {
+            background: #3f3f46;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          }
+          .settings-toggle-btn:hover { background: #52525b; }
           .print-btn {
             background: #22c55e;
             color: white;
@@ -188,7 +215,11 @@ export default function GRNDetailsPage() {
       </head>
       <body>
         <div class="top-bar">
-          <div style="display:flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+          <div style="display:flex; gap: 12px; align-items: center;">
+            <button class="settings-toggle-btn" onclick="const p = document.getElementById('settings-panel'); p.style.display = p.style.display === 'none' ? 'flex' : 'none'">⚙️ Settings</button>
+            <button class="print-btn" onclick="window.print()">🖨️ Print <span id="lcount">0</span> Labels</button>
+          </div>
+          <div id="settings-panel" style="display:none; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 12px; width: 100%;">
             <div class="settings-group">
               <span style="font-weight:bold; color:#a1a1aa; margin-right:4px;">Size (mm)</span>
               <label>W: <input type="number" id="pageW" value="${labelWidth}"></label>
@@ -197,14 +228,17 @@ export default function GRNDetailsPage() {
             <div class="settings-group">
               <span style="font-weight:bold; color:#a1a1aa; margin-right:4px;">Margins (mm)</span>
               <label>Left: <input type="number" id="padL" value="5.5" step="0.5"></label>
-              <label>Top: <input type="number" id="padT" value="1.5" step="0.5"></label>
+              <label>Top: <input type="number" id="padT" value="0.5" step="0.5"></label>
             </div>
             <div class="settings-group">
               <span style="font-weight:bold; color:#a1a1aa; margin-right:4px;">Barcode</span>
               <label>Height: <input type="number" id="barH" value="40" step="2"></label>
             </div>
+            <div class="settings-group">
+              <span style="font-weight:bold; color:#a1a1aa; margin-right:4px;">Content</span>
+              <label><input type="checkbox" id="showCat" checked> Category</label>
+            </div>
           </div>
-          <button class="print-btn" onclick="window.print()">🖨️ Print <span id="lcount">0</span> Labels</button>
         </div>
         <div class="print-area">
           ${labelsHtml}
@@ -247,6 +281,13 @@ export default function GRNDetailsPage() {
             document.getElementById('padL').addEventListener('input', e => root.style.setProperty('--pad-left', e.target.value + 'mm'));
             document.getElementById('padT').addEventListener('input', e => root.style.setProperty('--pad-top', e.target.value + 'mm'));
             document.getElementById('barH').addEventListener('change', renderBarcodes);
+            
+            document.getElementById('showCat').addEventListener('change', e => {
+              const display = e.target.checked ? 'inline' : 'none';
+              document.querySelectorAll('.cat-wrapper').forEach(el => {
+                el.style.display = display;
+              });
+            });
           });
         <\/script>
       </body>
@@ -279,9 +320,8 @@ export default function GRNDetailsPage() {
       setGrn({ ...grn, status: 'SUBMITTED' });
       router.refresh();
 
-      if (posConfig?.pos_auto_print_labels) {
-        handlePrintLabels();
-      }
+      // Show print confirmation modal
+      setShowPrintModal(true);
     } else {
       toast.error(res.error || 'Failed to submit GRN');
     }
@@ -412,6 +452,32 @@ export default function GRNDetailsPage() {
           )}
         </div>
       </div>
+
+      {/* Print Confirmation Modal */}
+      <AlertDialog open={showPrintModal} onOpenChange={setShowPrintModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>GRN Locked Successfully!</AlertDialogTitle>
+            <AlertDialogDescription>
+              The Goods Receive Note has been verified and locked into the ledger. Would you like to print barcode labels for these received items now?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowPrintModal(false)}>Maybe Later</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                setShowPrintModal(false);
+                setTimeout(() => {
+                  handlePrintLabels();
+                }, 100);
+              }}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Printer className="mr-2 h-4 w-4" /> Proceed to Print
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );

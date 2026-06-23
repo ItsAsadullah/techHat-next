@@ -9,7 +9,6 @@ import {
 } from '@/components/ui/popover';
 import { Check, ChevronDown, ChevronRight, Loader2, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getCategoryChildren, getCategoryPathWithChildren } from '@/lib/actions/category-actions';
 
 interface Category {
   id: string;
@@ -39,47 +38,50 @@ export default function CategoryHierarchy({ initialCategories, allCategories, on
   const searchInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function init() {
-      if (!selectedCategoryId) {
+    function init() {
+      if (!selectedCategoryId || !allCategories || allCategories.length === 0) {
         setLevels([{ categories: initialCategories, selectedId: null, isLoading: false, open: false, searchTerm: '' }]);
         return;
       }
 
-      const result = await getCategoryPathWithChildren(selectedCategoryId);
-      if (cancelled) return;
+      // Build path locally
+      const path: Category[] = [];
+      let currentId: string | null = selectedCategoryId;
+      while (currentId) {
+        const cat = allCategories.find((c) => c.id === currentId);
+        if (!cat) break;
+        path.unshift(cat);
+        currentId = cat.parentId;
+      }
 
-      if (!result.success || !result.path || result.path.length === 0) {
+      if (path.length === 0) {
         setLevels([{ categories: initialCategories, selectedId: null, isLoading: false, open: false, searchTerm: '' }]);
         return;
       }
 
-      const { path, childrenMap } = result;
-      const newLevels: { categories: Category[]; selectedId: string | null; isLoading: boolean; open: boolean; searchTerm: string }[] = [
+      const newLevels: typeof levels = [
         { categories: initialCategories, selectedId: path[0].id, isLoading: false, open: false, searchTerm: '' },
       ];
 
       for (let i = 0; i < path.length - 1; i++) {
-        const children = (childrenMap[path[i].id] ?? []) as Category[];
+        const children = allCategories.filter((c) => c.parentId === path[i].id);
         if (children.length > 0) {
           newLevels.push({ categories: children, selectedId: path[i + 1].id, isLoading: false, open: false, searchTerm: '' });
         }
       }
 
-      const lastChildren = (childrenMap[path[path.length - 1].id] ?? []) as Category[];
+      const lastChildren = allCategories.filter((c) => c.parentId === path[path.length - 1].id);
       if (lastChildren.length > 0) {
         newLevels.push({ categories: lastChildren, selectedId: null, isLoading: false, open: false, searchTerm: '' });
       }
 
-      if (!cancelled) setLevels(newLevels);
+      setLevels(newLevels);
     }
 
     init();
-    return () => { cancelled = true; };
-  }, [selectedCategoryId, initialCategories]);
+  }, [selectedCategoryId, initialCategories, allCategories]);
 
-  const handleSelect = async (levelIndex: number, categoryId: string) => {
+  const handleSelect = (levelIndex: number, categoryId: string) => {
     const newLevels = levels.slice(0, levelIndex + 1).map(l => ({ ...l }));
 
     newLevels[levelIndex].selectedId = categoryId;
@@ -88,33 +90,19 @@ export default function CategoryHierarchy({ initialCategories, allCategories, on
 
     onCategorySelect(categoryId);
 
-    newLevels[levelIndex].isLoading = true;
-    setLevels(newLevels);
-
-    try {
-      const result = await getCategoryChildren(categoryId);
-
-      const levelsAfterFetch = newLevels.map(l => ({ ...l }));
-      levelsAfterFetch[levelIndex].isLoading = false;
-
-      const childCategories = (result.success && result.categories) ? result.categories : [];
-      if (childCategories.length > 0) {
-        levelsAfterFetch.push({
-          categories: childCategories,
-          selectedId: null,
-          isLoading: false,
-          open: false,
-          searchTerm: '',
-        });
-      }
-
-      setLevels(levelsAfterFetch);
-    } catch (error) {
-      console.error('Failed to load subcategories', error);
-      const levelsError = newLevels.map(l => ({ ...l }));
-      levelsError[levelIndex].isLoading = false;
-      setLevels(levelsError);
+    const childCategories = allCategories ? allCategories.filter((c) => c.parentId === categoryId) : [];
+    
+    if (childCategories.length > 0) {
+      newLevels.push({
+        categories: childCategories,
+        selectedId: null,
+        isLoading: false,
+        open: false,
+        searchTerm: '',
+      });
     }
+
+    setLevels(newLevels);
   };
 
   const getFilteredCategories = (level: typeof levels[0], index: number) => {
@@ -122,14 +110,10 @@ export default function CategoryHierarchy({ initialCategories, allCategories, on
     const q = level.searchTerm.toLowerCase();
     
     if (allCategories && allCategories.length > 0) {
-      const results = allCategories.filter((c) => c.name.toLowerCase().includes(q));
-      if (results.length === 0) {
-        return [{ id: 'debug', name: `Not found. Searched in ${allCategories.length} total categories.`, slug: '', parentId: null }];
-      }
-      return results;
+      return allCategories.filter((c) => c.name.toLowerCase().includes(q));
     }
     
-    return [{ id: 'debug2', name: `allCategories is missing!`, slug: '', parentId: null }];
+    return level.categories.filter((c) => c.name.toLowerCase().includes(q));
   };
 
   return (
@@ -189,7 +173,7 @@ export default function CategoryHierarchy({ initialCategories, allCategories, on
                       <input
                         ref={(el) => { searchInputRefs.current[index] = el; }}
                         type="text"
-                        placeholder="Search category..."
+                        placeholder={`Search in ${allCategories?.length || 'missing'} cats...`}
                         value={level.searchTerm}
                         onChange={(e) => {
                           const newLevels = levels.map((l, i) =>
@@ -199,6 +183,9 @@ export default function CategoryHierarchy({ initialCategories, allCategories, on
                         }}
                         className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400"
                         onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                          }
                           if (e.key === 'Escape') {
                             const newLevels = levels.map((l, i) =>
                               i === index ? { ...l, open: false, searchTerm: '' } : l

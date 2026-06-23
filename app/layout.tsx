@@ -135,7 +135,7 @@ export default async function RootLayout({
                   <main className="min-h-screen bg-background text-foreground pb-16 lg:pb-0">
                     {children}
                   </main>
-                  <Toaster position="top-right" richColors offset={100} />
+                  <Toaster position="top-center" richColors offset={100} />
                   <SpeedInsights />
                 </Providers>
               </BrandingProvider>
