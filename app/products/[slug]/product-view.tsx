@@ -1462,9 +1462,10 @@ export default function ProductView({ product, relatedProducts, whatsappNumber, 
                             <ChevronDown className="w-5 h-5 text-gray-500" />
                           </span>
                         </summary>
-                        <div className="px-4 pb-4 text-gray-600 bg-white border-t border-gray-100 rounded-b-xl pt-4">
-                          {faq.answer}
-                        </div>
+                        <div 
+                          className="px-4 pb-4 text-gray-600 bg-white border-t border-gray-100 rounded-b-xl pt-4 prose prose-sm max-w-none prose-p:leading-relaxed prose-a:text-blue-600"
+                          dangerouslySetInnerHTML={{ __html: faq.answer }}
+                        />
                       </details>
                     ))}
                   </div>
