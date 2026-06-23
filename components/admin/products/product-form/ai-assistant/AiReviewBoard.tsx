@@ -26,6 +26,8 @@ export function AiReviewBoard({ data, onClose, onRegenerate }: AiReviewBoardProp
     tags: true,
     faqs: true,
     imageAlts: true,
+    advancedSeo: true,
+    enrichmentData: true,
   });
 
   const toggleField = (field: string) => {
@@ -64,6 +66,23 @@ export function AiReviewBoard({ data, onClose, onRegenerate }: AiReviewBoardProp
         const existingFaqs = (getValues('faqs') || []).filter((f: any) => f.question?.trim() || f.answer?.trim());
         const newFaqs = data.faqs.map((f: any) => ({ question: f.question, answer: f.answer }));
         setValue('faqs', [...existingFaqs, ...newFaqs], { shouldDirty: true });
+      }
+
+      if (selectedFields.advancedSeo && (data.schemaOrg || data.openGraph || data.twitterCard || data.merchantFeed)) {
+        setValue('advancedSeo', {
+          schemaOrg: data.schemaOrg,
+          openGraph: data.openGraph,
+          twitterCard: data.twitterCard,
+          merchantFeed: data.merchantFeed
+        }, { shouldDirty: true });
+      }
+
+      if (selectedFields.enrichmentData && (data.categoryStructure || data.relatedEntities || data.relatedProducts)) {
+        setValue('enrichmentData', {
+          categoryStructure: data.categoryStructure,
+          relatedEntities: data.relatedEntities,
+          relatedProducts: data.relatedProducts
+        }, { shouldDirty: true });
       }
       
       if (selectedFields.imageAlts && data.imageAlts && data.imageAlts.length > 0) {
@@ -279,6 +298,54 @@ export function AiReviewBoard({ data, onClose, onRegenerate }: AiReviewBoardProp
                     <p className="text-muted-foreground text-xs flex-1">{alt.altText}</p>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Enrichment Data */}
+          {(data.categoryStructure || data.relatedEntities) && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Checkbox 
+                  id="chk-enrichment" 
+                  checked={selectedFields.enrichmentData} 
+                  onCheckedChange={() => toggleField('enrichmentData')} 
+                />
+                <label htmlFor="chk-enrichment" className="font-medium">Enrichment Data (Categories & Entities)</label>
+              </div>
+              <div className="pl-7 space-y-2 text-sm border-l-2 border-muted ml-2 pb-2">
+                {data.categoryStructure && (
+                  <div>
+                    <span className="text-xs text-muted-foreground uppercase">Suggested Category</span>
+                    <p className="font-medium">{data.categoryStructure.main} {data.categoryStructure.sub ? `> ${data.categoryStructure.sub}` : ''}</p>
+                  </div>
+                )}
+                {data.relatedEntities && (
+                  <div>
+                    <span className="text-xs text-muted-foreground uppercase">Related Entities</span>
+                    <p className="text-muted-foreground">{JSON.stringify(data.relatedEntities)}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Advanced SEO Data */}
+          {(data.schemaOrg || data.openGraph) && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Checkbox 
+                  id="chk-advanced-seo" 
+                  checked={selectedFields.advancedSeo} 
+                  onCheckedChange={() => toggleField('advancedSeo')} 
+                />
+                <label htmlFor="chk-advanced-seo" className="font-medium">Advanced SEO (Schema, OG, Twitter)</label>
+              </div>
+              <div className="pl-7 space-y-2 text-sm border-l-2 border-muted ml-2 pb-2">
+                <p className="text-xs text-muted-foreground">AI has generated rich snippets, Schema.org payload, OpenGraph tags, and Merchant feed data.</p>
+                {data.schemaOrg && <Badge variant="outline" className="bg-emerald-50 text-emerald-700">Schema.org Ready</Badge>}
+                {data.openGraph && <Badge variant="outline" className="bg-blue-50 text-blue-700 ml-2">OpenGraph Ready</Badge>}
+                {data.twitterCard && <Badge variant="outline" className="bg-sky-50 text-sky-700 ml-2">Twitter Card Ready</Badge>}
               </div>
             </div>
           )}

@@ -427,6 +427,8 @@ model Product {
   specifications Json? // Key-value pairs: { "RAM": "8GB", "Color": "Black" }
   attributes     Json? // Defined attributes: [{ id: "1", name: "Color", values: ["Red", "Blue"] }]
   faqs           Json? // Array of { question, answer }
+  advancedSeo    Json? // Open Graph, Twitter, Schema.org, Merchant Feed
+  enrichmentData Json? // Category Structure, Related Entities, Use Cases
 
   // Relations
   vendor        Vendor?        @relation(fields: [vendorId], references: [id])

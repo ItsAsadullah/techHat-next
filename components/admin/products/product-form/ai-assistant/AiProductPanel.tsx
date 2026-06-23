@@ -20,6 +20,7 @@ export function AiProductPanel() {
   const [competitorUrls, setCompetitorUrls] = useState<string[]>(['']);
   const [aiResult, setAiResult] = useState<any>(null);
   const [modelId, setModelId] = useState('google:gemini-flash-latest');
+  const [analysisType, setAnalysisType] = useState<'1-step' | '3-step'>('3-step');
   const [availableModels, setAvailableModels] = useState<{value: string, label: string}[]>([]);
 
   const { getValues } = useFormContext();
@@ -62,10 +63,12 @@ export function AiProductPanel() {
 
     const res = await analyzeProductAction({
       productName,
+      categoryId: getValues('categoryId'),
       officialUrl: officialUrl.trim() || undefined,
       competitorUrls: validCompetitors,
       imageUrls: Array.from(allImageUrls), 
       modelId,
+      analysisType,
     });
 
     if (res.success) {
@@ -143,6 +146,19 @@ export function AiProductPanel() {
               </div>
 
               <div className="space-y-2 pt-2">
+                <Label>Analysis Depth</Label>
+                <Select value={analysisType} onValueChange={(val: any) => setAnalysisType(val)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Analysis Depth" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[105]">
+                    <SelectItem value="3-step">3-Step Deep Analysis (Best Quality, Slower)</SelectItem>
+                    <SelectItem value="1-step">1-Step Fast Analysis (Basic Quality, Faster)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 pt-2">
                 <Label>Official Manufacturer URL (Optional)</Label>
                 <div className="relative">
                   <LinkIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -190,7 +206,9 @@ export function AiProductPanel() {
               </Button>
               {loading && (
                 <p className="text-xs text-center text-muted-foreground mt-3 animate-pulse">
-                  Fetching sources and generating content. This may take 15-30 seconds...
+                  {analysisType === '3-step' 
+                    ? 'Running 3-Step Deep Analysis. This may take 30-45 seconds...'
+                    : 'Fetching sources and generating content. This may take 15-20 seconds...'}
                 </p>
               )}
             </div>

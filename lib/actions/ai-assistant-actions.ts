@@ -12,6 +12,8 @@ export async function analyzeProductAction(formData: {
   competitorUrls?: string[];
   imageUrls?: string[];
   modelId?: string;
+  analysisType?: '1-step' | '3-step';
+  categoryId?: string;
 }) {
   try {
     // 1. Gather Context (Scraping)
@@ -21,11 +23,36 @@ export async function analyzeProductAction(formData: {
       formData.competitorUrls || []
     );
 
+    // 1.5 Fetch Category Hint
+    let categoryHint = '';
+    if (formData.categoryId) {
+      const cat = await prisma.category.findUnique({
+        where: { id: formData.categoryId },
+        include: { parent: { include: { parent: true } } }
+      });
+      if (cat) {
+        const parts = [cat.name];
+        if (cat.parent) {
+          parts.unshift(cat.parent.name);
+          if (cat.parent.parent) {
+            parts.unshift(cat.parent.parent.name);
+          }
+        }
+        categoryHint = `\n[CRITICAL HINT] The user has explicitly classified this product in the following category: ${parts.join(' > ')}. Your generated content MUST align with this category. Do not hallucinate it as a different type of product.`;
+      }
+    }
+
     // 2. Vision Analysis
     const visionContext = await analyzeProductImages(formData.imageUrls || [], formData.modelId);
 
     // 3. Generate AI Data
-    const aiData = await generateProductData(scrapedContext, visionContext, formData.imageUrls || [], formData.modelId);
+    const aiData = await generateProductData(
+      scrapedContext + categoryHint, 
+      visionContext, 
+      formData.imageUrls || [], 
+      formData.modelId,
+      formData.analysisType || '3-step'
+    );
 
     // 4. Save Draft to Database
     const draft = await prisma.aiGenerationDraft.create({

@@ -93,6 +93,9 @@ export const productSchema = z.object({
   seoTitle:        z.string().nullable().optional().or(z.literal('')),
   metaDescription: z.string().nullable().optional().or(z.literal('')),
   slug:            z.string().nullable().optional().or(z.literal('')),
+  
+  advancedSeo: z.any().optional(),
+  enrichmentData: z.any().optional(),
 
   images: z.array(z.object({
     id: z.string().optional(),

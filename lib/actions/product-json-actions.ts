@@ -70,6 +70,8 @@ export async function createProductJSON(payload: {
   attributes?: any[];
   productSpecs?: { key: string; value: string }[];
   faqs?: { question: string; answer: string }[];
+  advancedSeo?: any;
+  enrichmentData?: any;
 }) {
   try {
     const status = payload.status || 'DRAFT';
@@ -121,6 +123,8 @@ export async function createProductJSON(payload: {
             }, {})
             : Prisma.JsonNull),
           attributes: payload.attributes ? payload.attributes : Prisma.JsonNull,
+          advancedSeo: payload.advancedSeo ? payload.advancedSeo : Prisma.JsonNull,
+          enrichmentData: payload.enrichmentData ? payload.enrichmentData : Prisma.JsonNull,
           images: [],
           // V3 fields
           status: status as any,
@@ -281,6 +285,8 @@ export async function updateProductJSON(
           faqs: payload.faqs ? (payload.faqs as any) : Prisma.JsonNull,
           ...(payload.slug ? { slug: payload.slug } : {}),
           attributes: payload.attributes ? payload.attributes : Prisma.JsonNull,
+          advancedSeo: payload.advancedSeo ? payload.advancedSeo : Prisma.JsonNull,
+          enrichmentData: payload.enrichmentData ? payload.enrichmentData : Prisma.JsonNull,
           // V3 fields
           status: status as any,
         } as any,
