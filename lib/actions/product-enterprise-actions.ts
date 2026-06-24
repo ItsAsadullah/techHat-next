@@ -10,40 +10,25 @@ import { ProductLifecycleStatus } from '@prisma/client';
 
 /**
  * Generate a unique SKU using a DB-level sequence.
- * Format: TH-{CategoryShortCode}-{Model}-{6-digit-padded-counter}
- * Example: TH-ROU-F3-000042
+ * Format: TH-{Model}-{4-digit-padded-counter}
+ * Example: TH-F3-0042
  */
 export async function generateSKU(
   categoryId?: string,
   model?: string
 ): Promise<{ success: boolean; sku?: string; error?: string }> {
   try {
-    let catCode = 'GEN';
-    
-    if (categoryId) {
-      const category = await prisma.category.findUnique({
-        where: { id: categoryId },
-        select: { shortCode: true, name: true }
-      });
-      if (category) {
-        if (category.shortCode) {
-          catCode = category.shortCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-        } else {
-          catCode = category.name.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
-        }
-      }
-    }
-
     const cleanModel = model ? model.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase() : '';
     
     // Build prefix
-    const prefixParts = ['TH', catCode];
+    const prefixParts = ['TH'];
     if (cleanModel) prefixParts.push(cleanModel);
     
     const prefix = prefixParts.join('-');
 
     const count = await prisma.product.count();
-    const paddedNum = String(count + 1).padStart(6, '0');
+    // 4 digits keeps the barcode short and clean
+    const paddedNum = String(count + 1).padStart(4, '0');
     const sku = `${prefix}-${paddedNum}`;
 
     return { success: true, sku };
