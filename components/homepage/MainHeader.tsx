@@ -70,9 +70,16 @@ export default function MainHeader({
       }
     };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      checkRole(session);
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (error || !user) {
+        setUser(null);
+        checkRole(null);
+        // Force cleanup of stale client session
+        supabase.auth.signOut().catch(() => {});
+      } else {
+        setUser(user);
+        checkRole({ user });
+      }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
