@@ -206,11 +206,11 @@ export async function findProductByBarcode(barcode: string): Promise<POSProduct 
       where: {
         status: 'ACTIVE',
         OR: [
-          { barcode: b },
-          { sku: b },
-          { model: b },
-          { variants: { some: { sku: b } } },
-          { variants: { some: { upc: b } } },
+          { barcode: { equals: b, mode: 'insensitive' } },
+          { sku: { equals: b, mode: 'insensitive' } },
+          { model: { equals: b, mode: 'insensitive' } },
+          { variants: { some: { sku: { equals: b, mode: 'insensitive' } } } },
+          { variants: { some: { upc: { equals: b, mode: 'insensitive' } } } },
         ],
       },
       select: {
