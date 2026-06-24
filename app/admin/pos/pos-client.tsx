@@ -6,7 +6,7 @@ import { POSProductGrid } from '@/components/admin/pos/pos-product-grid';
 import { POSCartPanel } from '@/components/admin/pos/pos-cart-panel';
 import { ClearCartDialog } from '@/components/admin/pos/clear-cart-dialog';
 import { DailyOrdersModal } from '@/components/admin/pos/daily-orders-modal';
-import { completeSale, getDailySalesSummary, getPOSSalesDates, type POSProduct, type CompleteSaleInput } from '@/lib/actions/pos-actions';
+import { completeSale, getDailySalesSummary, getPOSSalesDates, searchPOSProducts, findProductByBarcode, type POSProduct, type CompleteSaleInput } from '@/lib/actions/pos-actions';
 import { getPOSCustomerList } from '@/lib/actions/ledger-actions';
 import type { POSCustomerOption } from '@/components/admin/pos/customer-search-combobox';
 import type { InvoiceSettings } from '@/lib/actions/invoice-settings-actions';

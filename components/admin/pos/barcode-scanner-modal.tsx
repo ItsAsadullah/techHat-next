@@ -80,21 +80,23 @@ export function BarcodeScannerModal({ isOpen, onClose, onScan }: BarcodeScannerM
         const result = await onScan(code.trim());
         if (result.found) {
           setScannerState('success');
+          // Immediately stop scanning so we don't pick up the same barcode again
+          stopCamera();
           // Auto-close after success feedback
           setTimeout(() => {
-            stopCamera();
             onClose();
           }, 600);
         } else {
           // Show not-found dialog instead of auto-resume
+          // Stop camera immediately to prevent infinite scanning loop while dialog is open
+          stopCamera();
           setNotFound(result.message || 'This product is not in the product list.');
           setScannerState('scanning');
-          processingRef.current = false;
         }
       } catch {
+        stopCamera();
         setNotFound('Something went wrong. Please try again.');
         setScannerState('scanning');
-        processingRef.current = false;
       }
     },
     [onScan, onClose]
