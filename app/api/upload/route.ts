@@ -43,10 +43,17 @@ export async function POST(request: NextRequest) {
 
     const useChunked = file.size >= 12 * 1024 * 1024; // 12MB+
 
+    let format;
+    if (isIco) format = 'ico';
+    else if (isSvg) format = 'svg';
+    else if (isGif) format = 'gif';
+    else if (!isVideo) format = 'webp';
+
     const uploadOptions: any = {
       folder: `techhat/${folder}`,
-      resource_type: 'auto',
-      ...(isVideo || isGif || isIco || isSvg ? {} : { format: 'webp', quality: 'auto' }),
+      resource_type: isVideo ? 'video' : 'image',
+      ...(format ? { format } : {}),
+      ...(format === 'webp' ? { quality: 'auto' } : {}),
       ...(useChunked ? { chunk_size: 10 * 1024 * 1024 } : {}),
     };
 
