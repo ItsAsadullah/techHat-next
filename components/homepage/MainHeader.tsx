@@ -49,17 +49,6 @@ export default function MainHeader({
   useEffect(() => {
     setMounted(true);
 
-    if (typeof window !== 'undefined') {
-      const searchParams = new URLSearchParams(window.location.search);
-      if (searchParams.get('login') === 'true') {
-        setShowAuthModal(true);
-        // Clean up the URL so it doesn't stay there on refresh
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.delete('login');
-        window.history.replaceState({}, '', newUrl.pathname + newUrl.search);
-      }
-    }
-
     const checkRole = async (session: any) => {
       if (!session?.user) {
         setIsAdmin(false);
