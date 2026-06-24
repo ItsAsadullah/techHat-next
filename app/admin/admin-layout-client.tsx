@@ -213,7 +213,7 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
   // Handle Auth Redirects Immediately (no loading spinners)
   useEffect(() => {
     if (!isAuthed && !isLoginPage) {
-      router.replace('/admin/login');
+      router.replace('/?login=true');
     } else if (isAuthed && isLoginPage) {
       router.replace('/admin/dashboard');
     }
