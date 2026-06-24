@@ -168,7 +168,6 @@ export function BarcodeScannerModal({ isOpen, onClose, onScan }: BarcodeScannerM
 
   // ── Stop camera ───────────────────────────────────────────────────────
   const stopCamera = useCallback(() => {
-    processingRef.current = false;
     try { readerRef.current?.reset?.(); } catch {}
     readerRef.current = null;
     if (streamRef.current) {
