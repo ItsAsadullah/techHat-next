@@ -88,12 +88,26 @@ export function ProductQuickActions({ productId, slug, productName, sku, barcode
         </head>
         <body>
           <div class="name">${name}</div>
-          <div class="barcode-value">${barcodeValue}</div>
-          <div class="bars">
-            ${barcodeValue.split('').map(c => `<div class="bar" style="width:${parseInt(c, 36) % 2 === 0 ? 2 : 1}px"></div>`).join('')}
+          <div class="barcode-container" style="width: 100%; max-width: 300px; display: flex; justify-content: center; margin: 5px 0;">
+            <svg id="barcode"></svg>
           </div>
           <div class="label">SKU: ${sku || '—'}</div>
-          <script>window.onload = () => { window.print(); window.close(); }<\/script>
+          <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+          <script>
+            window.onload = () => {
+              JsBarcode("#barcode", "${barcodeValue}", {
+                format: "CODE128",
+                width: 2,
+                height: 50,
+                displayValue: false,
+                margin: 0
+              });
+              setTimeout(() => {
+                window.print();
+                window.close();
+              }, 300);
+            };
+          </script>
         </body>
       </html>
     `);

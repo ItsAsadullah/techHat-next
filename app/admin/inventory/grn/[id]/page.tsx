@@ -250,7 +250,7 @@ export default function GRNDetailsPage() {
               var sku = el.getAttribute('data-sku');
               JsBarcode(el, sku, {
                 format: 'CODE128',
-                width: 1.2,
+                width: 2,
                 height: parseInt(h) || 40,
                 fontSize: 0,
                 margin: 0,
