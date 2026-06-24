@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, url });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Upload error:', error);
     return NextResponse.json({ error: `Upload failed: ${error?.message || (typeof error === 'string' ? error : JSON.stringify(error))} ` }, { status: 500 });
   }
