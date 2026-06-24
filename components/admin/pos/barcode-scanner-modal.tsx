@@ -106,8 +106,22 @@ export function BarcodeScannerModal({ isOpen, onClose, onScan }: BarcodeScannerM
     const capturedOpenedAt = openedAtRef.current;
     try {
       const { BrowserMultiFormatReader } = await import('@zxing/browser');
+      const { DecodeHintType, BarcodeFormat } = await import('@zxing/library');
       if (!readerRef.current) {
-        readerRef.current = new BrowserMultiFormatReader();
+        const hints = new Map();
+        const formats = [
+          BarcodeFormat.CODE_128,
+          BarcodeFormat.CODE_39,
+          BarcodeFormat.EAN_13,
+          BarcodeFormat.EAN_8,
+          BarcodeFormat.UPC_A,
+          BarcodeFormat.UPC_E,
+          BarcodeFormat.QR_CODE
+        ];
+        hints.set(DecodeHintType.POSSIBLE_FORMATS, formats);
+        hints.set(DecodeHintType.TRY_HARDER, true);
+
+        readerRef.current = new BrowserMultiFormatReader(hints);
       }
       readerRef.current.decodeFromVideoElement(
         videoRef.current,
