@@ -533,7 +533,7 @@ export async function completeSale(input: CompleteSaleInput): Promise<SaleResult
       }));
       await tx.stockHistory.createMany({ data: stockHistoryData });
 
-      // 4c. Deduct stock concurrently
+      // 4c. Deduct stock concurrently and increment soldCount
       const variantDecrements: Record<string, number> = {};
       const productDecrements: Record<string, number> = {};
 
@@ -554,9 +554,44 @@ export async function completeSale(input: CompleteSaleInput): Promise<SaleResult
       const productPromises = Object.entries(productDecrements).map(([id, qty]) =>
         tx.product.update({
           where: { id },
-          data: { stock: { decrement: qty } },
+          data: { stock: { decrement: qty }, soldCount: { increment: qty } },
         })
       );
+
+      // Create StockLedger entries for ERP
+      let mainWarehouse = await tx.warehouse.findFirst({ where: { type: 'MAIN' } });
+      if (!mainWarehouse) {
+        mainWarehouse = await tx.warehouse.findFirst();
+      }
+
+      if (mainWarehouse) {
+        for (const item of input.items) {
+          const lastLedger = await tx.stockLedger.findFirst({
+            where: {
+              warehouseId: mainWarehouse.id,
+              productId: item.productId,
+              variantId: item.variantId || null
+            },
+            orderBy: { createdAt: 'desc' }
+          });
+          const warehouseOpeningQty = lastLedger ? lastLedger.balanceQty : item.maxStock;
+          
+          await tx.stockLedger.create({
+            data: {
+              referenceType: 'POS Sale',
+              referenceId: orderNumber,
+              warehouseId: mainWarehouse.id,
+              productId: item.productId,
+              variantId: item.variantId || null,
+              outQty: item.quantity,
+              balanceQty: warehouseOpeningQty - item.quantity,
+              unitCost: item.costPrice || 0,
+              totalValue: item.quantity * (item.costPrice || 0),
+              note: `POS Order: ${orderNumber}`
+            }
+          });
+        }
+      }
 
       await Promise.all([...variantPromises, ...productPromises]);
 

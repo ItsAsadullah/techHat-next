@@ -56,8 +56,8 @@ interface ProductFormProps {
     soldCount?: number;
     costPrice?: number;
     slug?: string;
-    stockLedgers?: { referenceType: string; date: string | Date; referenceId?: string; warehouse?: { name?: string }; inQty: number; outQty: number; unitCost: number }[];
-    purchaseItems?: { purchaseOrder: { poNumber: string; supplier?: { name?: string }; expectedDate?: string | number | Date; status: string }; quantity: number; receivedQty: number; unitCost: number }[];
+    stockLedgers?: { referenceType: string; createdAt: string | Date; referenceId?: string; warehouse?: { name?: string }; inQty: number; outQty: number; unitCost: number }[];
+    purchaseOrderItems?: { purchaseOrder: { poNumber: string; supplier?: { name?: string }; expectedDeliveryDate?: string | number | Date | null; status: string }; quantity: number; receivedQty: number; unitCost: number }[];
   };
 }
 
@@ -530,7 +530,7 @@ export default function ProductForm({ categories, brands, attributesList, catego
                             <div className="space-y-2">
                               {initialData.stockLedgers.slice(0, 3).map((l: any, i: number) => (
                                 <div key={i} className="flex justify-between items-center text-xs">
-                                  <span className="text-muted-foreground">{l.referenceType} ({new Date(l.date).toLocaleDateString()})</span>
+                                  <span className="text-muted-foreground">{l.referenceType} ({new Date(l.createdAt).toLocaleDateString()})</span>
                                   <span className={`font-mono font-medium ${l.inQty > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                     {l.inQty > 0 ? `+${l.inQty}` : `-${l.outQty}`}
                                   </span>
@@ -563,11 +563,11 @@ export default function ProductForm({ categories, brands, attributesList, catego
                           </div>
                         )}
                         {/* Recent POs */}
-                        {initialData?.purchaseItems && initialData.purchaseItems.length > 0 ? (
+                        {initialData?.purchaseOrderItems && initialData.purchaseOrderItems.length > 0 ? (
                           <div className="mt-4 pt-4 border-t">
                             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Recent POs</p>
                             <div className="space-y-2">
-                              {initialData.purchaseItems.map((pi: any, i: number) => (
+                              {initialData.purchaseOrderItems.map((pi: any, i: number) => (
                                 <div key={i} className="flex justify-between items-center text-xs">
                                   <span className="text-muted-foreground truncate max-w-[120px]" title={pi.purchaseOrder.supplier?.name}>
                                     {pi.purchaseOrder.poNumber}
@@ -597,7 +597,9 @@ export default function ProductForm({ categories, brands, attributesList, catego
                         <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 rounded border text-sm">
                           <Truck className="h-4 w-4 text-muted-foreground" />
                           <span className="text-muted-foreground">Default:</span>
-                          <span className="font-medium">Not Assigned</span>
+                          <span className="font-medium">
+                            {initialData?.purchaseOrderItems?.[0]?.purchaseOrder?.supplier?.name || "Not Assigned"}
+                          </span>
                         </div>
                       </SidebarCard>
                     )}
@@ -658,43 +660,47 @@ export default function ProductForm({ categories, brands, attributesList, catego
                 <TabsContent value="inventory" className="m-0 border-none p-0 outline-none max-w-[1400px] mx-auto pt-3">
                   <SectionCard title="Stock Ledger History">
                     {initialData?.stockLedgers && initialData.stockLedgers.length > 0 ? (
-                      <div className="border rounded-md overflow-hidden">
+                      <div className="border rounded-md overflow-hidden bg-white shadow-sm">
                         <table className="w-full text-sm">
-                          <thead className="bg-muted text-muted-foreground border-b text-left">
+                          <thead className="bg-slate-50 border-b">
                             <tr>
-                              <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider">Date</th>
-                              <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider">Type</th>
-                              <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider">Ref ID</th>
-                              <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider">Warehouse</th>
-                              <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider text-right">In</th>
-                              <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider text-right">Out</th>
-                              <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider text-right">Unit Cost</th>
+                              <th className="px-4 py-3 font-semibold text-xs text-slate-600 uppercase tracking-wider text-left">Date</th>
+                              <th className="px-4 py-3 font-semibold text-xs text-slate-600 uppercase tracking-wider text-left">Type</th>
+                              <th className="px-4 py-3 font-semibold text-xs text-slate-600 uppercase tracking-wider text-left">Ref ID</th>
+                              <th className="px-4 py-3 font-semibold text-xs text-slate-600 uppercase tracking-wider text-left">Warehouse</th>
+                              <th className="px-4 py-3 font-semibold text-xs text-slate-600 uppercase tracking-wider text-right">In</th>
+                              <th className="px-4 py-3 font-semibold text-xs text-slate-600 uppercase tracking-wider text-right">Out</th>
+                              <th className="px-4 py-3 font-semibold text-xs text-slate-600 uppercase tracking-wider text-right">Unit Cost</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y bg-card">
+                          <tbody className="divide-y divide-slate-100 bg-white">
                             {initialData.stockLedgers.map((l: any, i: number) => (
-                              <tr key={i} className="hover:bg-muted/50 transition-colors">
-                                <td className="px-4 py-3 whitespace-nowrap">{new Date(l.date).toLocaleString()}</td>
-                                <td className="px-4 py-3 whitespace-nowrap font-medium">{l.referenceType}</td>
-                                <td className="px-4 py-3 whitespace-nowrap text-muted-foreground font-mono">{l.referenceId?.substring(0, 8) || '-'}</td>
-                                <td className="px-4 py-3 whitespace-nowrap">{l.warehouse?.name || 'Main'}</td>
-                                <td className="px-4 py-3 whitespace-nowrap text-right font-mono text-green-600">
+                              <tr key={i} className="hover:bg-slate-50/80 transition-colors">
+                                <td className="px-4 py-3 whitespace-nowrap text-slate-600">{new Date(l.createdAt).toLocaleString()}</td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${l.referenceType === 'Purchase' || l.referenceType === 'Opening' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-100 text-slate-700 border border-slate-200'}`}>
+                                    {l.referenceType}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-slate-500 font-mono text-xs">{l.referenceId?.substring(0, 8) || '-'}</td>
+                                <td className="px-4 py-3 whitespace-nowrap text-slate-700">{l.warehouse?.name || 'Main'}</td>
+                                <td className="px-4 py-3 whitespace-nowrap text-right font-mono font-medium text-emerald-600">
                                   {l.inQty > 0 ? `+${l.inQty}` : '-'}
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-right font-mono text-red-600">
+                                <td className="px-4 py-3 whitespace-nowrap text-right font-mono font-medium text-rose-600">
                                   {l.outQty > 0 ? `-${l.outQty}` : '-'}
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-right font-mono">৳{l.unitCost}</td>
+                                <td className="px-4 py-3 whitespace-nowrap text-right font-mono text-slate-700">৳{Number(l.unitCost || 0).toLocaleString()}</td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
                     ) : (
-                      <div className="p-12 text-center border rounded-md border-dashed bg-muted/10">
-                        <BarChart2 className="h-8 w-8 text-muted-foreground mx-auto mb-3 opacity-20" />
-                        <p className="text-sm font-medium">No Stock Ledger Entries</p>
-                        <p className="text-xs text-muted-foreground mt-1">This product has not received any inward or outward stock movements.</p>
+                      <div className="p-12 text-center border rounded-md border-dashed bg-slate-50">
+                        <BarChart2 className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                        <p className="text-sm font-medium text-slate-700">No Stock Ledger Entries</p>
+                        <p className="text-xs text-slate-500 mt-1">This product has not received any inward or outward stock movements.</p>
                       </div>
                     )}
                   </SectionCard>
@@ -705,44 +711,52 @@ export default function ProductForm({ categories, brands, attributesList, catego
               {isEditMode && (
                 <TabsContent value="purchases" className="m-0 border-none p-0 outline-none max-w-[1400px] mx-auto pt-3">
                   <SectionCard title="Purchase Orders">
-                    {initialData?.purchaseItems && initialData.purchaseItems.length > 0 ? (
-                      <div className="border rounded-md overflow-hidden">
+                    {initialData?.purchaseOrderItems && initialData.purchaseOrderItems.length > 0 ? (
+                      <div className="border rounded-md overflow-hidden bg-white shadow-sm">
                         <table className="w-full text-sm">
-                          <thead className="bg-muted text-muted-foreground border-b text-left">
+                          <thead className="bg-slate-50 border-b">
                             <tr>
-                              <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider">Date</th>
-                              <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider">PO Number</th>
-                              <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider">Supplier</th>
-                              <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider text-center">Status</th>
-                              <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider text-right">Qty Ordered</th>
-                              <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider text-right">Qty Received</th>
-                              <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider text-right">Unit Cost</th>
+                              <th className="px-4 py-3 font-semibold text-xs text-slate-600 uppercase tracking-wider text-left">Date</th>
+                              <th className="px-4 py-3 font-semibold text-xs text-slate-600 uppercase tracking-wider text-left">PO Number</th>
+                              <th className="px-4 py-3 font-semibold text-xs text-slate-600 uppercase tracking-wider text-left">Supplier</th>
+                              <th className="px-4 py-3 font-semibold text-xs text-slate-600 uppercase tracking-wider text-center">Status</th>
+                              <th className="px-4 py-3 font-semibold text-xs text-slate-600 uppercase tracking-wider text-right">Qty Ordered</th>
+                              <th className="px-4 py-3 font-semibold text-xs text-slate-600 uppercase tracking-wider text-right">Qty Received</th>
+                              <th className="px-4 py-3 font-semibold text-xs text-slate-600 uppercase tracking-wider text-right">Unit Cost</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y bg-card">
-                            {initialData.purchaseItems.map((pi: any, i: number) => (
-                              <tr key={i} className="hover:bg-muted/50 transition-colors">
-                                <td className="px-4 py-3 whitespace-nowrap">{new Date(pi.purchaseOrder.expectedDate || Date.now()).toLocaleDateString()}</td>
-                                <td className="px-4 py-3 whitespace-nowrap font-medium font-mono text-primary">{pi.purchaseOrder.poNumber}</td>
-                                <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{pi.purchaseOrder.supplier?.name || '-'}</td>
-                                <td className="px-4 py-3 whitespace-nowrap text-center">
-                                  <span className="text-[10px] uppercase bg-secondary px-2 py-0.5 rounded-full font-semibold tracking-wide">
-                                    {pi.purchaseOrder.status}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-right font-mono">{pi.quantity}</td>
-                                <td className="px-4 py-3 whitespace-nowrap text-right font-mono">{pi.receivedQty}</td>
-                                <td className="px-4 py-3 whitespace-nowrap text-right font-mono">৳{pi.unitCost}</td>
-                              </tr>
-                            ))}
+                          <tbody className="divide-y divide-slate-100 bg-white">
+                            {initialData.purchaseOrderItems.map((pi: any, i: number) => {
+                              const poStatus = pi.purchaseOrder.status;
+                              let statusBadge = "bg-slate-100 text-slate-700 border-slate-200";
+                              if (poStatus === 'COMPLETED' || poStatus === 'RECEIVED' || poStatus === 'CONFIRMED') statusBadge = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                              else if (poStatus === 'PENDING' || poStatus === 'DRAFT') statusBadge = "bg-amber-50 text-amber-700 border-amber-200";
+                              else if (poStatus === 'PARTIAL') statusBadge = "bg-blue-50 text-blue-700 border-blue-200";
+                              
+                              return (
+                                <tr key={i} className="hover:bg-slate-50/80 transition-colors">
+                                  <td className="px-4 py-3 whitespace-nowrap text-slate-600">{new Date(pi.purchaseOrder.expectedDeliveryDate || Date.now()).toLocaleDateString()}</td>
+                                  <td className="px-4 py-3 whitespace-nowrap font-medium font-mono text-indigo-600 text-xs">{pi.purchaseOrder.poNumber}</td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-slate-700 font-medium">{pi.purchaseOrder.supplier?.name || '-'}</td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-center">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide border ${statusBadge}`}>
+                                      {poStatus}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-right font-mono text-slate-700">{pi.quantity}</td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-right font-mono text-slate-700 font-medium">{pi.receivedQty}</td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-right font-mono text-slate-700">৳{Number(pi.unitCost || 0).toLocaleString()}</td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
                     ) : (
-                      <div className="p-12 text-center border rounded-md border-dashed bg-muted/10">
-                        <ShoppingCart className="h-8 w-8 text-muted-foreground mx-auto mb-3 opacity-20" />
-                        <p className="text-sm font-medium">No Purchase History</p>
-                        <p className="text-xs text-muted-foreground mt-1">This product has not been added to any purchase orders yet.</p>
+                      <div className="p-12 text-center border rounded-md border-dashed bg-slate-50">
+                        <ShoppingCart className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                        <p className="text-sm font-medium text-slate-700">No Purchase History</p>
+                        <p className="text-xs text-slate-500 mt-1">This product has not been added to any purchase orders yet.</p>
                       </div>
                     )}
                   </SectionCard>

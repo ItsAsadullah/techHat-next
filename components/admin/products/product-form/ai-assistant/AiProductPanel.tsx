@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,26 @@ export function AiProductPanel() {
   const [modelId, setModelId] = useState('google:gemini-flash-latest');
   const [analysisType, setAnalysisType] = useState<'1-step' | '3-step'>('3-step');
   const [availableModels, setAvailableModels] = useState<{value: string, label: string}[]>([]);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isCancelledRef = useRef(false);
+
+  const startTimer = () => {
+    setElapsedSeconds(0);
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setElapsedSeconds(prev => prev + 1);
+    }, 1000);
+  };
+
+  const stopTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  useEffect(() => {
+    return () => stopTimer();
+  }, []);
 
   const { getValues } = useFormContext();
 
@@ -45,6 +65,8 @@ export function AiProductPanel() {
 
     setLoading(true);
     setAiResult(null);
+    isCancelledRef.current = false;
+    startTimer();
 
     // Filter empty URLs
     const validCompetitors = competitorUrls.filter(u => u.trim() !== '');
@@ -71,14 +93,26 @@ export function AiProductPanel() {
       analysisType,
     });
 
+    if (isCancelledRef.current) {
+      return; // Ignore result if user cancelled
+    }
+
+    stopTimer();
+    setLoading(false);
+
     if (res.success) {
-      toast.success('AI Analysis Complete');
+      toast.success(`AI Analysis Complete in ${elapsedSeconds}s`);
       setAiResult(res.data);
     } else {
       toast.error(res.error || 'Analysis failed');
     }
+  };
 
+  const handleCancel = () => {
+    isCancelledRef.current = true;
+    stopTimer();
     setLoading(false);
+    toast.error('AI Analysis Cancelled');
   };
 
   const addCompetitor = () => {
@@ -200,16 +234,26 @@ export function AiProductPanel() {
             </div>
 
             <div className="pt-6 border-t">
-              <Button onClick={handleAnalyze} disabled={loading} className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                {loading ? 'Analyzing Product Data...' : 'Analyze Product'}
-              </Button>
-              {loading && (
-                <p className="text-xs text-center text-muted-foreground mt-3 animate-pulse">
-                  {analysisType === '3-step' 
-                    ? 'Running 3-Step Deep Analysis. This may take 30-45 seconds...'
-                    : 'Fetching sources and generating content. This may take 15-20 seconds...'}
-                </p>
+              {loading ? (
+                <div className="space-y-3">
+                  <Button disabled className="w-full gap-2 bg-indigo-600/80 text-white cursor-wait">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Analyzing Product Data... ({elapsedSeconds}s)
+                  </Button>
+                  <Button variant="outline" onClick={handleCancel} className="w-full text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-colors">
+                    Cancel Analysis
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground animate-pulse">
+                    {analysisType === '3-step' 
+                      ? 'Running 3-Step Deep Analysis. This may take 30-45 seconds...'
+                      : 'Fetching sources and generating content. This may take 15-20 seconds...'}
+                  </p>
+                </div>
+              ) : (
+                <Button onClick={handleAnalyze} className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700 text-white transition-all shadow-md hover:shadow-lg">
+                  <Sparkles className="h-4 w-4" />
+                  Analyze Product
+                </Button>
               )}
             </div>
           </div>

@@ -441,6 +441,50 @@ export async function getProduct(id: string) {
           },
           orderBy: { displayOrder: 'asc' },
         },
+        purchaseOrderItems: {
+          select: {
+            quantity: true,
+            receivedQty: true,
+            unitCost: true,
+            purchaseOrder: {
+              select: {
+                poNumber: true,
+                status: true,
+                expectedDeliveryDate: true,
+                supplier: {
+                  select: {
+                    name: true,
+                  }
+                }
+              }
+            }
+          },
+          orderBy: {
+            purchaseOrder: {
+              createdAt: 'desc'
+            }
+          },
+          take: 10
+        },
+        stockLedgers: {
+          select: {
+            createdAt: true,
+            referenceType: true,
+            referenceId: true,
+            inQty: true,
+            outQty: true,
+            unitCost: true,
+            warehouse: {
+              select: {
+                name: true
+              }
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 10
+        }
       }
     });
 
