@@ -611,7 +611,7 @@ export function POSCartPanel({
           </div>
 
           {/* Sticky Complete Sale Button */}
-          <div className="px-3 pt-2 pb-0 sm:px-4 sm:pb-4 sm:pt-3 border-t border-gray-100">
+          <div className="px-3 pt-2 pb-3 sm:px-4 sm:pb-4 sm:pt-3 border-t border-gray-100 bg-white">
             {hasDue && !dueFormFilled && (
               <p className="text-xs text-red-600 font-semibold text-center mb-2 flex items-center justify-center gap-1">
                 <AlertCircle className="h-3.5 w-3.5" />

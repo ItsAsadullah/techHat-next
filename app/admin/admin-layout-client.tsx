@@ -314,7 +314,7 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
   return (
     <GlobalScannerProvider>
       <AdminBodyLock isPOS={isPOS} />
-      <div className="h-screen bg-gray-50 dark:bg-gray-950 flex overflow-hidden">
+      <div className="h-[100dvh] bg-gray-50 dark:bg-gray-950 flex overflow-hidden">
 
         {/* Drawer overlay (mobile) */}
         {drawerOpen && (
