@@ -265,7 +265,7 @@ export function DueCollectionClient({ customer }: { customer: any }) {
                              <td className="px-4 py-3 text-center">
                                {l.orderId ? (
                                  <Button variant="outline" size="sm" asChild className="h-7 text-xs bg-white">
-                                   <Link href={`/admin/orders/${l.orderId}`}>View Voucher</Link>
+                                   <Link href={`/admin/invoice/${l.orderId}`} target="_blank">View Voucher</Link>
                                  </Button>
                                ) : (
                                  <span className="text-slate-400 text-xs">-</span>
