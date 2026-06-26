@@ -7,9 +7,11 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { PrintButton } from '@/components/admin/print-button';
 
-export default async function SupplierStatementPage({ params, searchParams }: { params: { id: string }, searchParams: { from?: string, to?: string } }) {
-  const { id } = params;
-  const res = await getSupplierStatement(id, searchParams.from, searchParams.to);
+export default async function SupplierStatementPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ from?: string, to?: string }> }) {
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const { id } = resolvedParams;
+  const res = await getSupplierStatement(id, resolvedSearchParams.from, resolvedSearchParams.to);
   
   if (!res.success || !res.data) {
     return <div>Error loading statement: {res.error}</div>;

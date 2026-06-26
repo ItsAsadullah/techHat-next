@@ -144,3 +144,153 @@ export async function getCustomerStatement(customerId: string, fromDateStr?: str
     return { success: false, error: error.message };
   }
 }
+
+// -----------------------------------------------
+// OUTSTANDING INVOICES & DUE COLLECTION
+// -----------------------------------------------
+
+export async function getOutstandingInvoices(customerId: string) {
+  try {
+    const invoices = await prisma.order.findMany({
+      where: {
+        customerId,
+        dueAmount: { gt: 0 },
+        status: { notIn: ['CANCELLED', 'FAILED', 'RETURNED'] }
+      },
+      orderBy: { createdAt: 'asc' }, // FIFO allocation naturally
+      select: {
+        id: true,
+        orderNumber: true,
+        createdAt: true,
+        grandTotal: true,
+        paidAmount: true,
+        dueAmount: true,
+      }
+    });
+    return { success: true, data: invoices };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+import { PaymentMethod } from '@prisma/client';
+
+export interface DueCollectionInput {
+  customerId: string;
+  amount: number;
+  paymentMethod: PaymentMethod;
+  reference?: string;
+  allocations: { orderId: string, amount: number }[];
+  idempotencyKey?: string;
+}
+
+export async function processDueCollection(input: DueCollectionInput) {
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Idempotency Check
+      if (input.idempotencyKey) {
+         const existing = await tx.customerPayment.findUnique({ where: { idempotencyKey: input.idempotencyKey }});
+         if (existing) return existing;
+      }
+
+      // 2. Generate payment number
+      const count = await tx.customerPayment.count();
+      const paymentNumber = `PAY-${Date.now().toString().slice(-4)}-${count + 1}`;
+
+      // 3. Insert CustomerPayment
+      const payment = await tx.customerPayment.create({
+        data: {
+          paymentNumber,
+          customerId: input.customerId,
+          amount: input.amount,
+          paymentMethod: input.paymentMethod,
+          reference: input.reference,
+          idempotencyKey: input.idempotencyKey,
+        }
+      });
+
+      // 4. Process Allocations
+      let unallocated = input.amount;
+      for (const alloc of input.allocations) {
+        if (alloc.amount <= 0) continue;
+        if (unallocated < alloc.amount) throw new Error("Allocated more than payment amount.");
+
+        unallocated -= alloc.amount;
+
+        // Update Order
+        const order = await tx.order.findUnique({ where: { id: alloc.orderId } });
+        if (!order || !order.dueAmount || order.dueAmount < alloc.amount) {
+           throw new Error(`Invalid allocation for invoice ${order?.orderNumber}`);
+        }
+
+        const newDue = order.dueAmount - alloc.amount;
+        const newPaid = (order.paidAmount || 0) + alloc.amount;
+        
+        await tx.order.update({
+          where: { id: alloc.orderId },
+          data: {
+             dueAmount: newDue,
+             paidAmount: newPaid,
+             paymentStatus: newDue <= 0 ? 'PAID' : 'PARTIALLY_PAID',
+             posPaymentStatus: newDue <= 0 ? 'PAID' : 'PARTIAL'
+          }
+        });
+
+        // Insert PaymentAllocation
+        await tx.paymentAllocation.create({
+           data: {
+             paymentId: payment.id,
+             orderId: alloc.orderId,
+             amount: alloc.amount
+           }
+        });
+      }
+
+      // Update Unallocated balance
+      if (unallocated > 0) {
+         await tx.customerPayment.update({
+            where: { id: payment.id },
+            data: { unallocated }
+         });
+      }
+
+      // 5. Update Customer Ledger (Credit)
+      const customer = await tx.customer.findUnique({ where: { id: input.customerId }});
+      if (!customer) throw new Error("Customer not found");
+
+      let runningBalance = customer.balance;
+      runningBalance -= input.amount;
+
+      await tx.customerLedger.create({
+         data: {
+           customerId: input.customerId,
+           type: 'Payment',
+           debit: 0,
+           credit: input.amount,
+           runningBalance,
+           referenceId: paymentNumber,
+           note: `Due Collection via ${input.paymentMethod}${input.reference ? ` (${input.reference})` : ''}`
+         }
+      });
+
+      // 6. Recalculate Cache inline
+      const ledgers = await tx.customerLedger.findMany({ where: { customerId: input.customerId }, orderBy: { date: 'asc' } });
+      let tp = 0; let tpaid = 0; let rb = 0; let lpd = null;
+      for (const l of ledgers) {
+        rb += l.debit - l.credit;
+        if (l.type === 'Invoice') { tp += l.debit; lpd = l.date; }
+        if (l.type === 'Payment') tpaid += l.credit;
+      }
+      await tx.customer.update({
+        where: { id: input.customerId },
+        data: { balance: rb, totalPurchase: tp, totalPaid: tpaid, totalDue: rb > 0 ? rb : 0, lastPurchaseDate: lpd }
+      });
+
+      return payment;
+    }, { timeout: 30000 });
+
+    return { success: true, paymentId: result.id, paymentNumber: result.paymentNumber };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

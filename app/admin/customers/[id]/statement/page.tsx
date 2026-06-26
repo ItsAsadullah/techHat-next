@@ -7,9 +7,11 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { PrintButton } from '@/components/admin/print-button';
 
-export default async function CustomerStatementPage({ params, searchParams }: { params: { id: string }, searchParams: { from?: string, to?: string } }) {
-  const { id } = params;
-  const res = await getCustomerStatement(id, searchParams.from, searchParams.to);
+export default async function CustomerStatementPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ from?: string, to?: string }> }) {
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const { id } = resolvedParams;
+  const res = await getCustomerStatement(id, resolvedSearchParams.from, resolvedSearchParams.to);
   
   if (!res.success || !res.data) {
     return <div>Error loading statement: {res.error}</div>;
@@ -71,7 +73,19 @@ export default async function CustomerStatementPage({ params, searchParams }: { 
               {lines.map((l: any) => (
                 <TableRow key={l.id}>
                   <TableCell>{format(new Date(l.date), 'dd MMM yyyy')}</TableCell>
-                  <TableCell className="font-mono text-xs">{l.referenceId || '-'}</TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {l.referenceId ? (
+                      (l.referenceId.startsWith('POS-') || l.referenceId.startsWith('ORD-')) ? (
+                        <Link href={`/admin/orders/${l.referenceId}?print=true`} className="text-blue-600 hover:underline">
+                          {l.referenceId}
+                        </Link>
+                      ) : (
+                        l.referenceId
+                      )
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
                   <TableCell>{l.type} {l.note && `- ${l.note}`}</TableCell>
                   <TableCell className="text-right text-emerald-600">
                     {l.debit > 0 ? `৳${l.debit.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}

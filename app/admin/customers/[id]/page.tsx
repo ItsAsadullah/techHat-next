@@ -8,8 +8,9 @@ import { Edit, ChevronLeft, Receipt, User, Mail, Phone, MapPin, Building2 } from
 import Link from 'next/link';
 import { format } from 'date-fns';
 
-export default async function CustomerDetailsPage({ params }: { params: { id: string } }) {
-  const res = await getCustomerById(params.id);
+export default async function CustomerDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  const res = await getCustomerById(resolvedParams.id);
   const customer = res.success ? res.data : null;
 
   if (!customer) notFound();
@@ -121,7 +122,19 @@ export default async function CustomerDetailsPage({ params }: { params: { id: st
                       <Badge variant="outline" className="text-[10px] uppercase">{l.type}</Badge>
                       {l.note && <p className="text-xs text-muted-foreground mt-1">{l.note}</p>}
                     </TableCell>
-                    <TableCell className="font-mono text-xs">{l.referenceId || '-'}</TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {l.referenceId ? (
+                        (l.referenceId.startsWith('POS-') || l.referenceId.startsWith('ORD-')) ? (
+                          <Link href={`/admin/orders/${l.referenceId}?print=true`} className="text-blue-600 hover:underline">
+                            {l.referenceId}
+                          </Link>
+                        ) : (
+                          l.referenceId
+                        )
+                      ) : (
+                        '-'
+                      )}
+                    </TableCell>
                     <TableCell className="text-right text-destructive font-medium">
                       {l.debit > 0 ? `৳${l.debit.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
                     </TableCell>

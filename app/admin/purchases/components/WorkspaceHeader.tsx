@@ -1,3 +1,4 @@
+'use client';
 import { ArrowLeft, Save, Loader2, Send, CheckCircle, Printer, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';

@@ -1,3 +1,4 @@
+'use client';
 import { Sparkles, AlertCircle, TrendingDown, ArrowRight } from 'lucide-react';
 
 interface AIAssistantCardProps {

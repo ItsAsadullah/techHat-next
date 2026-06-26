@@ -9,7 +9,7 @@ export default async function PaymentHistoryPage() {
   const [initialData, invoiceSettings, customers] = await Promise.all([
     getPaymentHistory(),
     getInvoiceSettings(),
-    prisma.pOSCustomer.findMany({
+    prisma.customer.findMany({
       select: { id: true, name: true, phone: true },
       orderBy: { name: 'asc' },
     }),

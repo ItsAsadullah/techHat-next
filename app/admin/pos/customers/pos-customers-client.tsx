@@ -16,7 +16,7 @@ import { createPOSCustomer, updatePOSCustomer, deletePOSCustomer } from '@/lib/a
 interface Customer {
   id: string;
   name: string;
-  phone: string;
+  phone: string | null;
   email?: string | null;
   address?: string | null;
   totalPurchase: number;
@@ -51,7 +51,7 @@ export function POSCustomersClient({ customers, invoiceSettings }: Props) {
   const filtered = customers.filter(
     (c) =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search)
+      (c.phone && c.phone.includes(search))
   );
 
   const openAdd = () => {
@@ -61,7 +61,7 @@ export function POSCustomersClient({ customers, invoiceSettings }: Props) {
 
   const openEdit = (c: Customer) => {
     setEditingCustomer(c);
-    setFormData({ name: c.name, phone: c.phone, email: c.email || '', address: c.address || '' });
+    setFormData({ name: c.name, phone: c.phone || '', email: c.email || '', address: c.address || '' });
     setIsEditOpen(true);
   };
 
@@ -128,7 +128,7 @@ export function POSCustomersClient({ customers, invoiceSettings }: Props) {
       <tr>
         <td>${i + 1}</td>
         <td><strong>${c.name}</strong></td>
-        <td>${c.phone}</td>
+        <td>${c.phone || '-'}</td>
         <td class="num">${c.totalOrders}</td>
         <td class="num green">${fmt(c.totalPurchase)}</td>
         <td class="num">${fmt(c.totalPaid)}</td>
@@ -312,7 +312,7 @@ export function POSCustomersClient({ customers, invoiceSettings }: Props) {
                         <p className="font-semibold text-gray-900">{customer.name}</p>
                         {customer.email && <p className="text-xs text-gray-500 mt-0.5">{customer.email}</p>}
                       </td>
-                      <td className="px-5 py-4 text-gray-600 text-sm">{customer.phone}</td>
+                      <td className="px-5 py-4 text-gray-600 text-sm">{customer.phone || '-'}</td>
                       <td className="px-5 py-4 text-right text-gray-600 text-sm">
                         <Badge variant="secondary" className="bg-gray-100 text-gray-700 hover:bg-gray-200">{customer.totalOrders}</Badge>
                       </td>
@@ -352,7 +352,7 @@ export function POSCustomersClient({ customers, invoiceSettings }: Props) {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => router.push(`/admin/pos/customers/${customer.id}`)}
+                            onClick={() => router.push(`/admin/customers/${customer.id}`)}
                             className="h-8 text-xs gap-1.5 bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
                           >
                             <BookOpen className="h-3.5 w-3.5" />
@@ -401,7 +401,7 @@ export function POSCustomersClient({ customers, invoiceSettings }: Props) {
                       <div>
                         <h3 className="font-bold text-gray-900 text-base">{customer.name}</h3>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-sm text-gray-600">{customer.phone}</span>
+                          <span className="text-sm text-gray-600">{customer.phone || '-'}</span>
                           <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-[10px] h-5 px-1.5 border-0">
                             {customer.totalOrders} inv
                           </Badge>
@@ -451,7 +451,7 @@ export function POSCustomersClient({ customers, invoiceSettings }: Props) {
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => router.push(`/admin/pos/customers/${customer.id}`)}
+                      onClick={() => router.push(`/admin/customers/${customer.id}`)}
                       className="h-10 col-span-2 gap-2 bg-white hover:bg-blue-50 text-gray-700 hover:text-blue-600 border-gray-200 hover:border-blue-200 shadow-sm"
                     >
                       <BookOpen className="h-4 w-4" />

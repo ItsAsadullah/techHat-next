@@ -122,11 +122,15 @@ model User {
   vendor   Vendor? @relation(fields: [vendorId], references: [id])
   vendorId String?
 
+  // Financial
+  walletBalance      Float               @default(0) @map("wallet_balance")
+  walletTransactions WalletTransaction[]
+
   // Relations
-  orders   Order[]
-  reviews  Review[]
-  wishlist Wishlist[]
-  addresses CustomerAddress[]
+  orders                 Order[]
+  reviews                Review[]
+  wishlist               Wishlist[]
+  addresses              CustomerAddress[]
   notificationPreference NotificationPreference?
 
   createdAt DateTime @default(now())
@@ -259,13 +263,13 @@ model Category {
 // --------------------------------------
 
 model Attribute {
-  id           String             @id @default(uuid())
-  name         String
-  slug         String             @unique
-  description  String?
-  dataType     AttributeDataType  @default(TEXT) @map("data_type")
-  uiType       AttributeUIType    @default(INPUT) @map("ui_type")
-  
+  id          String            @id @default(uuid())
+  name        String
+  slug        String            @unique
+  description String?
+  dataType    AttributeDataType @default(TEXT) @map("data_type")
+  uiType      AttributeUIType   @default(INPUT) @map("ui_type")
+
   // Configurations
   isVariant    Boolean @default(false) @map("is_variant")
   isFilterable Boolean @default(true) @map("is_filterable")
@@ -275,7 +279,7 @@ model Attribute {
   values           AttributeValue[]
   categoryMappings CategoryAttribute[]
   productMappings  ProductAttribute[]
-  
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -290,11 +294,11 @@ model AttributeValue {
   shortCode    String? @map("short_code") // e.g., "BLK" for Black (Used for SKU)
   colorCode    String? @map("color_code") // For COLOR type
   imageUrl     String? @map("image_url") // For IMAGE_OPTION type
-  metadata     Json?   // Extra config
+  metadata     Json? // Extra config
   displayOrder Int     @default(0) @map("display_order")
 
   attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
-  
+
   productMappings ProductAttributeValue[]
   variantMappings VariantAttributeValue[]
 
@@ -318,10 +322,10 @@ model ProductAttribute {
   id          String @id @default(uuid())
   productId   String @map("product_id")
   attributeId String @map("attribute_id")
-  
+
   product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
-  
+
   values ProductAttributeValue[]
 
   @@unique([productId, attributeId])
@@ -351,12 +355,12 @@ model VariantAttributeValue {
 }
 
 model VariantMedia {
-  id          String  @id @default(uuid())
-  variantId   String  @map("variant_id")
-  url         String
-  type        String  @default("IMAGE") // IMAGE, VIDEO, 360
-  isMain      Boolean @default(false) @map("is_main")
-  displayOrder Int    @default(0) @map("display_order")
+  id           String  @id @default(uuid())
+  variantId    String  @map("variant_id")
+  url          String
+  type         String  @default("IMAGE") // IMAGE, VIDEO, 360
+  isMain       Boolean @default(false) @map("is_main")
+  displayOrder Int     @default(0) @map("display_order")
 
   variant Variant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
@@ -431,17 +435,17 @@ model Product {
   enrichmentData Json? // Category Structure, Related Entities, Use Cases
 
   // Relations
-  vendor        Vendor?        @relation(fields: [vendorId], references: [id])
-  category      Category       @relation(fields: [categoryId], references: [id])
-  brand         Brand?         @relation(fields: [brandId], references: [id])
-  variants      Variant[]
-  reviews       Review[]
-  orderItems    OrderItem[]
-  returnItems   ReturnItem[]
-  wishlist      Wishlist[]
-  specs         ProductSpec[]
-  productImages ProductImage[]
-  stockHistory  StockHistory[]
+  vendor            Vendor?            @relation(fields: [vendorId], references: [id])
+  category          Category           @relation(fields: [categoryId], references: [id])
+  brand             Brand?             @relation(fields: [brandId], references: [id])
+  variants          Variant[]
+  reviews           Review[]
+  orderItems        OrderItem[]
+  returnItems       ReturnItem[]
+  wishlist          Wishlist[]
+  specs             ProductSpec[]
+  productImages     ProductImage[]
+  stockHistory      StockHistory[]
   productAttributes ProductAttribute[]
 
   createdAt DateTime @default(now())
@@ -465,6 +469,8 @@ model Product {
   supplierProducts       SupplierProduct[]
   productBatches         ProductBatch[]
   productSerials         ProductSerial[]
+  Exchange               Exchange[]
+  WarrantyClaim          WarrantyClaim[]
 
   @@index([name])
   @@index([categoryId, status])
@@ -559,13 +565,13 @@ model Variant {
   // Specific attributes (JSON for flexibility)
   attributes Json? // { color: "Red", size: "XL" }
 
-  product      Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
-  serials      ProductSerial[]
-  orderItems   OrderItem[]
-  returnItems  ReturnItem[]
-  stockHistory StockHistory[]
+  product           Product                 @relation(fields: [productId], references: [id], onDelete: Cascade)
+  serials           ProductSerial[]
+  orderItems        OrderItem[]
+  returnItems       ReturnItem[]
+  stockHistory      StockHistory[]
   variantAttributes VariantAttributeValue[]
-  media        VariantMedia[]
+  media             VariantMedia[]
 
   lastPurchaseCost       Float                   @default(0) @map("last_purchase_cost")
   stockAdjustments       StockAdjustmentItem[]
@@ -575,6 +581,8 @@ model Variant {
   purchaseReturnItems    PurchaseReturnItem[]
   warehouseTransferItems WarehouseTransferItem[]
   variantBatches         ProductBatch[]
+  Exchange               Exchange[]
+  WarrantyClaim          WarrantyClaim[]
 
   @@map("product_variants")
 }
@@ -626,9 +634,10 @@ model Order {
   refundNote     String?       @map("refund_note")
 
   // Status
-  status       OrderStatus @default(PENDING)
-  internalNote String?     @map("internal_note")
-  ipAddress    String?     @map("ip_address")
+  status         OrderStatus @default(PENDING)
+  internalNote   String?     @map("internal_note")
+  ipAddress      String?     @map("ip_address")
+  idempotencyKey String?     @unique @map("idempotency_key")
 
   // POS
   isPos            Boolean           @default(false) @map("is_pos")
@@ -641,22 +650,25 @@ model Order {
   dueAmount        Float?            @default(0) @map("due_amount")
 
   // Relations
-  user          User?          @relation(fields: [userId], references: [id])
-  items         OrderItem[]
-  payments      OrderPayment[]
-  returns       Return[]
-  events        OrderEvent[]
-  posCustomer   POSCustomer?   @relation(fields: [posCustomerId], references: [id])
-  posCustomerId String?        @map("pos_customer_id")
-  guarantor     Guarantor?
+  user        User?               @relation(fields: [userId], references: [id])
+  items       OrderItem[]
+  payments    OrderPayment[]
+  returns     Return[]
+  events      OrderEvent[]
+  guarantor   Guarantor?
+  allocations PaymentAllocation[]
 
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
-  Customer   Customer? @relation(fields: [customerId], references: [id])
-  customerId String?
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  Customer      Customer?       @relation(fields: [customerId], references: [id])
+  customerId    String?         @map("customer_id")
+  WarrantyClaim WarrantyClaim[]
+  POSCustomer   POSCustomer?    @relation(fields: [pOSCustomerId], references: [id])
+  pOSCustomerId String?
 
   @@index([trackingToken])
   @@index([customerPhone])
+  @@index([customerId])
   @@index([status])
   @@index([createdAt])
   @@index([isPos, paymentStatus, createdAt])
@@ -1027,32 +1039,41 @@ enum StockAction {
 // --------------------------------------
 
 model Return {
-  id           String       @id @default(uuid())
-  returnNumber String       @unique @map("return_number")
-  orderId      String       @map("order_id")
-  reason       String
-  status       ReturnStatus @default(PENDING)
-  refundAmount Float        @map("refund_amount")
-  processedBy  String?      @map("processed_by") // Cashier/Staff ID
-  note         String?
+  id                 String       @id @default(uuid())
+  returnNumber       String       @unique @map("return_number")
+  orderId            String       @map("order_id")
+  type               ReturnType   @default(FULL)
+  reason             String
+  status             ReturnStatus @default(PENDING)
+  refundAmount       Float        @map("refund_amount")
+  storeCreditAmount  Float        @default(0) @map("store_credit_amount")
+  exchangeDifference Float        @default(0) @map("exchange_difference")
+  warehouseId        String?      @map("warehouse_id")
+  processedBy        String?      @map("processed_by") // Cashier/Staff ID
+  note               String?
 
   order Order        @relation(fields: [orderId], references: [id])
   items ReturnItem[]
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  Exchange  Exchange?
 
   @@map("returns")
 }
 
 model ReturnItem {
-  id        String  @id @default(uuid())
-  returnId  String  @map("return_id")
-  productId String  @map("product_id")
-  variantId String? @map("variant_id")
-  quantity  Int
-  unitPrice Float   @map("unit_price")
-  total     Float
+  id                String          @id @default(uuid())
+  returnId          String          @map("return_id")
+  productId         String          @map("product_id")
+  variantId         String?         @map("variant_id")
+  quantity          Int
+  unitPrice         Float           @map("unit_price")
+  total             Float
+  condition         ReturnCondition @default(GOOD)
+  reason            String?
+  exchangeProductId String?         @map("exchange_product_id")
+  exchangeVariantId String?         @map("exchange_variant_id")
 
   return  Return   @relation(fields: [returnId], references: [id], onDelete: Cascade)
   product Product  @relation(fields: [productId], references: [id])
@@ -1066,6 +1087,27 @@ enum ReturnStatus {
   APPROVED
   REJECTED
   COMPLETED
+}
+
+enum ReturnType {
+  FULL
+  PARTIAL
+  EXCHANGE
+  WARRANTY
+  DEFECTIVE
+  DAMAGED
+  WRONG_ITEM
+  STORE_CREDIT
+}
+
+enum ReturnCondition {
+  SEALED
+  LIKE_NEW
+  GOOD
+  USED
+  DAMAGED
+  DEFECTIVE
+  NEEDS_INSPECTION
 }
 
 // --------------------------------------
@@ -1209,9 +1251,9 @@ model Supplier {
   PurchaseReturn   PurchaseReturn[]
 
   // Intelligence Metrics
-  creditLimit      Float              @default(0) @map("credit_limit")
-  rating           Float?
-  riskScore        Int?               @map("risk_score")
+  creditLimit Float  @default(0) @map("credit_limit")
+  rating      Float?
+  riskScore   Int?   @map("risk_score")
 
   @@map("suppliers")
 }
@@ -1292,6 +1334,9 @@ enum WarehouseType {
   STORE
   TRANSIT
   DAMAGE
+  INSPECTION
+  SERVICE_CENTER
+  RETURN_GOODS
 }
 
 enum StockAdjustmentReason {
@@ -1480,21 +1525,21 @@ model GoodsReceiveNote {
 }
 
 model GoodsReceiveNoteItem {
-  id           String   @id @default(uuid())
-  grnId        String   @map("grn_id")
-  productId    String   @map("product_id")
-  variantId    String?  @map("variant_id")
-  receivedQty  Int      @map("received_qty")
-  rejectedQty  Int      @default(0) @map("rejected_qty")
-  acceptedQty  Int      @map("accepted_qty")
-  unitCost     Float    @default(0) @map("unit_cost")
-  
+  id          String  @id @default(uuid())
+  grnId       String  @map("grn_id")
+  productId   String  @map("product_id")
+  variantId   String? @map("variant_id")
+  receivedQty Int     @map("received_qty")
+  rejectedQty Int     @default(0) @map("rejected_qty")
+  acceptedQty Int     @map("accepted_qty")
+  unitCost    Float   @default(0) @map("unit_cost")
+
   // Advanced Tracking
-  batchNumber  String?  @map("batch_number")
-  mfgDate      DateTime? @map("mfg_date")
-  expiryDate   DateTime? @map("expiry_date")
-  serials      Json?    // Array of string serial numbers
-  
+  batchNumber String?   @map("batch_number")
+  mfgDate     DateTime? @map("mfg_date")
+  expiryDate  DateTime? @map("expiry_date")
+  serials     Json? // Array of string serial numbers
+
   imei         String?
   serialNumber String?  @map("serial_number")
   createdAt    DateTime @default(now()) @map("created_at")
@@ -1738,24 +1783,32 @@ model JournalEntryItem {
 }
 
 model Customer {
-  id             String   @id @default(uuid())
-  customerCode   String   @unique @map("customer_code")
+  id             String  @id @default(uuid())
+  customerCode   String  @unique @default(cuid()) @map("customer_code")
   name           String
   phone          String?
   email          String?
   address        String?
-  companyName    String?  @map("company_name")
-  taxId          String?  @map("tax_id")
-  customerGroup  String   @default("RETAIL") @map("customer_group")
-  openingBalance Float    @default(0) @map("opening_balance")
-  balance        Float    @default(0)
-  creditLimit    Float    @default(0) @map("credit_limit")
-  status         String   @default("ACTIVE")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+  companyName    String? @map("company_name")
+  taxId          String? @map("tax_id")
+  customerGroup  String  @default("RETAIL") @map("customer_group")
+  openingBalance Float   @default(0) @map("opening_balance")
+  balance        Float   @default(0)
+  creditLimit    Float   @default(0) @map("credit_limit")
+  status         String  @default("ACTIVE")
+
+  // Cached aggregate fields
+  totalPurchase    Float     @default(0) @map("total_purchase")
+  totalPaid        Float     @default(0) @map("total_paid")
+  totalDue         Float     @default(0) @map("total_due")
+  lastPurchaseDate DateTime? @map("last_purchase_date")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   customerLedgers CustomerLedger[]
   orders          Order[]
+  payments        CustomerPayment[]
 
   @@map("customers")
 }
@@ -1765,39 +1818,39 @@ model Customer {
 // --------------------------------------
 
 model AiGenerationDraft {
-  id              String   @id @default(uuid())
-  adminId         String?  // Who initiated this
-  status          String   @default("PENDING") // PENDING, REVIEWED, ACCEPTED, REJECTED
-  
+  id      String  @id @default(uuid())
+  adminId String? // Who initiated this
+  status  String  @default("PENDING") // PENDING, REVIEWED, ACCEPTED, REJECTED
+
   // Inputs
-  productName     String?
-  sourceUrls      String[]
-  imageUrls       String[]
-  
+  productName String?
+  sourceUrls  String[]
+  imageUrls   String[]
+
   // Extracted/Generated Data (JSON structured with Confidence Scores & Sources)
-  description     Json?    
-  shortDesc       Json?
-  specifications  Json?    
-  attributes      Json?
-  variants        Json?
-  tags            Json?
-  seoData         Json?    
-  faqs            Json?
-  highlights      Json?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  description    Json?
+  shortDesc      Json?
+  specifications Json?
+  attributes     Json?
+  variants       Json?
+  tags           Json?
+  seoData        Json?
+  faqs           Json?
+  highlights     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("ai_generation_drafts")
 }
 
 model AiLearningLog {
-  id              String   @id @default(uuid())
-  field           String   // e.g., "shortDesc", "seoTitle", "colorAttribute"
-  suggestedValue  String   @db.Text
-  acceptedValue   String   @db.Text
-  action          String   // "ACCEPTED_AS_IS", "EDITED", "REJECTED"
-  createdAt       DateTime @default(now())
+  id             String   @id @default(uuid())
+  field          String // e.g., "shortDesc", "seoTitle", "colorAttribute"
+  suggestedValue String   @db.Text
+  acceptedValue  String   @db.Text
+  action         String // "ACCEPTED_AS_IS", "EDITED", "REJECTED"
+  createdAt      DateTime @default(now())
 
   @@map("ai_learning_logs")
 }
@@ -1810,4 +1863,182 @@ model NewsletterSubscriber {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("newsletter_subscribers")
+}
+
+// --------------------------------------
+// AFTER-SALES: WALLET / STORE CREDIT
+// --------------------------------------
+
+model WalletTransaction {
+  id          String                @id @default(uuid())
+  userId      String                @map("user_id")
+  amount      Float
+  type        WalletTransactionType
+  referenceId String?               @map("reference_id") // Order ID, Return ID, or Manual
+  note        String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("wallet_transactions")
+}
+
+enum WalletTransactionType {
+  CREDIT
+  DEBIT
+}
+
+// --------------------------------------
+// AFTER-SALES: EXCHANGES
+// --------------------------------------
+
+model Exchange {
+  id           String  @id @default(uuid())
+  returnId     String  @unique @map("return_id")
+  newProductId String  @map("new_product_id")
+  newVariantId String? @map("new_variant_id")
+  quantity     Int
+  price        Float
+  difference   Float // Positive means customer pays more, negative means refund
+  status       String  @default("COMPLETED")
+  note         String?
+
+  return  Return   @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  product Product  @relation(fields: [newProductId], references: [id])
+  variant Variant? @relation(fields: [newVariantId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("exchanges")
+}
+
+// --------------------------------------
+// AFTER-SALES: WARRANTY & SERVICE CENTER
+// --------------------------------------
+
+model WarrantyClaim {
+  id                  String    @id @default(uuid())
+  claimNumber         String    @unique @map("claim_number")
+  orderId             String    @map("order_id")
+  productId           String    @map("product_id")
+  variantId           String?   @map("variant_id")
+  serialNumber        String?   @map("serial_number")
+  imei                String?
+  warrantyType        String    @map("warranty_type")
+  purchaseDate        DateTime  @map("purchase_date")
+  warrantyExpiry      DateTime? @map("warranty_expiry")
+  claimDate           DateTime  @default(now()) @map("claim_date")
+  issueCategory       String?   @map("issue_category")
+  issueDescription    String    @map("issue_description") @db.Text
+  accessoriesReceived String[]  @default([]) @map("accessories_received")
+  accessoriesMissing  String[]  @default([]) @map("accessories_missing")
+  condition           String?   @map("condition")
+  status              String    @default("RECEIVED")
+  decision            String? // REPAIR, REPLACE, REFUND, REJECT
+  images              String[]
+  videos              String[]  @default([])
+  attachments         String[]
+  technicianNotes     String?   @map("technician_notes") @db.Text
+  supplierWarranty    Json?     @map("supplier_warranty")
+  exchangeDetails     Json?     @map("exchange_details")
+  pickupDetails       Json?     @map("pickup_details")
+  timeline            Json?     @map("timeline")
+
+  order   Order    @relation(fields: [orderId], references: [id])
+  product Product  @relation(fields: [productId], references: [id])
+  variant Variant? @relation(fields: [variantId], references: [id])
+
+  repairJob RepairJob?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("warranty_claims")
+}
+
+enum WarrantyStatus {
+  PENDING
+  INSPECTING
+  REPAIRING
+  REPLACED
+  REFUNDED
+  REJECTED
+  COMPLETED
+}
+
+model RepairJob {
+  id                 String    @id @default(uuid())
+  claimId            String    @unique @map("claim_id")
+  jobCardNumber      String?   @unique @map("job_card_number")
+  assignedTo         String?   @map("assigned_to") // Technician/Staff ID
+  status             String    @default("RECEIVED")
+  priority           String    @default("MEDIUM")
+  repairType         String    @default("HARDWARE")
+  expectedCompletion DateTime? @map("expected_completion")
+  cost               Float     @default(0)
+  notes              String?   @db.Text
+  partsUsed          Json?     @map("parts_used")
+  qcStatus           String    @default("PENDING") @map("qc_status")
+  qcInspector        String?   @map("qc_inspector")
+  qcNotes            String?   @map("qc_notes") @db.Text
+
+  claim WarrantyClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("repair_jobs")
+}
+
+enum RepairStatus {
+  RECEIVED
+  DIAGNOSING
+  WAITING_PARTS
+  REPAIRING
+  READY
+  DELIVERED
+  CLOSED
+}
+
+// --------------------------------------
+// NEW DUE COLLECTION & RECEIVABLES
+// --------------------------------------
+
+model CustomerPayment {
+  id             String        @id @default(uuid())
+  paymentNumber  String        @unique @map("payment_number")
+  customerId     String        @map("customer_id")
+  amount         Float
+  paymentMethod  PaymentMethod @map("payment_method")
+  paymentDate    DateTime      @default(now()) @map("payment_date")
+  reference      String?
+  unallocated    Float         @default(0)
+  status         String        @default("COMPLETED") // PENDING, COMPLETED, VOID
+  idempotencyKey String?       @unique @map("idempotency_key")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  customer    Customer            @relation(fields: [customerId], references: [id])
+  allocations PaymentAllocation[]
+
+  @@index([customerId])
+  @@index([paymentDate])
+  @@map("customer_payments")
+}
+
+model PaymentAllocation {
+  id        String   @id @default(uuid())
+  paymentId String   @map("payment_id")
+  orderId   String   @map("order_id")
+  amount    Float
+  createdAt DateTime @default(now()) @map("created_at")
+
+  payment CustomerPayment @relation(fields: [paymentId], references: [id])
+  order   Order           @relation(fields: [orderId], references: [id])
+
+  @@unique([paymentId, orderId])
+  @@index([orderId])
+  @@map("payment_allocations")
 }

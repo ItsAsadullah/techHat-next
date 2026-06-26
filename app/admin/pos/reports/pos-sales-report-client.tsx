@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -30,7 +30,7 @@ interface Order {
   createdAt: Date;
   items: { productName: string; quantity: number }[];
   guarantor: { name: string; phone: string } | null;
-  posCustomer: { id: string; name: string } | null;
+  Customer: { id: string; name: string } | null;
 }
 
 interface SalesSummary {
@@ -628,9 +628,9 @@ export function POSSalesReport({ initialData, dailySummary, invoiceSettings }: P
                         {new Date(order.createdAt).toLocaleDateString('en-US', { dateStyle: 'medium' })}
                       </td>
                       <td className="px-4 py-3">
-                        {order.posCustomer ? (
-                          <a href={`/admin/pos/customers/${order.posCustomer.id}`} className="text-blue-600 hover:underline font-medium">
-                            {order.customerName || '—'}
+                        {order.Customer ? (
+                          <a href={`/admin/customers/${order.Customer.id}`} className="text-blue-600 hover:underline font-medium">
+                            {order.Customer.name}
                           </a>
                         ) : (
                           <span className="text-gray-600">{order.customerName || 'Guest'}</span>

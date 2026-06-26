@@ -93,7 +93,7 @@ export async function getSalesReport(from?: string, to?: string) {
       id: true,
       orderNumber: true,
       customerName: true,
-      posCustomer: { select: { name: true, phone: true } },
+      POSCustomer: { select: { name: true, phone: true } },
       grandTotal: true,
       paidAmount: true,
       dueAmount: true,
@@ -419,7 +419,7 @@ export async function getPaymentReport(from?: string, to?: string) {
         select: {
           orderNumber: true,
           customerName: true,
-          posCustomer: { select: { name: true } },
+          POSCustomer: { select: { name: true } },
         },
       },
     },
@@ -435,7 +435,7 @@ export async function getPaymentReport(from?: string, to?: string) {
   const total = payments.reduce((s, p) => s + p.amount, 0);
   const rows = payments.map((p) => ({
     ...p,
-    customerName: p.order.posCustomer?.name ?? p.order.customerName ?? 'N/A',
+    customerName: p.order.POSCustomer?.name ?? p.order.customerName ?? 'N/A',
     orderNumber: p.order.orderNumber,
   }));
 

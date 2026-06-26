@@ -26,6 +26,8 @@ import {
   Warehouse,
   Users,
   BookOpen,
+  RotateCcw,
+  Shield,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -242,6 +244,13 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
         { name: 'Sales (POS)', href: '/admin/pos',        icon: ShoppingCart,    roles: ['ADMIN','MANAGER','CASHIER'] },
         { name: 'Orders',      href: '/admin/orders',    icon: CreditCard,      roles: ['ADMIN','MANAGER','CASHIER'] },
         { name: 'Customers',   href: '/admin/customers', icon: Users,           roles: ['ADMIN','MANAGER','CASHIER','STAFF'] },
+      ]
+    },
+    {
+      category: "After-Sales",
+      items: [
+        { name: 'Returns',     href: '/admin/returns',   icon: RotateCcw,       roles: ['ADMIN','MANAGER','CASHIER'] },
+        { name: 'Warranty Center', href: '/admin/warranty',  icon: Shield,       roles: ['ADMIN','MANAGER','STAFF'] },
       ]
     },
     {

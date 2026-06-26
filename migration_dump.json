@@ -1,0 +1,29 @@
+{
+  "posCustomers": [
+    {
+      "id": "3eeb7267-022f-439a-8a7e-64961bfb6cf9",
+      "name": "আব্দুল মমিন মিয়া",
+      "phone": "01916706971",
+      "email": "",
+      "address": "",
+      "total_purchase": 2550,
+      "total_due": 1350,
+      "created_at": "2026-06-23T13:19:33.601Z",
+      "updated_at": "2026-06-25T02:55:38.531Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "263e389a-08ff-400b-a852-fcc5a0e6c604",
+      "pos_customer_id": "3eeb7267-022f-439a-8a7e-64961bfb6cf9"
+    },
+    {
+      "id": "566421e9-9d75-4588-ae5f-43ebdaebe185",
+      "pos_customer_id": "3eeb7267-022f-439a-8a7e-64961bfb6cf9"
+    },
+    {
+      "id": "9b708392-6430-4631-923e-9b2e1ab0a286",
+      "pos_customer_id": "3eeb7267-022f-439a-8a7e-64961bfb6cf9"
+    }
+  ]
+}

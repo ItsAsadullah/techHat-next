@@ -1,0 +1,8 @@
+{"category":"system","env":"development","id":"log_1782489849592_02nbq7r","level":"info","message":"Application server started successfully","port":3000,"timestamp":"2026-06-26T16:04:09.592Z"}
+{"category":"database","dbType":"PostgreSQL","id":"log_1782489849595_maxxvpd","level":"info","message":"Prisma client initialized and connected to database","timestamp":"2026-06-26T16:04:09.595Z"}
+{"category":"access","id":"log_1782489849595_7bisvpk","ip":"127.0.0.1","level":"warn","message":"High latency detected on /api/products route","ms":650,"timestamp":"2026-06-26T16:04:09.595Z"}
+{"category":"auth","id":"log_1782489849595_mest4p9","level":"error","message":"Failed authentication attempt","reason":"Invalid password","timestamp":"2026-06-26T16:04:09.595Z","userAgent":"PostmanRuntime/7.28.4"}
+{"category":"system","id":"log_1782491415415_07lr57s","level":"info","message":"Feature flag 'new-dashboard-ui' was enabled","timestamp":"2026-06-26T16:30:15.416Z"}
+{"category":"system","id":"log_1782491427446_xlfzyvr","level":"info","message":"Feature flag 'advanced-caching' was enabled","timestamp":"2026-06-26T16:30:27.446Z"}
+{"category":"system","id":"log_1782491556087_ex0zjub","level":"warn","message":"Admin performed a global cache purge.","timestamp":"2026-06-26T16:32:36.088Z"}
+{"category":"system","id":"log_1782491567335_t9xl5rm","level":"warn","message":"Admin performed a global cache purge.","timestamp":"2026-06-26T16:32:47.335Z"}

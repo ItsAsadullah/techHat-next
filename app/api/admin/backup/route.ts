@@ -42,7 +42,7 @@ export async function GET() {
       prisma.order.findMany(),
       prisma.orderItem.findMany(),
       prisma.orderPayment.findMany(),
-      db.pOSCustomer.findMany(),
+      prisma.customer.findMany(),
       db.duePayment.findMany(),
       prisma.expenseCategory.findMany(),
       prisma.expense.findMany(),

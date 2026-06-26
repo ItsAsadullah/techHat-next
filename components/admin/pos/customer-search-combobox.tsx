@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useRef, useEffect } from 'react';
 import { Search, UserPlus, Check, X, User, Phone, Loader2 } from 'lucide-react';
@@ -7,7 +7,9 @@ import { upsertPOSCustomer } from '@/lib/actions/pos-customer-actions';
 export interface POSCustomerOption {
   id: string;
   name: string;
-  phone: string;
+  phone: string | null;
+  balance?: number;
+  creditLimit?: number;
 }
 
 interface Props {
@@ -42,7 +44,7 @@ export function CustomerSearchCombobox({
     ? customers.filter(
         (c) =>
           c.name.toLowerCase().includes(query.toLowerCase()) ||
-          c.phone.includes(query)
+          (c.phone && c.phone.includes(query))
       )
     : customers.slice(0, 8);
 
@@ -57,7 +59,7 @@ export function CustomerSearchCombobox({
   }, []);
 
   const selectCustomer = (c: POSCustomerOption) => {
-    onSelect(c.name, c.phone);
+    onSelect(c.name, c.phone || '');
     setQuery('');
     setShowDropdown(false);
     setAddMode(false);

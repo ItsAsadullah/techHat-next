@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "D:\\TechHat website\\techhat-next\\logs\\.f39fa5a09ffeebbfefb70f42bc82d3d47c485130-audit.json",
+    "files": [
+        {
+            "date": 1782489849586,
+            "name": "D:\\TechHat website\\techhat-next\\logs\\app-2026-06-26.log",
+            "hash": "b91026db260a0e4ea26f0033ab94e092c96cbc8370e8d0dc8cbaea36d3561271"
+        }
+    ],
+    "hashType": "sha256"
+}

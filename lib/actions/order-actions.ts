@@ -635,8 +635,8 @@ export async function getOrders(filters: OrderFilters = {}) {
 
 export async function getOrderById(orderId: string) {
   try {
-    const order = await db.order.findUnique({
-      where: { id: orderId },
+    const order = await db.order.findFirst({
+      where: { OR: [{ id: orderId }, { orderNumber: orderId }] },
       include: {
         items: {
           include: {

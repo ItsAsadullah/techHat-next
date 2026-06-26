@@ -1,3 +1,4 @@
+'use client';
 import { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, Package, TrendingDown, TrendingUp, AlertCircle, ShoppingCart } from 'lucide-react';
 import { Input } from '@/components/ui/input';

@@ -11,7 +11,7 @@ import { getPOSCustomerList } from '@/lib/actions/ledger-actions';
 import type { POSCustomerOption } from '@/components/admin/pos/customer-search-combobox';
 import type { InvoiceSettings } from '@/lib/actions/invoice-settings-actions';
 import { toast } from 'sonner';
-import { Maximize, Minimize, Keyboard, BarChart2, Users, CreditCard, Grid3X3, ShoppingCart, MoreVertical, DollarSign, Package, Calendar as CalendarIcon } from 'lucide-react';
+import { Maximize, Minimize, Keyboard, BarChart2, Users, CreditCard, Grid3X3, ShoppingCart, MoreVertical, DollarSign, Package, Calendar as CalendarIcon, RefreshCcw } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
@@ -223,22 +223,36 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
       // Sale will proceed as partial/due payment — amounts computed below
     }
 
+    // Determine paid/due amounts
+    const isCashDue = cart.paymentMethod === 'CASH' && cart.amountReceived > 0 && cart.amountReceived < grandTotal;
+    const effectivePaidAmount = isCashDue
+      ? cart.amountReceived
+      : (cart.paidAmount !== null ? cart.paidAmount : undefined);
+    const effectiveDueAmount = isCashDue
+      ? grandTotal - cart.amountReceived
+      : (cart.paidAmount !== null && cart.paidAmount < grandTotal ? grandTotal - cart.paidAmount : undefined);
+    const effectivePosStatus = isCashDue
+      ? 'PARTIAL'
+      : (cart.paidAmount !== null
+          ? (cart.paidAmount <= 0 ? 'DUE' : cart.paidAmount < grandTotal ? 'PARTIAL' : 'PAID')
+          : undefined);
+
+    // CREDIT LIMIT VALIDATION
+    if (effectiveDueAmount && effectiveDueAmount > 0 && cart.customerPhone) {
+      const matchedCustomer = posCustomers.find(c => c.phone === cart.customerPhone);
+      if (matchedCustomer) {
+        const limit = matchedCustomer.creditLimit || 0;
+        const currentDue = matchedCustomer.balance || 0;
+        
+        if (limit > 0 && (currentDue + effectiveDueAmount > limit)) {
+          toast.error(`Credit Limit Exceeded! Limit: ৳${limit.toLocaleString()}, Current Due: ৳${currentDue.toLocaleString()}, Adding: ৳${effectiveDueAmount.toLocaleString()}`);
+          return;
+        }
+      }
+    }
+
     setIsProcessing(true);
     try {
-      // Determine paid/due amounts
-      const isCashDue = cart.paymentMethod === 'CASH' && cart.amountReceived > 0 && cart.amountReceived < grandTotal;
-      const effectivePaidAmount = isCashDue
-        ? cart.amountReceived
-        : (cart.paidAmount !== null ? cart.paidAmount : undefined);
-      const effectiveDueAmount = isCashDue
-        ? grandTotal - cart.amountReceived
-        : (cart.paidAmount !== null && cart.paidAmount < grandTotal ? grandTotal - cart.paidAmount : undefined);
-      const effectivePosStatus = isCashDue
-        ? 'PARTIAL'
-        : (cart.paidAmount !== null
-            ? (cart.paidAmount <= 0 ? 'DUE' : cart.paidAmount < grandTotal ? 'PARTIAL' : 'PAID')
-            : undefined);
-
       const input: CompleteSaleInput = {
         items: cart.items,
         paymentMethod: cart.paymentMethod,
@@ -491,7 +505,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
             <a href="/admin/pos/reports" className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs font-semibold transition-colors">
               <BarChart2 className="h-3.5 w-3.5" /> Reports
             </a>
-            <a href="/admin/pos/customers" className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs font-semibold transition-colors">
+            <a href="/admin/customers" className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs font-semibold transition-colors">
               <Users className="h-3.5 w-3.5" /> Customers
             </a>
             <a href="/admin/pos/payments" className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs font-semibold transition-colors">
@@ -509,7 +523,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
                 <a href="/admin/pos/reports" className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-sm font-semibold">
                   <BarChart2 className="h-4 w-4" /> Reports
                 </a>
-                <a href="/admin/pos/customers" className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-sm font-semibold">
+                <a href="/admin/customers" className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-sm font-semibold">
                   <Users className="h-4 w-4" /> Customers
                 </a>
                 <a href="/admin/pos/payments" className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-sm font-semibold">
@@ -603,7 +617,7 @@ export function POSClient({ categories, initialDailySummary, invoiceSettings, in
 
         {/* Right: Cart & Checkout */}
         <div className={cn(
-          'shrink-0 flex flex-col',
+          'shrink-0 flex flex-col h-full min-h-0',
           mobileView === 'cart' ? 'flex w-full lg:flex lg:w-[26.25rem]' : 'hidden lg:flex lg:w-[26.25rem]'
         )}>
           <POSCartPanel

@@ -17,23 +17,11 @@ function sanitizeInput(input?: string | null) {
 // Internal helpers (plain async functions, NOT server actions) used within completeSale
 async function _upsertCustomerInternal(name: string, phone: string, tx?: any) {
   const client = tx || prisma;
-  const existing = await client.pOSCustomer.findUnique({ where: { phone } });
+  const existing = await client.customer.findFirst({ where: { phone } });
   if (existing) return existing;
-  return client.pOSCustomer.create({ data: { name, phone } });
-}
-
-async function _updateCustomerStatsInternal(customerId: string) {
-  const agg = await prisma.order.aggregate({
-    where: { posCustomerId: customerId, isPos: true },
-    _sum: { grandTotal: true, dueAmount: true },
-  });
-  await prisma.pOSCustomer.update({
-    where: { id: customerId },
-    data: {
-      totalPurchase: agg._sum?.grandTotal || 0,
-      totalDue: agg._sum?.dueAmount || 0,
-    },
-  });
+  
+  const code = `CUST-${Date.now().toString().slice(-6)}`;
+  return client.customer.create({ data: { name, phone, customerCode: code } });
 }
 
 export interface POSProduct {
@@ -314,6 +302,8 @@ export interface CompleteSaleInput {
   guarantorPhone?: string;
   guarantorRelation?: string;
   guarantorAddress?: string;
+  // Idempotency
+  idempotencyKey?: string;
 }
 
 export interface SaleResult {
@@ -406,11 +396,17 @@ export async function completeSale(input: CompleteSaleInput): Promise<SaleResult
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      // 0. Upsert POS Customer if name+phone provided
-      let posCustomerId: string | null = null;
+      // 0. Idempotency Check
+      if (input.idempotencyKey) {
+        const existingOrder = await tx.order.findUnique({ where: { idempotencyKey: input.idempotencyKey } });
+        if (existingOrder) return existingOrder;
+      }
+
+      // 0. Upsert Customer if name+phone provided
+      let customerId: string | null = null;
       if (input.customerName && input.customerPhone) {
         const customer = await _upsertCustomerInternal(input.customerName, input.customerPhone, tx);
-        posCustomerId = customer.id;
+        customerId = customer.id;
       }
 
       // Compute due/paid
@@ -424,6 +420,7 @@ export async function completeSale(input: CompleteSaleInput): Promise<SaleResult
         data: {
           orderNumber,
           isPos: true,
+          status: 'COMPLETED',
           paymentStatus: dueAmount > 0 ? 'PENDING' : 'PAID',
           posPaymentStatus: posPaymentStatus as any,
           paidAmount,
@@ -441,7 +438,8 @@ export async function completeSale(input: CompleteSaleInput): Promise<SaleResult
           cashPayment: input.cashPayment || null,
           cardPayment: input.cardPayment || null,
           mobilePayment: input.mobilePayment || null,
-          posCustomerId,
+          customerId,
+          idempotencyKey: input.idempotencyKey || null,
         },
       });
 
@@ -595,13 +593,56 @@ export async function completeSale(input: CompleteSaleInput): Promise<SaleResult
 
       await Promise.all([...variantPromises, ...productPromises]);
 
+      // 5. Update Customer Ledger if customer is attached
+      if (customerId) {
+        let runningBalance = (await tx.customer.findUnique({ where: { id: customerId } }))?.balance || 0;
+
+        // Debit entry for Invoice
+        runningBalance += input.grandTotal;
+        await tx.customerLedger.create({
+          data: {
+            customerId,
+            type: 'Invoice',
+            debit: input.grandTotal,
+            credit: 0,
+            runningBalance,
+            referenceId: orderNumber,
+            note: `POS Sale: ${orderNumber}`
+          }
+        });
+
+        // Credit entry for Payment
+        if (paidAmount > 0) {
+          runningBalance -= paidAmount;
+          await tx.customerLedger.create({
+            data: {
+              customerId,
+              type: 'Payment',
+              debit: 0,
+              credit: paidAmount,
+              runningBalance,
+              referenceId: orderNumber,
+              note: `Initial Payment for ${orderNumber}`
+            }
+          });
+        }
+
+        // Inline Recalculate Cache to avoid out-of-tx reads
+        const ledgers = await tx.customerLedger.findMany({ where: { customerId }, orderBy: { date: 'asc' } });
+        let tp = 0; let tpaid = 0; let rb = 0; let lpd = null;
+        for (const l of ledgers) {
+          rb += l.debit - l.credit;
+          if (l.type === 'Invoice') { tp += l.debit; lpd = l.date; }
+          if (l.type === 'Payment') tpaid += l.credit;
+        }
+        await tx.customer.update({
+          where: { id: customerId },
+          data: { balance: rb, totalPurchase: tp, totalPaid: tpaid, totalDue: rb > 0 ? rb : 0, lastPurchaseDate: lpd }
+        });
+      }
+
       return order;
     }, { timeout: 30000 });
-
-    // Update customer stats after transaction
-    if (result.posCustomerId) {
-      await _updateCustomerStatsInternal(result.posCustomerId);
-    }
 
     revalidatePath('/admin/products');
     revalidatePath('/admin/pos');
@@ -643,7 +684,7 @@ export async function getDailySalesSummary(targetDate?: Date | string) {
   const startOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
   const endOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate() + 1);
 
-  const [totalSales, totalOrders, totalItems] = await Promise.all([
+  const [totalSales, totalOrders, totalItems, totalReturns] = await Promise.all([
     prisma.order.aggregate({
       where: {
         isPos: true,
@@ -666,10 +707,20 @@ export async function getDailySalesSummary(targetDate?: Date | string) {
       },
       _sum: { quantity: true },
     }),
+    prisma.return.aggregate({
+      where: {
+        createdAt: { gte: startOfDay, lt: endOfDay },
+        order: { isPos: true }
+      },
+      _sum: { refundAmount: true }
+    })
   ]);
 
+  const rawSales = totalSales._sum.grandTotal || 0;
+  const rawReturns = totalReturns._sum.refundAmount || 0;
+
   return {
-    totalSales: totalSales._sum.grandTotal || 0,
+    totalSales: Math.max(0, rawSales - rawReturns),
     totalOrders,
     totalItems: totalItems._sum.quantity || 0,
   };

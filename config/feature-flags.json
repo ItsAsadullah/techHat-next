@@ -1,0 +1,32 @@
+[
+  {
+    "id": "new-dashboard-ui",
+    "name": "New Dashboard UI",
+    "description": "Enables the redesigned analytics dashboard for the admin homepage.",
+    "enabled": true,
+    "type": "beta",
+    "rolloutPercentage": 100
+  },
+  {
+    "id": "ai-auto-tagging",
+    "name": "AI Auto-Tagging",
+    "description": "Automatically tags products using AI during creation.",
+    "enabled": true,
+    "type": "experiment"
+  },
+  {
+    "id": "advanced-caching",
+    "name": "Advanced Redis Caching",
+    "description": "Uses Redis for advanced query caching (Requires Redis to be configured).",
+    "enabled": true,
+    "type": "system"
+  },
+  {
+    "id": "multi-currency",
+    "name": "Multi-Currency Support",
+    "description": "Allow customers to view prices and checkout in multiple currencies.",
+    "enabled": false,
+    "type": "beta",
+    "rolloutPercentage": 50
+  }
+]

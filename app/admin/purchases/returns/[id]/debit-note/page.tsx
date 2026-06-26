@@ -8,9 +8,10 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { PrintButton } from '@/components/admin/print-button';
 
-export default async function DebitNotePage({ params }: { params: { id: string } }) {
+export default async function DebitNotePage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
   const pr = await prisma.purchaseReturn.findUnique({
-    where: { id: params.id },
+    where: { id: resolvedParams.id },
     include: {
       supplier: true,
       warehouse: true,

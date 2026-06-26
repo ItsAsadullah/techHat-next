@@ -1,3 +1,4 @@
+'use client';
 import { FileText, Paperclip, Upload, X, File as FileIcon, ExternalLink } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { CldUploadWidget, type CloudinaryUploadWidgetOptions } from 'next-cloudinary';

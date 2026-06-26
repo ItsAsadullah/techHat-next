@@ -308,6 +308,21 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     fetchOrder();
   }, [fetchOrder]);
 
+  // Auto-print if ?print=true is in the URL
+  useEffect(() => {
+    if (order && typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get('print') === 'true') {
+        // We delay slightly to ensure the component is fully rendered
+        setTimeout(() => {
+          printInvoice();
+          // Remove the query param to prevent infinite printing loops on refresh
+          window.history.replaceState({}, '', window.location.pathname);
+        }, 500);
+      }
+    }
+  }, [order]);
+
   const handleStatusUpdate = async (newStatus: string) => {
     setActionLoading(true);
     try {
@@ -826,6 +841,50 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 <ExternalLink className="w-3 h-3 flex-shrink-0" />
                 /track/{order.trackingToken.slice(0, 16)}…
               </a>
+            </div>
+          )}
+
+          {/* Returns Information */}
+          {order.returns && order.returns.length > 0 && (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100">
+                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 text-orange-500" />
+                  Returns
+                </h3>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {order.returns.map((ret: any) => (
+                  <div key={ret.id} className="p-4 space-y-3 bg-orange-50/30">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{ret.returnNumber}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{formatDate(ret.createdAt)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Refund Amount</p>
+                        <p className="text-sm font-bold text-gray-900">৳{ret.refundAmount.toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-600 bg-white p-2 rounded border border-orange-100">
+                      <p><span className="font-semibold text-gray-900">Reason:</span> {ret.reason}</p>
+                      {ret.note && <p className="mt-1"><span className="font-semibold text-gray-900">Note:</span> {ret.note}</p>}
+                    </div>
+                    <div className="space-y-1 mt-2">
+                      <p className="text-xs font-bold text-gray-900 border-b border-gray-100 pb-1 mb-1">Returned Items</p>
+                      {ret.items.map((item: any) => {
+                        const orderItem = order.items.find((oi: any) => oi.productId === item.productId && oi.variantId === item.variantId);
+                        return (
+                          <div key={item.id} className="flex justify-between text-xs text-gray-600">
+                            <span>{orderItem?.productName || 'Product'} {orderItem?.variant ? `(${orderItem.variant.name})` : ''} x {item.quantity}</span>
+                            <span>৳{item.total.toLocaleString()}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

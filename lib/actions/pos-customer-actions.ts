@@ -9,9 +9,11 @@ import { revalidatePath } from 'next/cache';
 
 export async function upsertPOSCustomer(name: string, phone: string) {
   try {
-    const existing = await prisma.pOSCustomer.findUnique({ where: { phone } });
+    const existing = await prisma.customer.findFirst({ where: { phone } });
     if (existing) return existing;
-    return prisma.pOSCustomer.create({ data: { name, phone } });
+    
+    const code = `CUST-${Date.now().toString().slice(-6)}`;
+    return prisma.customer.create({ data: { name, phone, customerCode: code } });
   } catch (error: any) {
     console.error('upsertPOSCustomer error:', error);
     throw new Error((error as any)?.message || 'Failed to save customer');
@@ -20,9 +22,11 @@ export async function upsertPOSCustomer(name: string, phone: string) {
 
 export async function createPOSCustomer(data: { name: string; phone: string; email?: string; address?: string }) {
   try {
-    const existing = await prisma.pOSCustomer.findUnique({ where: { phone: data.phone } });
+    const existing = await prisma.customer.findFirst({ where: { phone: data.phone } });
     if (existing) throw new Error('A customer with this phone number already exists.');
-    const customer = await prisma.pOSCustomer.create({ data });
+    
+    const code = `CUST-${Date.now().toString().slice(-6)}`;
+    const customer = await prisma.customer.create({ data: { ...data, customerCode: code } });
     revalidatePath('/admin/pos/customers');
     return { success: true, customer };
   } catch (error: any) {
@@ -32,11 +36,11 @@ export async function createPOSCustomer(data: { name: string; phone: string; ema
 
 export async function updatePOSCustomer(id: string, data: { name: string; phone: string; email?: string; address?: string }) {
   try {
-    const existing = await prisma.pOSCustomer.findUnique({ where: { phone: data.phone } });
+    const existing = await prisma.customer.findFirst({ where: { phone: data.phone } });
     if (existing && existing.id !== id) {
       throw new Error('Another customer with this phone number already exists.');
     }
-    const customer = await prisma.pOSCustomer.update({ where: { id }, data });
+    const customer = await prisma.customer.update({ where: { id }, data });
     revalidatePath('/admin/pos/customers');
     return { success: true, customer };
   } catch (error: any) {
@@ -46,7 +50,7 @@ export async function updatePOSCustomer(id: string, data: { name: string; phone:
 
 export async function deletePOSCustomer(id: string) {
   try {
-    const customer = await prisma.pOSCustomer.findUnique({
+    const customer = await prisma.customer.findUnique({
       where: { id },
       include: { _count: { select: { orders: true } } }
     });
@@ -56,7 +60,7 @@ export async function deletePOSCustomer(id: string) {
       throw new Error('Cannot delete customer with existing orders.');
     }
 
-    await prisma.pOSCustomer.delete({ where: { id } });
+    await prisma.customer.delete({ where: { id } });
     revalidatePath('/admin/pos/customers');
     return { success: true };
   } catch (error: any) {
@@ -72,7 +76,7 @@ export async function getPOSCustomers(search?: string) {
       { phone: { contains: search, mode: 'insensitive' } },
     ];
   }
-  return prisma.pOSCustomer.findMany({
+  return prisma.customer.findMany({
     where,
     orderBy: { createdAt: 'desc' },
     include: {
@@ -84,7 +88,7 @@ export async function getPOSCustomers(search?: string) {
 }
 
 export async function getPOSCustomerById(id: string) {
-  return prisma.pOSCustomer.findUnique({
+  return prisma.customer.findUnique({
     where: { id },
     include: {
       orders: {
@@ -101,10 +105,10 @@ export async function getPOSCustomerById(id: string) {
 
 export async function updatePOSCustomerStats(customerId: string) {
   const agg = await prisma.order.aggregate({
-    where: { posCustomerId: customerId, isPos: true },
+    where: { customerId, isPos: true },
     _sum: { grandTotal: true, dueAmount: true },
   });
-  await prisma.pOSCustomer.update({
+  await prisma.customer.update({
     where: { id: customerId },
     data: {
       totalPurchase: agg._sum.grandTotal || 0,
@@ -149,7 +153,7 @@ export async function recordDuePayment(orderId: string, amount: number, note?: s
   try {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      select: { dueAmount: true, paidAmount: true, grandTotal: true, posCustomerId: true },
+      select: { dueAmount: true, paidAmount: true, grandTotal: true, customerId: true },
     });
     if (!order) throw new Error('Order not found');
 
@@ -172,8 +176,8 @@ export async function recordDuePayment(orderId: string, amount: number, note?: s
       }),
     ]);
 
-    if (order.posCustomerId) {
-      await updatePOSCustomerStats(order.posCustomerId);
+    if (order.customerId) {
+      await updatePOSCustomerStats(order.customerId);
     }
 
     revalidatePath('/admin/pos/reports');
@@ -235,7 +239,7 @@ export async function getPOSSalesReport(filter?: ReportFilter) {
         include: {
           items: true,
           guarantor: true,
-          posCustomer: true,
+          Customer: true,
         },
         orderBy: { createdAt: 'desc' },
       }),
