@@ -8,10 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Users, Search, TrendingUp, AlertCircle, ArrowLeft, Printer, BookOpen, DollarSign, Plus, Edit, Trash2, Wallet } from 'lucide-react';
 import type { InvoiceSettings } from '@/lib/actions/invoice-settings-actions';
 import { createPOSCustomer, updatePOSCustomer, deletePOSCustomer } from '@/lib/actions/pos-customer-actions';
+import Link from 'next/link';
 
 interface Customer {
   id: string;
@@ -31,9 +33,10 @@ interface Props {
   customers: Customer[];
   invoiceSettings: InvoiceSettings;
   receivablesSummary?: any;
+  agingData?: any[];
 }
 
-export function POSCustomersClient({ customers, invoiceSettings, receivablesSummary }: Props) {
+export function POSCustomersClient({ customers, invoiceSettings, receivablesSummary, agingData = [] }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState('');
   
@@ -268,16 +271,23 @@ export function POSCustomersClient({ customers, invoiceSettings, receivablesSumm
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="relative group">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-        <Input
-          className="pl-10 h-11 bg-white border-gray-200 shadow-sm focus-visible:ring-blue-500 rounded-xl"
-          placeholder="Search by customer name or phone..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+      <Tabs defaultValue="customers" className="w-full">
+        <TabsList className="grid grid-cols-2 h-12 items-center bg-gray-100 rounded-lg p-1 max-w-[400px]">
+          <TabsTrigger value="customers" className="h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md font-medium">Customer List</TabsTrigger>
+          <TabsTrigger value="aging" className="h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md font-medium">Aging Report</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="customers" className="space-y-4 mt-6">
+          {/* Search */}
+          <div className="relative group">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+            <Input
+              className="pl-10 h-11 bg-white border-gray-200 shadow-sm focus-visible:ring-blue-500 rounded-xl"
+              placeholder="Search by customer name or phone..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
 
       {/* Desktop Table View */}
       <Card className="hidden md:block border-gray-100 shadow-sm overflow-hidden">
@@ -491,6 +501,85 @@ export function POSCustomersClient({ customers, invoiceSettings, receivablesSumm
           </>
         )}
       </div>
+      </TabsContent>
+
+      <TabsContent value="aging" className="mt-6">
+        <Card className="border-gray-100 shadow-sm overflow-hidden">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50/80 border-b border-gray-100">
+                    <th className="text-left px-5 py-3.5 font-medium text-gray-500 text-xs tracking-wider uppercase">Customer Name</th>
+                    <th className="text-right px-5 py-3.5 font-medium text-gray-500 text-xs tracking-wider uppercase border-l border-gray-100">Current (0-30 Days)</th>
+                    <th className="text-right px-5 py-3.5 font-medium text-gray-500 text-xs tracking-wider uppercase border-l border-gray-100">31 - 60 Days</th>
+                    <th className="text-right px-5 py-3.5 font-medium text-orange-600/70 text-xs tracking-wider uppercase border-l border-gray-100">61 - 90 Days</th>
+                    <th className="text-right px-5 py-3.5 font-medium text-red-600/70 text-xs tracking-wider uppercase border-l border-gray-100">90+ Days</th>
+                    <th className="text-right px-5 py-3.5 font-bold text-gray-900 text-xs tracking-wider uppercase border-l border-gray-100 bg-gray-50">Total Receivable</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {agingData.map((row: any) => (
+                    <tr key={row.customerId} className="hover:bg-blue-50/30 transition-colors">
+                      <td className="px-5 py-4 font-medium">
+                        <Link href={`/admin/customers/${row.customerId}`} className="hover:underline text-blue-600">
+                          {row.customerName}
+                        </Link>
+                      </td>
+                      <td className="px-5 py-4 text-right border-l border-gray-50">
+                        {row.current > 0 ? fmt(row.current) : '-'}
+                      </td>
+                      <td className="px-5 py-4 text-right border-l border-gray-50">
+                        {row.days31To60 > 0 ? fmt(row.days31To60) : '-'}
+                      </td>
+                      <td className="px-5 py-4 text-right border-l border-gray-50 text-orange-600 font-medium">
+                        {row.days61To90 > 0 ? fmt(row.days61To90) : '-'}
+                      </td>
+                      <td className="px-5 py-4 text-right border-l border-gray-50 text-red-600 font-bold">
+                        {row.over90 > 0 ? fmt(row.over90) : '-'}
+                      </td>
+                      <td className="px-5 py-4 text-right border-l border-gray-50 font-bold bg-green-50/30 text-green-700">
+                        {fmt(row.totalReceivable)}
+                      </td>
+                    </tr>
+                  ))}
+                  {agingData.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-gray-500">
+                        No outstanding receivables found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+                {agingData.length > 0 && (
+                  <tfoot>
+                    <tr className="bg-gray-50/80 font-bold border-t border-gray-200">
+                      <td className="px-5 py-4 text-sm text-gray-900">Grand Total</td>
+                      <td className="px-5 py-4 text-right border-l border-gray-200">
+                        {fmt(agingData.reduce((sum, r) => sum + r.current, 0))}
+                      </td>
+                      <td className="px-5 py-4 text-right border-l border-gray-200">
+                        {fmt(agingData.reduce((sum, r) => sum + r.days31To60, 0))}
+                      </td>
+                      <td className="px-5 py-4 text-right border-l border-gray-200 text-orange-600">
+                        {fmt(agingData.reduce((sum, r) => sum + r.days61To90, 0))}
+                      </td>
+                      <td className="px-5 py-4 text-right border-l border-gray-200 text-red-600">
+                        {fmt(agingData.reduce((sum, r) => sum + r.over90, 0))}
+                      </td>
+                      <td className="px-5 py-4 text-right border-l border-gray-200 text-lg text-green-700 bg-green-50/50">
+                        {fmt(agingData.reduce((sum, r) => sum + r.totalReceivable, 0))}
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+      </Tabs>
+
 
       {/* Add / Edit Dialog */}
       <Dialog open={isAddOpen || isEditOpen} onOpenChange={(val) => {

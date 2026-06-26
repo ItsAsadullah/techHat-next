@@ -272,7 +272,6 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
       category: "Finance & Accounting",
       items: [
         { name: 'Expenses',    href: '/admin/expenses',  icon: Wallet,          roles: ['ADMIN','MANAGER'] },
-        { name: 'Receivables', href: '/admin/reports/receivables', icon: Wallet, roles: ['ADMIN','MANAGER'] },
         { name: 'Payables',    href: '/admin/reports/payables', icon: Wallet,   roles: ['ADMIN','MANAGER'] },
         { name: 'Accounting',  href: '/admin/accounting',icon: BookOpen,        roles: ['ADMIN'] },
       ]
