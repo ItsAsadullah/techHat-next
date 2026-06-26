@@ -9,8 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
-import { Users, Search, TrendingUp, AlertCircle, ArrowLeft, Printer, BookOpen, DollarSign, Plus, Edit, Trash2, Wallet } from 'lucide-react';
+import { Users, Search, TrendingUp, AlertCircle, ArrowLeft, Printer, BookOpen, DollarSign, Plus, Edit, Trash2, Wallet, MoreHorizontal } from 'lucide-react';
 import type { InvoiceSettings } from '@/lib/actions/invoice-settings-actions';
 import { createPOSCustomer, updatePOSCustomer, deletePOSCustomer } from '@/lib/actions/pos-customer-actions';
 import Link from 'next/link';
@@ -344,34 +345,25 @@ export function POSCustomersClient({ customers, invoiceSettings, receivablesSumm
                         )}
                       </td>
                       <td className="px-5 py-4">
-                        <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => openEdit(customer)}
-                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                            title="Edit Customer"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => openDelete(customer)}
-                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            title="Delete Customer"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => router.push(`/admin/customers/${customer.id}`)}
-                            className="h-8 text-xs gap-1.5 bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
-                          >
-                            <Wallet className="h-3.5 w-3.5" />
-                            Collect Payment
-                          </Button>
+                        <div className="flex justify-center">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-blue-600 hover:bg-blue-50">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => router.push(`/admin/customers/${customer.id}`)} className="text-blue-600 focus:text-blue-600 cursor-pointer">
+                                <Wallet className="mr-2 h-4 w-4" /> Collect Payment
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openEdit(customer)} className="cursor-pointer">
+                                <Edit className="mr-2 h-4 w-4" /> Edit Customer
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openDelete(customer)} className="text-red-600 focus:text-red-600 cursor-pointer">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Customer
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </td>
                     </tr>
@@ -421,9 +413,29 @@ export function POSCustomersClient({ customers, invoiceSettings, receivablesSumm
                           </Badge>
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-[10px] bg-gray-50 text-gray-400 border-gray-200 shrink-0">
-                        #{idx + 1}
-                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <Badge variant="outline" className="text-[10px] bg-gray-50 text-gray-400 border-gray-200 shrink-0">
+                          #{idx + 1}
+                        </Badge>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-blue-600 hover:bg-blue-50">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => router.push(`/admin/customers/${customer.id}`)} className="text-blue-600 focus:text-blue-600 cursor-pointer">
+                              <Wallet className="mr-2 h-4 w-4" /> Collect Payment
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openEdit(customer)} className="cursor-pointer">
+                              <Edit className="mr-2 h-4 w-4" /> Edit Customer
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openDelete(customer)} className="text-red-600 focus:text-red-600 cursor-pointer">
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete Customer
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   </div>
                   
@@ -446,33 +458,6 @@ export function POSCustomersClient({ customers, invoiceSettings, receivablesSumm
                           <span className="font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded text-xs">Clear</span>
                         )}
                      </div>
-                  </div>
-
-                  <div className="p-3 bg-white grid grid-cols-4 gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => openEdit(customer)}
-                      className="h-10 w-full col-span-1 border-gray-200 text-blue-600 hover:bg-blue-50 hover:border-blue-200"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => openDelete(customer)}
-                      className="h-10 w-full col-span-1 border-gray-200 text-red-600 hover:bg-red-50 hover:border-red-200"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => router.push(`/admin/customers/${customer.id}`)}
-                      className="h-10 col-span-2 gap-2 bg-white hover:bg-blue-50 text-gray-700 hover:text-blue-600 border-gray-200 hover:border-blue-200 shadow-sm"
-                    >
-                      <Wallet className="h-4 w-4" />
-                      Collect Payment
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
