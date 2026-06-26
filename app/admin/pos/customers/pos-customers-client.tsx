@@ -354,7 +354,7 @@ export function POSCustomersClient({ customers, invoiceSettings, receivablesSumm
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem onClick={() => router.push(`/admin/customers/${customer.id}`)} className="text-blue-600 focus:text-blue-600 cursor-pointer">
-                                <Wallet className="mr-2 h-4 w-4" /> Collect Payment
+                                <BookOpen className="mr-2 h-4 w-4" /> Ledger
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => openEdit(customer)} className="cursor-pointer">
                                 <Edit className="mr-2 h-4 w-4" /> Edit Customer
@@ -425,7 +425,7 @@ export function POSCustomersClient({ customers, invoiceSettings, receivablesSumm
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
                             <DropdownMenuItem onClick={() => router.push(`/admin/customers/${customer.id}`)} className="text-blue-600 focus:text-blue-600 cursor-pointer">
-                              <Wallet className="mr-2 h-4 w-4" /> Collect Payment
+                              <BookOpen className="mr-2 h-4 w-4" /> Ledger
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => openEdit(customer)} className="cursor-pointer">
                               <Edit className="mr-2 h-4 w-4" /> Edit Customer
