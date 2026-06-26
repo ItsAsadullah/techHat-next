@@ -162,6 +162,22 @@ export async function getCustomerFullProfile(customerId: string) {
       }),
     ]);
 
+    const orderNumbers = recentLedger
+      .map(l => l.referenceId)
+      .filter(id => id !== null && id !== undefined) as string[];
+
+    const matchedOrders = await prisma.order.findMany({
+      where: { orderNumber: { in: orderNumbers } },
+      select: { id: true, orderNumber: true },
+    });
+
+    const orderMap = new Map(matchedOrders.map(o => [o.orderNumber, o.id]));
+
+    const enrichedLedger = recentLedger.map(l => ({
+      ...l,
+      orderId: l.referenceId ? orderMap.get(l.referenceId) : null,
+    }));
+
     // Calculate aging for outstanding invoices
     const today = new Date();
     const invoicesWithAging = outstandingOrders.map((inv) => ({
@@ -186,7 +202,7 @@ export async function getCustomerFullProfile(customerId: string) {
         customer,
         outstandingInvoices: invoicesWithAging,
         recentPayments,
-        recentLedger,
+        recentLedger: enrichedLedger,
         creditWarning,
       },
     };

@@ -9,6 +9,7 @@ import { User, Phone, Wallet, Receipt, FileText, Activity, AlertTriangle, Shield
 import { getCustomerFullProfile } from '@/lib/actions/receivables-actions';
 import { PaymentDrawer } from './payment-drawer';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
 export function DueCollectionClient({ customer }: { customer: any }) {
   const [profile, setProfile] = useState<any>(null);
@@ -245,6 +246,7 @@ export function DueCollectionClient({ customer }: { customer: any }) {
                            <th className="px-4 py-3 text-right font-medium">Debit (+)</th>
                            <th className="px-4 py-3 text-right font-medium">Credit (-)</th>
                            <th className="px-4 py-3 text-right font-medium">Balance</th>
+                           <th className="px-4 py-3 text-center font-medium">Action</th>
                          </tr>
                        </thead>
                        <tbody className="divide-y">
@@ -260,6 +262,15 @@ export function DueCollectionClient({ customer }: { customer: any }) {
                              <td className="px-4 py-3 text-right">{l.debit > 0 ? `৳${l.debit.toLocaleString()}` : '-'}</td>
                              <td className="px-4 py-3 text-right text-green-600">{l.credit > 0 ? `৳${l.credit.toLocaleString()}` : '-'}</td>
                              <td className="px-4 py-3 text-right font-semibold">৳{l.runningBalance.toLocaleString()}</td>
+                             <td className="px-4 py-3 text-center">
+                               {l.orderId ? (
+                                 <Button variant="outline" size="sm" asChild className="h-7 text-xs bg-white">
+                                   <Link href={`/admin/orders/${l.orderId}`}>View Voucher</Link>
+                                 </Button>
+                               ) : (
+                                 <span className="text-slate-400 text-xs">-</span>
+                               )}
+                             </td>
                            </tr>
                          ))}
                        </tbody>
