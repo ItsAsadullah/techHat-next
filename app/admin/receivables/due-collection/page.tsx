@@ -1,30 +1,34 @@
 import { prisma } from '@/lib/prisma';
-import { DueCollectionClient } from './due-collection-client';
+import { ReceivablesDashboardClient } from './receivables-dashboard-client';
 
 export const metadata = {
-  title: 'Due Collection Workspace | TechHat POS',
+  title: 'Customer Credit & Due Collection | TechHat ERP',
 };
 
 export default async function DueCollectionPage() {
   const customers = await prisma.customer.findMany({
-    where: { balance: { gt: 0 } },
+    orderBy: { balance: 'desc' },
     select: {
       id: true,
       name: true,
       phone: true,
       balance: true,
-    },
-    orderBy: { balance: 'desc' }
+      creditLimit: true,
+      creditRating: true,
+      creditScore: true,
+      customerGroup: true,
+      lastPaymentDate: true,
+    }
   });
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Due Collection</h1>
-        <p className="text-gray-500 mt-1 text-sm sm:text-base">Collect payments and auto-allocate to outstanding invoices.</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Customer Credit & Receivables</h1>
+        <p className="text-gray-500 mt-1 text-sm sm:text-base">Manage customer due, credit limits, and collections.</p>
       </div>
 
-      <DueCollectionClient customers={customers} />
+      <ReceivablesDashboardClient customers={customers} />
     </div>
   );
 }

@@ -1802,6 +1802,12 @@ model Customer {
   totalPaid        Float     @default(0) @map("total_paid")
   totalDue         Float     @default(0) @map("total_due")
   lastPurchaseDate DateTime? @map("last_purchase_date")
+  lastPaymentDate  DateTime? @map("last_payment_date")
+
+  // Credit Intelligence
+  creditScore  Int?    @default(100) @map("credit_score")   // 0-100
+  creditRating String? @default("GOOD") @map("credit_rating") // EXCELLENT | GOOD | AVERAGE | RISKY | BLOCKED
+  paymentScore Float?  @default(0) @map("payment_score")    // avg days to pay
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
@@ -2002,6 +2008,7 @@ enum RepairStatus {
   CLOSED
 }
 
+
 // --------------------------------------
 // NEW DUE COLLECTION & RECEIVABLES
 // --------------------------------------
@@ -2009,16 +2016,30 @@ enum RepairStatus {
 model CustomerPayment {
   id             String        @id @default(uuid())
   paymentNumber  String        @unique @map("payment_number")
+  receiptNumber  String?       @unique @map("receipt_number")   // RCPT-2026-000001
   customerId     String        @map("customer_id")
   amount         Float
   paymentMethod  PaymentMethod @map("payment_method")
   paymentDate    DateTime      @default(now()) @map("payment_date")
+  collectionDate DateTime      @default(now()) @map("collection_date")
   reference      String?
+  remarks        String?       @db.Text
+  collector      String?       // Staff name
   unallocated    Float         @default(0)
   status         String        @default("COMPLETED") // PENDING, COMPLETED, VOID
   idempotencyKey String?       @unique @map("idempotency_key")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  // Mixed payment breakdown
+  cashAmount    Float @default(0) @map("cash_amount")
+  bkashAmount   Float @default(0) @map("bkash_amount")
+  nagadAmount   Float @default(0) @map("nagad_amount")
+  rocketAmount  Float @default(0) @map("rocket_amount")
+  cardAmount    Float @default(0) @map("card_amount")
+  bankAmount    Float @default(0) @map("bank_amount")
+  chequeAmount  Float @default(0) @map("cheque_amount")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   customer    Customer            @relation(fields: [customerId], references: [id])
   allocations PaymentAllocation[]
@@ -2042,3 +2063,4 @@ model PaymentAllocation {
   @@index([orderId])
   @@map("payment_allocations")
 }
+
