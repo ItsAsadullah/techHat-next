@@ -30,23 +30,28 @@ export function DueCollectionClient({ customer }: { customer: any }) {
     setLoading(false);
   };
 
-  if (loading) {
-    return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading financial workspace...</div>;
-  }
+  const getCreditWarning = (c: any) => {
+    if (!c || c.balance <= 0) return null;
+    const score = c.creditScore ?? 100;
+    const rating = c.creditRating ?? 'GOOD';
+    if (rating === 'BLOCKED') return `⛔ এই কাস্টমার ক্রেডিট ব্লক। পূর্বের বাকি: ৳${c.balance.toLocaleString()}`;
+    if (rating === 'RISKY') return `⚠️ ঝুঁকিপূর্ণ কাস্টমার। বাকি: ৳${c.balance.toLocaleString()}, স্কোর: ${score}`;
+    if (c.creditLimit > 0 && c.balance >= c.creditLimit) return `🔴 ক্রেডিট লিমিট পার হয়েছে। বাকি: ৳${c.balance.toLocaleString()} / লিমিট: ৳${c.creditLimit.toLocaleString()}`;
+    if (c.balance > 0) return `ℹ️ পূর্বের বাকি আছে: ৳${c.balance.toLocaleString()}। বিক্রি করা যাবে।`;
+    return null;
+  };
 
-  if (!profile) return null;
-
-  const { customer: c, outstandingInvoices, recentPayments, recentLedger, creditWarning } = profile;
+  const warningMsg = profile?.creditWarning || getCreditWarning(customer);
 
   return (
     <div className="space-y-6">
       {/* Top Warning Banner */}
-      {creditWarning && (
-        <div className={`p-4 rounded-md border flex items-start gap-3 ${c.creditRating === 'BLOCKED' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-orange-50 border-orange-200 text-orange-800'}`}>
+      {warningMsg && (
+        <div className={`p-4 rounded-md border flex items-start gap-3 ${customer.creditRating === 'BLOCKED' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-orange-50 border-orange-200 text-orange-800'}`}>
           <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
           <div>
             <h4 className="font-semibold text-sm">Credit Alert</h4>
-            <p className="text-sm mt-1">{creditWarning}</p>
+            <p className="text-sm mt-1">{warningMsg}</p>
           </div>
         </div>
       )}
@@ -60,13 +65,13 @@ export function DueCollectionClient({ customer }: { customer: any }) {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="flex items-center gap-4">
               <div className="h-16 w-16 rounded-full bg-slate-800 flex items-center justify-center text-2xl font-bold border-2 border-slate-700">
-                {c.name.charAt(0)}
+                {customer.name.charAt(0)}
               </div>
               <div>
-                <h2 className="text-2xl font-bold tracking-tight">{c.name}</h2>
+                <h2 className="text-2xl font-bold tracking-tight">{customer.name}</h2>
                 <div className="flex items-center text-slate-400 gap-3 mt-1 text-sm">
-                  <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5"/> {c.phone || 'No phone'}</span>
-                  <span className="flex items-center gap-1">Score: {c.creditScore}/100</span>
+                  <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5"/> {customer.phone || 'No phone'}</span>
+                  <span className="flex items-center gap-1">Score: {customer.creditScore ?? 100}/100</span>
                 </div>
               </div>
             </div>
@@ -74,19 +79,20 @@ export function DueCollectionClient({ customer }: { customer: any }) {
             <div className="flex flex-wrap gap-6 items-center">
               <div>
                 <p className="text-slate-400 text-sm">Outstanding Due</p>
-                <p className="text-2xl font-bold text-red-400">৳{c.balance.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-red-400">৳{customer.balance.toLocaleString()}</p>
               </div>
               <div className="hidden sm:block">
                 <p className="text-slate-400 text-sm">Credit Limit</p>
-                <p className="text-xl font-semibold">৳{c.creditLimit.toLocaleString()}</p>
+                <p className="text-xl font-semibold">৳{customer.creditLimit.toLocaleString()}</p>
               </div>
               <Button 
                 size="lg" 
                 onClick={() => setPaymentDrawerOpen(true)}
-                className="bg-green-600 hover:bg-green-700 text-white font-semibold text-base px-6 shadow-lg shadow-green-900/20"
+                disabled={loading}
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold text-base px-6 shadow-lg shadow-green-900/20 disabled:opacity-50"
               >
                 <Wallet className="mr-2 h-5 w-5" />
-                Collect Payment
+                {loading ? 'Loading...' : 'Collect Payment'}
               </Button>
             </div>
           </div>
@@ -94,6 +100,11 @@ export function DueCollectionClient({ customer }: { customer: any }) {
       </Card>
 
       {/* TABS WORKSPACE */}
+      {loading ? (
+        <div className="p-12 text-center text-muted-foreground animate-pulse border rounded-xl bg-gray-50/50">
+          Loading financial data...
+        </div>
+      ) : profile ? (
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid grid-cols-5 h-12 items-center bg-slate-100 rounded-lg p-1">
           <TabsTrigger value="overview" className="h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md">Overview</TabsTrigger>
@@ -111,7 +122,7 @@ export function DueCollectionClient({ customer }: { customer: any }) {
                   <CardTitle className="text-base text-muted-foreground">Total Purchases</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold">৳{c.totalPurchase.toLocaleString()}</p>
+                  <p className="text-3xl font-bold">৳{customer.totalPurchase.toLocaleString()}</p>
                 </CardContent>
               </Card>
               <Card>
@@ -119,7 +130,7 @@ export function DueCollectionClient({ customer }: { customer: any }) {
                   <CardTitle className="text-base text-muted-foreground">Total Paid</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold text-green-600">৳{c.totalPaid.toLocaleString()}</p>
+                  <p className="text-3xl font-bold text-green-600">৳{customer.totalPaid.toLocaleString()}</p>
                 </CardContent>
               </Card>
               <Card>
@@ -127,7 +138,7 @@ export function DueCollectionClient({ customer }: { customer: any }) {
                   <CardTitle className="text-base text-muted-foreground">Avg. Payment Days</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold text-blue-600">{c.paymentScore || 0} Days</p>
+                  <p className="text-3xl font-bold text-blue-600">{customer.paymentScore || 0} Days</p>
                 </CardContent>
               </Card>
             </div>
@@ -139,7 +150,7 @@ export function DueCollectionClient({ customer }: { customer: any }) {
                  <CardTitle>Outstanding Invoices</CardTitle>
                </CardHeader>
                <CardContent>
-                 {outstandingInvoices.length === 0 ? (
+                 {profile.outstandingInvoices.length === 0 ? (
                    <div className="text-center py-10 text-muted-foreground">No outstanding invoices.</div>
                  ) : (
                    <div className="border rounded-md overflow-hidden">
@@ -155,7 +166,7 @@ export function DueCollectionClient({ customer }: { customer: any }) {
                          </tr>
                        </thead>
                        <tbody className="divide-y">
-                         {outstandingInvoices.map((inv: any) => (
+                         {profile.outstandingInvoices.map((inv: any) => (
                            <tr key={inv.id} className="hover:bg-slate-50">
                              <td className="px-4 py-3 font-medium">{inv.orderNumber}</td>
                              <td className="px-4 py-3">{new Date(inv.createdAt).toLocaleDateString()}</td>
@@ -183,7 +194,7 @@ export function DueCollectionClient({ customer }: { customer: any }) {
                  <CardTitle>Recent Payments</CardTitle>
                </CardHeader>
                <CardContent>
-                  {recentPayments.length === 0 ? (
+                  {profile.recentPayments.length === 0 ? (
                     <div className="text-center py-10 text-muted-foreground">No payment history.</div>
                   ) : (
                     <div className="border rounded-md overflow-hidden">
@@ -198,7 +209,7 @@ export function DueCollectionClient({ customer }: { customer: any }) {
                           </tr>
                         </thead>
                         <tbody className="divide-y">
-                          {recentPayments.map((p: any) => (
+                          {profile.recentPayments.map((p: any) => (
                             <tr key={p.id}>
                               <td className="px-4 py-3 font-medium">{p.receiptNumber || p.paymentNumber}</td>
                               <td className="px-4 py-3">{new Date(p.paymentDate).toLocaleDateString()}</td>
@@ -237,7 +248,7 @@ export function DueCollectionClient({ customer }: { customer: any }) {
                          </tr>
                        </thead>
                        <tbody className="divide-y">
-                         {recentLedger.map((l: any) => (
+                         {profile.recentLedger.map((l: any) => (
                            <tr key={l.id} className="hover:bg-slate-50">
                              <td className="px-4 py-3 whitespace-nowrap">{new Date(l.date).toLocaleString()}</td>
                              <td className="px-4 py-3">
@@ -271,13 +282,16 @@ export function DueCollectionClient({ customer }: { customer: any }) {
           </TabsContent>
         </div>
       </Tabs>
+      ) : null}
 
-      <PaymentDrawer 
-        open={paymentDrawerOpen} 
-        onClose={() => { setPaymentDrawerOpen(false); loadProfile(); }} 
-        customer={c}
-        outstandingInvoices={outstandingInvoices}
-      />
+      {profile && (
+        <PaymentDrawer 
+          open={paymentDrawerOpen} 
+          onClose={() => { setPaymentDrawerOpen(false); loadProfile(); }} 
+          customer={profile.customer}
+          outstandingInvoices={profile.outstandingInvoices}
+        />
+      )}
     </div>
   );
 }
