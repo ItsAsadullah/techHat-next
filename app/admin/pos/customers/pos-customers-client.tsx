@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Users, Search, TrendingUp, AlertCircle, ArrowLeft, Printer, BookOpen, DollarSign, Plus, Edit, Trash2 } from 'lucide-react';
+import { Users, Search, TrendingUp, AlertCircle, ArrowLeft, Printer, BookOpen, DollarSign, Plus, Edit, Trash2, Wallet } from 'lucide-react';
 import type { InvoiceSettings } from '@/lib/actions/invoice-settings-actions';
 import { createPOSCustomer, updatePOSCustomer, deletePOSCustomer } from '@/lib/actions/pos-customer-actions';
 
@@ -355,8 +355,8 @@ export function POSCustomersClient({ customers, invoiceSettings }: Props) {
                             onClick={() => router.push(`/admin/customers/${customer.id}`)}
                             className="h-8 text-xs gap-1.5 bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
                           >
-                            <BookOpen className="h-3.5 w-3.5" />
-                            Ledger
+                            <Wallet className="h-3.5 w-3.5" />
+                            Collect Payment
                           </Button>
                         </div>
                       </td>
@@ -454,8 +454,8 @@ export function POSCustomersClient({ customers, invoiceSettings }: Props) {
                       onClick={() => router.push(`/admin/customers/${customer.id}`)}
                       className="h-10 col-span-2 gap-2 bg-white hover:bg-blue-50 text-gray-700 hover:text-blue-600 border-gray-200 hover:border-blue-200 shadow-sm"
                     >
-                      <BookOpen className="h-4 w-4" />
-                      Ledger
+                      <Wallet className="h-4 w-4" />
+                      Collect Payment
                     </Button>
                   </div>
                 </CardContent>

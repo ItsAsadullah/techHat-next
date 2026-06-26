@@ -8,7 +8,10 @@ import Link from 'next/link';
 
 export default async function ReceivablesSummaryPage() {
   const res = await getReceivablesSummary();
-  const summary = (res.data as any) || { totalReceivable: 0, totalCredit: 0, customerCount: 0, customers: [] };
+  if (!res.success) {
+    console.error('Failed to get receivables summary:', res.error);
+  }
+  const summary = (res.data as any) || { totalReceivable: 0, totalAdvance: 0, customerCount: 0, customers: [] };
 
   return (
     <div className="space-y-6 max-w-[1200px] mx-auto">
