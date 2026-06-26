@@ -120,6 +120,7 @@ export async function getAllCustomersReport() {
       totalPurchase: c.totalPurchase,
       totalPaid: c.totalPaid,
       totalDue: c.totalDue,
+      balance: c.balance,
       totalOrders: c._count.orders,
       createdAt: c.createdAt,
     }));

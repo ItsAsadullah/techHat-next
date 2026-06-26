@@ -243,7 +243,7 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
       items: [
         { name: 'Sales (POS)', href: '/admin/pos',        icon: ShoppingCart,    roles: ['ADMIN','MANAGER','CASHIER'] },
         { name: 'Orders',      href: '/admin/orders',    icon: CreditCard,      roles: ['ADMIN','MANAGER','CASHIER'] },
-        { name: 'Customers',   href: '/admin/customers', icon: Users,           roles: ['ADMIN','MANAGER','CASHIER','STAFF'] },
+        { name: 'Due',   href: '/admin/customers', icon: Users,           roles: ['ADMIN','MANAGER','CASHIER','STAFF'] },
       ]
     },
     {

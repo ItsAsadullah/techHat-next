@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Edit } from 'lucide-react';
 import Link from 'next/link';
-import { DueCollectionClient } from '@/app/admin/receivables/due-collection/due-collection-client';
+import { DueCollectionClient } from './due-collection-client';
 
 export const metadata = {
   title: 'Customer Workspace | TechHat ERP',

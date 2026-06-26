@@ -22,6 +22,7 @@ interface Customer {
   totalPurchase: number;
   totalPaid: number;
   totalDue: number;
+  balance: number;
   totalOrders: number;
   createdAt: Date;
 }
@@ -29,9 +30,10 @@ interface Customer {
 interface Props {
   customers: Customer[];
   invoiceSettings: InvoiceSettings;
+  receivablesSummary?: any;
 }
 
-export function POSCustomersClient({ customers, invoiceSettings }: Props) {
+export function POSCustomersClient({ customers, invoiceSettings, receivablesSummary }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState('');
   
@@ -231,36 +233,36 @@ export function POSCustomersClient({ customers, invoiceSettings }: Props) {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-gray-100 shadow-sm">
+        <Card className="border-red-100 shadow-sm bg-red-50/30">
           <CardContent className="p-3 sm:p-4 flex items-center gap-3">
-            <div className="p-2 sm:p-2.5 bg-indigo-50 border border-indigo-100 rounded-xl shrink-0">
-              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-xs text-gray-500 font-medium uppercase tracking-wider truncate">Total Sales</p>
-              <p className="text-base sm:text-xl font-bold text-indigo-700 truncate">{fmt(totalSalesAll)}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-gray-100 shadow-sm">
-          <CardContent className="p-3 sm:p-4 flex items-center gap-3">
-            <div className="p-2 sm:p-2.5 bg-green-50 border border-green-100 rounded-xl shrink-0">
-              <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-xs text-gray-500 font-medium uppercase tracking-wider truncate">Total Paid</p>
-              <p className="text-base sm:text-xl font-bold text-green-700 truncate">{fmt(totalPaidAll)}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-gray-100 shadow-sm">
-          <CardContent className="p-3 sm:p-4 flex items-center gap-3">
-            <div className="p-2 sm:p-2.5 bg-red-50 border border-red-100 rounded-xl shrink-0">
+            <div className="p-2 sm:p-2.5 bg-red-100 border border-red-200 rounded-xl shrink-0">
               <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] sm:text-xs text-gray-500 font-medium uppercase tracking-wider truncate">Total Due</p>
-              <p className="text-base sm:text-xl font-bold text-red-600 truncate">{fmt(totalDueAll)}</p>
+              <p className="text-[10px] sm:text-xs text-red-600/70 font-medium uppercase tracking-wider truncate">Total Due (Market)</p>
+              <p className="text-base sm:text-xl font-bold text-red-600 truncate">{receivablesSummary ? fmt(receivablesSummary.totalReceivable) : fmt(totalDueAll)}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-indigo-100 shadow-sm bg-indigo-50/30">
+          <CardContent className="p-3 sm:p-4 flex items-center gap-3">
+            <div className="p-2 sm:p-2.5 bg-indigo-100 border border-indigo-200 rounded-xl shrink-0">
+              <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs text-indigo-600/70 font-medium uppercase tracking-wider truncate">Total Advance</p>
+              <p className="text-base sm:text-xl font-bold text-indigo-700 truncate">{receivablesSummary ? fmt(receivablesSummary.totalAdvance) : '৳0.00'}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-green-100 shadow-sm bg-green-50/30">
+          <CardContent className="p-3 sm:p-4 flex items-center gap-3">
+            <div className="p-2 sm:p-2.5 bg-green-100 border border-green-200 rounded-xl shrink-0">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs text-green-600/70 font-medium uppercase tracking-wider truncate">Total Sales</p>
+              <p className="text-base sm:text-xl font-bold text-green-700 truncate">{fmt(totalSalesAll)}</p>
             </div>
           </CardContent>
         </Card>
@@ -323,8 +325,10 @@ export function POSCustomersClient({ customers, invoiceSettings }: Props) {
                         {fmt(customer.totalPaid)}
                       </td>
                       <td className="px-5 py-4 text-right text-sm">
-                        {customer.totalDue > 0 ? (
-                          <span className="font-semibold text-red-600 bg-red-50 px-2 py-1 rounded-md">{fmt(customer.totalDue)}</span>
+                        {customer.balance > 0 ? (
+                          <span className="font-semibold text-red-600 bg-red-50 px-2 py-1 rounded-md">{fmt(customer.balance)}</span>
+                        ) : customer.balance < 0 ? (
+                          <span className="font-semibold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md">Advance: {fmt(Math.abs(customer.balance))}</span>
                         ) : (
                           <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-md">Clear</span>
                         )}
@@ -370,7 +374,7 @@ export function POSCustomersClient({ customers, invoiceSettings }: Props) {
                     <td colSpan={4} className="px-5 py-4 text-sm text-gray-600">TOTAL SUMMARY</td>
                     <td className="px-5 py-4 text-right text-sm text-indigo-700">{fmt(totalSalesAll)}</td>
                     <td className="px-5 py-4 text-right text-sm text-green-700">{fmt(totalPaidAll)}</td>
-                    <td className="px-5 py-4 text-right text-sm text-red-600">{fmt(totalDueAll)}</td>
+                    <td className="px-5 py-4 text-right text-sm text-red-600">{receivablesSummary ? fmt(receivablesSummary.totalReceivable) : fmt(totalDueAll)}</td>
                     <td></td>
                   </tr>
                 </tfoot>
@@ -424,8 +428,10 @@ export function POSCustomersClient({ customers, invoiceSettings }: Props) {
                      </div>
                      <div className="col-span-1 text-right">
                        <p className="text-[10px] uppercase tracking-wider font-medium text-gray-500 mb-1">Due</p>
-                       {customer.totalDue > 0 ? (
-                          <span className="font-semibold text-red-600 bg-red-50 px-1.5 py-0.5 rounded text-xs">{fmt(customer.totalDue)}</span>
+                       {customer.balance > 0 ? (
+                          <span className="font-semibold text-red-600 bg-red-50 px-1.5 py-0.5 rounded text-xs">{fmt(customer.balance)}</span>
+                        ) : customer.balance < 0 ? (
+                          <span className="font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded text-xs">Adv: {fmt(Math.abs(customer.balance))}</span>
                         ) : (
                           <span className="font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded text-xs">Clear</span>
                         )}
@@ -468,16 +474,16 @@ export function POSCustomersClient({ customers, invoiceSettings }: Props) {
                 <h4 className="text-xs font-bold text-indigo-900 uppercase tracking-wider mb-3">Total Summary</h4>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <p className="text-[10px] text-indigo-600/70 font-medium uppercase mb-0.5">Sales</p>
-                    <p className="text-sm font-bold text-indigo-700">{fmt(totalSalesAll)}</p>
+                    <p className="text-[10px] text-green-600/70 font-medium uppercase mb-0.5">Sales</p>
+                    <p className="text-sm font-bold text-green-700">{fmt(totalSalesAll)}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-green-600/70 font-medium uppercase mb-0.5">Paid</p>
-                    <p className="text-sm font-bold text-green-700">{fmt(totalPaidAll)}</p>
+                    <p className="text-[10px] text-indigo-600/70 font-medium uppercase mb-0.5">Advance</p>
+                    <p className="text-sm font-bold text-indigo-700">{receivablesSummary ? fmt(receivablesSummary.totalAdvance) : '৳0.00'}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-red-600/70 font-medium uppercase mb-0.5">Due</p>
-                    <p className="text-sm font-bold text-red-600">{fmt(totalDueAll)}</p>
+                    <p className="text-[10px] text-red-600/70 font-medium uppercase mb-0.5">Due (Market)</p>
+                    <p className="text-sm font-bold text-red-600">{receivablesSummary ? fmt(receivablesSummary.totalReceivable) : fmt(totalDueAll)}</p>
                   </div>
                 </div>
               </CardContent>
