@@ -37,17 +37,14 @@ export default async function ProductsPage({
     | 'inactive'
     | undefined;
 
-  const [
-    { products, totalPages },
-    inventoryStats,
-    categories,
-    brands,
-  ] = await Promise.all([
-    getProducts({ page, limit, search, categoryId, brandId, stockStatus, status }),
-    getInventoryStats(),
-    getCachedCategories(),
-    getCachedBrands(),
-  ]);
+  // Next.js Turbopack has a known bug where running multiple unstable_cache functions 
+  // concurrently via Promise.all can cause the dev server to hang indefinitely.
+  // We fetch them sequentially or separately to bypass this deadlock.
+  
+  const { products, totalPages } = await getProducts({ page, limit, search, categoryId, brandId, stockStatus, status });
+  const inventoryStats = await getInventoryStats();
+  const categories = await getCachedCategories();
+  const brands = await getCachedBrands();
 
   const formattedProducts = products.map((p) => ({
     id: p.id,
