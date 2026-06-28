@@ -44,8 +44,20 @@ import { ErpCopilot } from '@/components/admin/erp-copilot';
 // Programmatically lock body scroll and hide main header for Admin
 function AdminBodyLock({ isPOS }: { isPOS: boolean }) {
   useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    
     document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    
+    // Lock outer main layout wrapper to exactly 100dvh and hide its overflow to prevent double scrollbars
+    const outerMain = document.querySelector('main.min-h-screen');
+    const originalMainHeight = outerMain ? (outerMain as HTMLElement).style.height : '';
+    const originalMainOverflow = outerMain ? (outerMain as HTMLElement).style.overflow : '';
+    if (outerMain) {
+      (outerMain as HTMLElement).style.height = '100dvh';
+      (outerMain as HTMLElement).style.overflow = 'hidden';
+    }
     
     // Hide storefront header only for POS if needed, but since NavbarWrapper returns null, we can just hide it globally for safety
     const storeHeader = document.querySelector('header.sticky.top-0.z-\\[60\\]') || document.querySelector('header.sticky.top-0');
@@ -64,7 +76,12 @@ function AdminBodyLock({ isPOS }: { isPOS: boolean }) {
     window.addEventListener('focusout', handleFocusOut);
     
     return () => {
-      document.body.style.overflow = originalOverflow;
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      if (outerMain) {
+        (outerMain as HTMLElement).style.height = originalMainHeight;
+        (outerMain as HTMLElement).style.overflow = originalMainOverflow;
+      }
       if (storeHeader) (storeHeader as HTMLElement).style.display = originalDisplay;
       window.removeEventListener('focusout', handleFocusOut);
     };
