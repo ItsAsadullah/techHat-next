@@ -4,15 +4,15 @@ import fs from 'fs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Restoring POSCustomer mappings...');
+  console.log('Restoring Customer mappings...');
 
   try {
-    const raw = fs.readFileSync('migration_dump.json', 'utf-8');
-    const { posCustomers, orders } = JSON.parse(raw);
+    const raw = fs.readFileSync('./id-dump.json', 'utf8');
+    const { customers, orders } = JSON.parse(raw);
     
-    console.log(`Loaded ${posCustomers.length} customers and ${orders.length} orders from dump.`);
+    console.log(`Loaded ${customers.length} customers and ${orders.length} orders from dump.`);
 
-    for (const pc of posCustomers) {
+    for (const pc of customers) {
       let customerId;
       const existing: any[] = await prisma.$queryRaw`SELECT id FROM "customers" WHERE phone = ${pc.phone}`;
       

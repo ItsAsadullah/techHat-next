@@ -40,7 +40,7 @@ export async function getReportSummary() {
       where: { createdAt: { gte: startOfMonth }, status: { not: 'CANCELLED' } },
     }),
     prisma.expense.aggregate({ _sum: { amount: true } }),
-    db.pOSCustomer.aggregate({ _sum: { totalDue: true } }),
+    db.customer.aggregate({ _sum: { totalDue: true } }),
     prisma.product.findMany({ select: { stock: true, costPrice: true } }),
     db.supplier.findMany({
       include: {
@@ -93,7 +93,7 @@ export async function getSalesReport(from?: string, to?: string) {
       id: true,
       orderNumber: true,
       customerName: true,
-      POSCustomer: { select: { name: true, phone: true } },
+      Customer: { select: { name: true, phone: true } },
       grandTotal: true,
       paidAmount: true,
       dueAmount: true,
@@ -243,7 +243,7 @@ export async function getExpenseReport(from?: string, to?: string) {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function getCustomerDueReport() {
   try {
-  const customers = await db.pOSCustomer.findMany({
+  const customers = await db.customer.findMany({
     where: { totalDue: { gt: 0 } },
     orderBy: { totalDue: 'desc' },
     select: {
@@ -419,7 +419,7 @@ export async function getPaymentReport(from?: string, to?: string) {
         select: {
           orderNumber: true,
           customerName: true,
-          POSCustomer: { select: { name: true } },
+          Customer: { select: { name: true } },
         },
       },
     },
@@ -435,7 +435,7 @@ export async function getPaymentReport(from?: string, to?: string) {
   const total = payments.reduce((s, p) => s + p.amount, 0);
   const rows = payments.map((p) => ({
     ...p,
-    customerName: p.order.POSCustomer?.name ?? p.order.customerName ?? 'N/A',
+    customerName: p.order.Customer?.name ?? p.order.customerName ?? 'N/A',
     orderNumber: p.order.orderNumber,
   }));
 

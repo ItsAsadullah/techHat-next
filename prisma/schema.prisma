@@ -663,8 +663,6 @@ model Order {
   Customer      Customer?       @relation(fields: [customerId], references: [id])
   customerId    String?         @map("customer_id")
   WarrantyClaim WarrantyClaim[]
-  POSCustomer   POSCustomer?    @relation(fields: [pOSCustomerId], references: [id])
-  pOSCustomerId String?
 
   @@index([trackingToken])
   @@index([customerPhone])
@@ -1112,25 +1110,6 @@ enum ReturnCondition {
 
 // --------------------------------------
 // POS CUSTOMER DATABASE
-// --------------------------------------
-
-model POSCustomer {
-  id      String  @id @default(uuid())
-  name    String
-  phone   String  @unique
-  email   String?
-  address String?
-
-  orders Order[]
-
-  totalPurchase Float @default(0) @map("total_purchase")
-  totalDue      Float @default(0) @map("total_due")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("pos_customers")
-}
 
 // --------------------------------------
 // GUARANTOR

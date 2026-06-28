@@ -34,14 +34,14 @@ export const orderPlacedNotification = inngest.createFunction(
     const order = await step.run('fetch-order', async () => {
       return await prisma.order.findUnique({
         where: { id: orderId },
-        include: { Customer: true, POSCustomer: true }
+        include: { Customer: true }
       });
     });
 
     if (order) {
       await step.run('send-customer-notification', async () => {
         // Send email/sms to customer
-        const customerName = order.Customer?.name || order.POSCustomer?.name || 'Customer';
+        const customerName = order.Customer?.name || 'Customer';
         console.log(`[NOTIFICATION] Order ${order.orderNumber} placed successfully for ${customerName}`);
       });
     }

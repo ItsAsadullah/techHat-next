@@ -90,8 +90,8 @@ export async function POST(req: NextRequest) {
     );
 
     // 9. POS customers
-    await safeCreate('posCustomers', () =>
-      db.pOSCustomer.createMany({ data: data.posCustomers ?? [], skipDuplicates: true }),
+    await safeCreate('customers', () =>
+      db.customer.createMany({ data: data.customers ?? [], skipDuplicates: true }),
     );
 
     // 10. Suppliers, purchases, items, payments

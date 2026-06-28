@@ -288,7 +288,7 @@ export default function ReportsPage() {
       salesData.rows.map((o: any) => [
         fmtDate(o.createdAt),
         o.orderNumber,
-        o.posCustomer?.name ?? o.customerName ?? 'Walk-in',
+        o.Customer?.name ?? o.customerName ?? 'Walk-in',
         fmt(o.grandTotal ?? 0),
         fmt(o.paidAmount ?? 0),
         fmt(o.dueAmount ?? 0),
@@ -417,7 +417,7 @@ export default function ReportsPage() {
       ['Date', 'Invoice', 'Customer', 'Total', 'Paid', 'Due', 'Status'],
       salesData.rows.map((o: any) => [
         fmtDate(o.createdAt), o.orderNumber,
-        o.posCustomer?.name ?? o.customerName ?? 'Walk-in',
+        o.Customer?.name ?? o.customerName ?? 'Walk-in',
         (o.grandTotal ?? 0).toFixed(2), (o.paidAmount ?? 0).toFixed(2),
         (o.dueAmount ?? 0).toFixed(2),
         (o.posPaymentStatus ?? o.paymentStatus ?? o.status).toUpperCase(),
@@ -667,7 +667,7 @@ export default function ReportsPage() {
                         <tr key={o.id} className="hover:bg-gray-50">
                           <TD>{fmtDate(o.createdAt)}</TD>
                           <TD><span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">{o.orderNumber}</span></TD>
-                          <TD>{o.posCustomer?.name ?? o.customerName ?? 'Walk-in'}</TD>
+                          <TD>{o.Customer?.name ?? o.customerName ?? 'Walk-in'}</TD>
                           <TD right bold>{fmt(o.grandTotal ?? 0)}</TD>
                           <TD right green>{fmt(o.paidAmount ?? 0)}</TD>
                           <TD right red={(o.dueAmount ?? 0) > 0}>{fmt(o.dueAmount ?? 0)}</TD>
