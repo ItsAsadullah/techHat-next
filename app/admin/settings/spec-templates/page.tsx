@@ -6,6 +6,7 @@ import {
   createSavedTemplate, 
   deleteSavedTemplate 
 } from '@/lib/actions/spec-actions';
+import { useConfirm } from '@/components/providers/confirm-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -45,6 +46,7 @@ import { cn } from '@/lib/utils';
 export default function SpecTemplatesSettingsPage() {
   const [templates, setTemplates] = useState<{id: string, name: string, keys: string[]}[]>([]);
   const [loading, setLoading] = useState(true);
+  const confirm = useConfirm();
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
@@ -73,8 +75,8 @@ export default function SpecTemplatesSettingsPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this template?')) return;
+  const handleDelete = async (id: string) => {
+    if (!(await confirm('Delete this template?'))) return;
     const result = await deleteSavedTemplate(id);
     if (result.success) setTemplates(templates.filter(t => t.id !== id));
     else alert('Failed to delete');

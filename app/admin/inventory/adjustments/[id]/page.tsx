@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getAdjustmentById, approveAdjustment } from '@/lib/actions/adjustment-actions';
+import { useConfirm } from '@/components/providers/confirm-provider';
 
 export default function AdjustmentDetailsPage() {
   const params = useParams();
@@ -26,6 +27,7 @@ export default function AdjustmentDetailsPage() {
   const [adj, setAdj] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const confirm = useConfirm();
 
   useEffect(() => {
     async function load() {
@@ -39,7 +41,7 @@ export default function AdjustmentDetailsPage() {
   }, [params.id]);
 
   const handleApprove = async () => {
-    if (!confirm('Are you sure you want to Approve this Adjustment? This will IMMUTABLY update the Stock Ledger. This action cannot be undone.')) return;
+    if (!(await confirm('Are you sure you want to Approve this Adjustment? This will IMMUTABLY update the Stock Ledger. This action cannot be undone.'))) return;
     
     setActionLoading(true);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

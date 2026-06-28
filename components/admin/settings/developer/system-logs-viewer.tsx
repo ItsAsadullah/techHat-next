@@ -9,10 +9,12 @@ import {
   TerminalSquare, Filter, RefreshCcw, Database, Shield, FileText, ChevronDown, ChevronRight, X 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/providers/confirm-provider';
 
 export default function SystemLogsViewer() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const confirm = useConfirm();
   const [isTailing, setIsTailing] = useState(false);
   
   // Filters
@@ -65,7 +67,7 @@ export default function SystemLogsViewer() {
   };
 
   const handleClear = async () => {
-    if (window.confirm('Are you sure you want to clear all logs? This cannot be undone.')) {
+    if (await confirm('Are you sure you want to clear all logs? This cannot be undone.')) {
       setLoading(true);
       const res = await clearSystemLogs();
       if (res.success) {

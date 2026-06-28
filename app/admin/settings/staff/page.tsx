@@ -16,6 +16,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/providers/confirm-provider';
 
 // ─── Types ────────────────────────────────────────────────────
 type Role = 'Admin' | 'Manager' | 'Cashier' | 'Staff';
@@ -79,6 +80,7 @@ export default function StaffSettingsPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const confirm = useConfirm();
   const [form, setForm] = useState(EMPTY_FORM);
 
   useEffect(() => { loadStaff(); }, []);
@@ -152,8 +154,8 @@ export default function StaffSettingsPage() {
     setSaving(false);
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Remove this staff member?')) return;
+  const handleDelete = async (id: string) => {
+    if (!(await confirm('Remove this staff member?'))) return;
     const res = await fetch(`/api/admin/staff/${id}`, { method: 'DELETE' });
     if (res.ok) { toast.success('Removed'); loadStaff(); }
     else toast.error('Failed to delete');

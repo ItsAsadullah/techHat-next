@@ -43,11 +43,13 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { useConfirm } from '@/components/providers/confirm-provider';
 
 export default function SpecTemplatesPage() {
   const [templates, setTemplates] = useState<{id: string, name: string, keys: string[]}[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const confirm = useConfirm();
   
   // New Template State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -90,7 +92,7 @@ export default function SpecTemplatesPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Are you sure you want to delete this template?")) return;
+    if (!(await confirm("Are you sure you want to delete this template?"))) return;
     
     const result = await deleteSavedTemplate(id);
     if (result.success) {

@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner';
 import { duplicateProduct } from '@/lib/actions/product-duplicate-action';
 import { updateProductStatus } from '@/lib/actions/product-enterprise-actions';
+import { useConfirm } from '@/components/providers/confirm-provider';
 
 interface Props {
   productId?: string;
@@ -23,6 +24,7 @@ export function ProductQuickActions({ productId, slug, productName, sku, barcode
   const [duplicating, setDuplicating] = useState(false);
   const [archiving,   setArchiving]   = useState(false);
   const [copied,      setCopied]      = useState(false);
+  const confirm = useConfirm();
 
   // ── Duplicate ──────────────────────────────────────────────────────────────
   const handleDuplicate = async () => {
@@ -46,7 +48,7 @@ export function ProductQuickActions({ productId, slug, productName, sku, barcode
   // ── Archive ────────────────────────────────────────────────────────────────
   const handleArchive = async () => {
     if (!productId) return;
-    if (!confirm('Archive this product? It will be hidden from the store but data is retained.')) return;
+    if (!(await confirm('Archive this product? It will be hidden from the store but data is retained.'))) return;
     setArchiving(true);
     try {
       const res = await updateProductStatus(productId, 'ARCHIVED', 'admin', 'Archived via Quick Actions');

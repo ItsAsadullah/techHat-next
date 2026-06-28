@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getPurchaseOrderById, updatePurchaseOrderStatus } from '@/lib/actions/po-actions';
+import { useConfirm } from '@/components/providers/confirm-provider';
 import {
   Table,
   TableBody,
@@ -23,6 +24,7 @@ export default function PurchaseOrderDetailsPage() {
   const [po, setPo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const confirm = useConfirm();
 
   useEffect(() => {
     async function load() {
@@ -35,7 +37,8 @@ export default function PurchaseOrderDetailsPage() {
   }, [params.id]);
 
   const handleStatusChange = async (newStatus: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'CANCELLED') => {
-    if (!confirm(`Are you sure you want to mark this PO as ${newStatus}?`)) return;
+    const isConfirmed = await confirm(`Are you sure you want to mark this PO as ${newStatus}?`);
+    if (!isConfirmed) return;
     setActionLoading(true);
     const res = await updatePurchaseOrderStatus(po.id, newStatus);
     if (res.success) {

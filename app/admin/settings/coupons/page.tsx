@@ -6,6 +6,7 @@ import {
   CheckCircle2, XCircle, Percent, Tag, Calendar, RotateCcw,
   ChevronDown,
 } from 'lucide-react';
+import { useConfirm } from '@/components/providers/confirm-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,6 +60,7 @@ export default function CouponSettingsPage() {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const confirm = useConfirm();
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [filter, setFilter] = useState<'all' | 'active' | 'expired' | 'inactive'>('all');
@@ -129,8 +131,8 @@ export default function CouponSettingsPage() {
     setSaving(false);
   }
 
-  async function handleDelete(id: string, code: string) {
-    if (!confirm(`Delete coupon "${code}"? This cannot be undone.`)) return;
+  const handleDelete = async (id: string, code: string) => {
+    if (!(await confirm(`Delete coupon "${code}"? This cannot be undone.`))) return;
     const res = await fetch(`/api/admin/coupons/${id}`, { method: 'DELETE' });
     if (res.ok) { toast.success('Coupon deleted'); loadCoupons(); }
     else toast.error('Failed to delete');

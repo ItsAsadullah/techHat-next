@@ -28,6 +28,7 @@ import {
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useConfirm } from '@/components/providers/confirm-provider';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ═══════════════ Types ═══════════════
@@ -302,8 +303,8 @@ function ReviewDetailModal({
             </button>
           )}
           <button
-            onClick={() => { 
-              if (confirm('Are you sure you want to permanently delete this review?')) {
+            onClick={async () => { 
+              if (await confirm('Are you sure you want to permanently delete this review?')) {
                 onDelete(review.id); 
                 onClose(); 
               }
@@ -353,6 +354,7 @@ export default function AdminReviewsPage() {
   const [selectedReview, setSelectedReview] = useState<AdminReview | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const confirm = useConfirm();
 
   const fetchReviews = useCallback(async () => {
     setLoading(true);
@@ -458,7 +460,7 @@ export default function AdminReviewsPage() {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`Delete ${selectedIds.size} reviews permanently?`)) return;
+    if (!(await confirm(`Delete ${selectedIds.size} reviews permanently?`))) return;
     setActionLoading('bulk');
     try {
       const res = await fetch('/api/admin/reviews/delete', {
@@ -709,8 +711,8 @@ export default function AdminReviewsPage() {
                       </button>
                     )}
                     <button
-                      onClick={() => { 
-                        if (confirm('Delete this review permanently?')) handleDelete(review.id);
+                      onClick={async () => { 
+                        if (await confirm('Delete this review permanently?')) handleDelete(review.id);
                       }}
                       className="p-1.5 hover:bg-red-50 rounded-lg transition-colors text-gray-400 hover:text-red-600"
                       title="Delete"

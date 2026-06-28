@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getGRNById, submitGRN } from '@/lib/actions/grn-actions';
 import { getPOSConfig } from '@/lib/actions/settings-actions';
+import { useConfirm } from '@/components/providers/confirm-provider';
 
 export default function GRNDetailsPage() {
   const params = useParams();
@@ -37,6 +38,7 @@ export default function GRNDetailsPage() {
   const [grn, setGrn] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const confirm = useConfirm();
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [posConfig, setPosConfig] = useState<POSConfig>(null);
 
@@ -314,7 +316,7 @@ export default function GRNDetailsPage() {
   }, [params.id]);
 
   const handleSubmitGRN = async () => {
-    if (!confirm('Are you sure you want to Submit this GRN? This will IMMUTABLY update the Stock Ledger and product stock quantities. This action cannot be undone.')) return;
+    if (!(await confirm('Are you sure you want to Submit this GRN? This will IMMUTABLY update the Stock Ledger and product stock quantities. This action cannot be undone.'))) return;
 
     setActionLoading(true);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -19,11 +19,13 @@ import { ReportsTab } from '@/components/admin/expenses/reports-tab';
 import { 
   ExpenseFormModal, CategoryFormModal, StaffFormModal, PaySalaryModal, EditSalaryModal 
 } from '@/components/admin/expenses/modals';
+import { useConfirm } from '@/components/providers/confirm-provider';
 
 export default function ExpensesPage() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<ExpenseStats | null>(null);
+  const confirm = useConfirm();
 
   // Expense state
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -149,7 +151,7 @@ export default function ExpensesPage() {
   // ═══════════════ Actions ═══════════════
 
   const handleDeleteExpense = async (id: string) => {
-    if (!confirm('এই খরচটি মুছে ফেলতে চান?')) return;
+    if (!(await confirm('এই খরচটি মুছে ফেলতে চান?'))) return;
     setActionLoading(true);
     try {
       const { deleteExpense } = await import('@/lib/actions/expense-actions');
@@ -166,7 +168,7 @@ export default function ExpensesPage() {
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if (!confirm('এই ক্যাটাগরি মুছে ফেলতে চান?')) return;
+    if (!(await confirm('এই ক্যাটাগরি মুছে ফেলতে চান?'))) return;
     setActionLoading(true);
     try {
       const { deleteExpenseCategory } = await import('@/lib/actions/expense-actions');
@@ -182,7 +184,7 @@ export default function ExpensesPage() {
   };
 
   const handleDeleteStaff = async (id: string) => {
-    if (!confirm('এই স্টাফকে মুছে ফেলতে চান? তার সকল বেতন রেকর্ডও মুছে যাবে।')) return;
+    if (!(await confirm('এই স্টাফকে মুছে ফেলতে চান? তার সকল বেতন রেকর্ডও মুছে যাবে।'))) return;
     setActionLoading(true);
     try {
       const { deleteStaff } = await import('@/lib/actions/expense-actions');

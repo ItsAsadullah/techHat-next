@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react';
 import { fetchCacheMetrics, clearAllCache, clearCacheByPath, clearCacheByTag, CacheMetrics } from '@/lib/actions/cache-actions';
 import { Database, Zap, RefreshCcw, HardDrive, Trash2, ShieldAlert, FolderSync, Tag, Route } from 'lucide-react';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/providers/confirm-provider';
 
 export default function CacheManager() {
   const [metrics, setMetrics] = useState<CacheMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [isClearing, setIsClearing] = useState<string | null>(null);
+  const confirm = useConfirm();
 
   const [pathInput, setPathInput] = useState('');
   const [tagInput, setTagInput] = useState('');
@@ -28,7 +30,7 @@ export default function CacheManager() {
   }, []);
 
   const handleClearAll = async () => {
-    if (!confirm('Are you sure you want to purge all application caches? This may temporarily slow down the site as caches rebuild.')) return;
+    if (!(await confirm('Are you sure you want to purge all application caches? This may temporarily slow down the site as caches rebuild.'))) return;
     
     setIsClearing('all');
     const res = await clearAllCache();

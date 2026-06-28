@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { processDueCollection } from '@/lib/actions/receivables-actions';
+import { useConfirm } from '@/components/providers/confirm-provider';
 import { Wallet, Calculator } from 'lucide-react';
 import { PaymentMethod } from '@prisma/client';
 
@@ -32,6 +33,7 @@ export function PaymentDrawer({
   const [reference, setReference] = useState('');
   const [remarks, setRemarks] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const confirm = useConfirm();
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
 
   // Mixed payment breakdown
@@ -88,7 +90,7 @@ export function PaymentDrawer({
     if (numericAmount > customer.balance) {
       // It's an advance payment
       // Confirm with user
-      if (!window.confirm(`Amount is greater than total due. ৳${(numericAmount - customer.balance).toLocaleString()} will be saved as Advance. Proceed?`)) {
+      if (!(await confirm(`Amount is greater than total due. ৳${(numericAmount - customer.balance).toLocaleString()} will be saved as Advance. Proceed?`))) {
         return;
       }
     }

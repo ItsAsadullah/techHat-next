@@ -12,6 +12,7 @@ import { getStoreSettings } from '@/lib/actions/invoice-settings-actions';
 import { getBrandingSettings, getAnalyticsSettings } from '@/lib/actions/invoice-settings-actions';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import MetaPixel from '@/components/MetaPixel';
+import { ConfirmProvider } from "@/components/providers/confirm-provider";
 import NextTopLoader from 'nextjs-toploader';
 import { BengaliNumberConverter } from '@/components/BengaliNumberConverter';
 
@@ -153,10 +154,12 @@ export default async function RootLayout({
                   <Suspense fallback={<div className="h-16 bg-white border-b border-gray-100 animate-pulse" />}>
                     <NavbarWrapper />
                   </Suspense>
-                  <main className="min-h-screen bg-background text-foreground pb-16 lg:pb-0">
-                    {children}
-                  </main>
-                  <Toaster position="top-center" richColors offset={100} />
+                  <ConfirmProvider>
+                    <main className="min-h-screen bg-background text-foreground pb-16 lg:pb-0">
+                      {children}
+                    </main>
+                    <Toaster position="top-center" richColors offset={100} />
+                  </ConfirmProvider>
                   <SpeedInsights />
                 </Providers>
               </BrandingProvider>
