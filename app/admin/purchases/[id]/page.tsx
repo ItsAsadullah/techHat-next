@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Printer, Download, CheckCircle, XCircle, Send, Package, Edit, Loader2 } from 'lucide-react';
+import { ArrowLeft, Printer, Download, CheckCircle, XCircle, Send, Package, Edit, Loader2, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,7 @@ export default function PurchaseOrderDetailsPage() {
     load();
   }, [params.id]);
 
-  const handleStatusChange = async (newStatus: 'SUBMITTED' | 'APPROVED' | 'CANCELLED') => {
+  const handleStatusChange = async (newStatus: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'CANCELLED') => {
     if (!confirm(`Are you sure you want to mark this PO as ${newStatus}?`)) return;
     setActionLoading(true);
     const res = await updatePurchaseOrderStatus(po.id, newStatus);
@@ -107,6 +107,12 @@ export default function PurchaseOrderDetailsPage() {
           {po.status === 'DRAFT' && (
             <Button size="sm" onClick={() => handleStatusChange('SUBMITTED')} disabled={actionLoading} className="print:hidden">
               <Send className="mr-2 h-4 w-4" /> Submit PO
+            </Button>
+          )}
+
+          {['SUBMITTED', 'APPROVED'].includes(po.status) && (
+            <Button variant="secondary" size="sm" onClick={() => handleStatusChange('DRAFT')} disabled={actionLoading} className="print:hidden">
+              <RotateCcw className="mr-2 h-4 w-4" /> Revert to Draft
             </Button>
           )}
 

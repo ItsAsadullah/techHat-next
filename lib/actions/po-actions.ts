@@ -262,7 +262,7 @@ export async function updatePurchaseOrder(id: string, data: PurchaseOrderFormDat
   try {
     const existing = await prisma.purchaseOrder.findUnique({ where: { id } });
     if (!existing) throw new Error('PO not found');
-    if (existing.status !== 'DRAFT') throw new Error('Only DRAFT POs can be edited');
+    if (!['DRAFT', 'SUBMITTED'].includes(existing.status)) throw new Error('Only DRAFT or SUBMITTED POs can be edited');
 
     // Delete existing items
     await prisma.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } });
@@ -306,7 +306,7 @@ export async function updatePurchaseOrder(id: string, data: PurchaseOrderFormDat
   }
 }
 
-export async function updatePurchaseOrderStatus(id: string, newStatus: 'SUBMITTED' | 'APPROVED' | 'CANCELLED') {
+export async function updatePurchaseOrderStatus(id: string, newStatus: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'CANCELLED') {
   try {
     const po = await prisma.purchaseOrder.update({
       where: { id },
