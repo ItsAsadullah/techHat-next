@@ -11,7 +11,7 @@ function makePrismaClient() {
     if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PHASE) {
       url.searchParams.set('connection_limit', '5')  // Serverless safe connection limit
     } else {
-      url.searchParams.set('connection_limit', '3')  // Dev testing
+      url.searchParams.set('connection_limit', '10')  // Dev testing
     }
 
     if (!url.searchParams.has('pool_timeout')) {
