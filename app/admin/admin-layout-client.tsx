@@ -422,7 +422,10 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
         </aside>
 
         {/* ════ MAIN ════ */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div className={cn(
+          "flex-1 flex flex-col min-w-0 overflow-hidden transition-all duration-300",
+          copilotOpen ? "2xl:mr-[350px]" : "2xl:mr-0"
+        )}>
 
           {/* Header */}
           <header className={cn(
@@ -483,9 +486,8 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
 
         {/* ════ RIGHT SIDEBAR (COPILOT) ════ */}
         <aside className={cn(
-          "fixed inset-y-0 right-0 z-40 w-[350px] border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-all duration-300 print:hidden shadow-2xl 2xl:shadow-none shrink-0",
-          "2xl:static 2xl:z-auto",
-          copilotOpen ? "translate-x-0 2xl:mr-0" : "translate-x-full 2xl:-mr-[350px]"
+          "fixed inset-y-0 right-0 z-40 w-[350px] border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-transform duration-300 print:hidden shadow-2xl shrink-0",
+          copilotOpen ? "translate-x-0" : "translate-x-full"
         )}>
           {/* Edge Toggle Handle */}
           <button
