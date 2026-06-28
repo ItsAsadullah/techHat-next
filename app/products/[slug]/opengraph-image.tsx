@@ -34,7 +34,7 @@ export default async function Image({ params }: { params: { slug: string } }) {
     );
   }
 
-  const imageUrl = product.productImages?.[0]?.url;
+  const imageUrl = product.productImages?.[0]?.url?.replace(/\.webp$/i, '.png').replace(/f_webp/i, 'f_png');
   const brandName = product.brand?.name || store.storeName || 'TechHat';
   const price = product.offerPrice || product.price;
 

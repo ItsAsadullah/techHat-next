@@ -17,16 +17,18 @@ export default async function Image() {
   const store = await getStoreSettings();
   const branding = await getBrandingSettings();
   
-  const siteLogo = branding.siteLogo;
+  const siteLogo = branding.siteLogo?.replace(/\.webp$/i, '.png').replace(/f_webp/i, 'f_png');
   const storeName = store.storeName || 'TechHat';
   const tagline = store.tagline || 'Your Ultimate Tech Destination';
 
-  if (branding.siteOgImage) {
+  const safeOgImage = branding.siteOgImage?.replace(/\.webp$/i, '.png').replace(/f_webp/i, 'f_png');
+
+  if (safeOgImage) {
     return new ImageResponse(
       (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img 
-          src={branding.siteOgImage} 
+          src={safeOgImage}  
           alt={storeName} 
           style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
         />

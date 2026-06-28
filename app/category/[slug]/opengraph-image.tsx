@@ -43,7 +43,7 @@ export default async function Image({ params }: { params: { slug: string } }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px', marginBottom: '30px' }}>
           {category.image ? (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={category.image} alt={category.name} style={{ width: 120, height: 120, objectFit: 'contain', background: 'white', padding: '16px', borderRadius: '24px' }} />
+            <img src={category.image?.replace(/\.webp$/i, '.png').replace(/f_webp/i, 'f_png')} alt={category.name} style={{ width: 120, height: 120, objectFit: 'contain', background: 'white', padding: '16px', borderRadius: '24px' }} />
           ) : (
              <div style={{ fontSize: 80 }}>📦</div>
           )}
