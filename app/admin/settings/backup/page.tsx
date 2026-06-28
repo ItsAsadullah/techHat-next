@@ -57,6 +57,14 @@ const DELETE_TARGETS = [
     warning: 'Stock movement history will be cleared',
   },
   {
+    key: 'inventory',
+    label: 'Inventory Input/Output',
+    desc: 'GRNs, Warehouse Transfers, Adjustments, and POs',
+    color: 'text-teal-600 bg-teal-50',
+    count: null,
+    warning: 'All inventory transactions will be permanently deleted',
+  },
+  {
     key: 'products',
     label: 'Products & Inventory',
     desc: 'All products, variants, specifications, stock data',

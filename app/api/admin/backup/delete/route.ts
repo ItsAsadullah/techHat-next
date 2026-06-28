@@ -58,8 +58,31 @@ export async function DELETE(req: NextRequest) {
       await del('stockHistory', () => prisma.stockHistory.deleteMany({}));
     }
 
+    // Inventory / Product Input Output
+    if (all || targets.includes('inventory')) {
+      await del('grnItems', () => db.goodsReceiveNoteItem.deleteMany({}));
+      await del('grns', () => db.goodsReceiveNote.deleteMany({}));
+      await del('transferItems', () => db.warehouseTransferItem.deleteMany({}));
+      await del('transfers', () => db.warehouseTransfer.deleteMany({}));
+      await del('adjustmentItems', () => db.stockAdjustmentItem.deleteMany({}));
+      await del('adjustments', () => db.stockAdjustment.deleteMany({}));
+      await del('poItems', () => db.purchaseOrderItem.deleteMany({}));
+      await del('pos', () => db.purchaseOrder.deleteMany({}));
+    }
+
     // Products (heavy — variants, specs, history, images)
     if (all || targets.includes('products')) {
+      // Must delete related transactions first to avoid foreign key errors
+      await del('grnItems', () => db.goodsReceiveNoteItem.deleteMany({}).catch(() => ({ count: 0 })));
+      await del('grns', () => db.goodsReceiveNote.deleteMany({}).catch(() => ({ count: 0 })));
+      await del('transferItems', () => db.warehouseTransferItem.deleteMany({}).catch(() => ({ count: 0 })));
+      await del('transfers', () => db.warehouseTransfer.deleteMany({}).catch(() => ({ count: 0 })));
+      await del('adjustmentItems', () => db.stockAdjustmentItem.deleteMany({}).catch(() => ({ count: 0 })));
+      await del('adjustments', () => db.stockAdjustment.deleteMany({}).catch(() => ({ count: 0 })));
+      await del('poItems', () => db.purchaseOrderItem.deleteMany({}).catch(() => ({ count: 0 })));
+      await del('pos', () => db.purchaseOrder.deleteMany({}).catch(() => ({ count: 0 })));
+      await del('purchaseItems', () => db.purchaseItem.deleteMany({}).catch(() => ({ count: 0 })));
+      
       await del('stockHistory', () => prisma.stockHistory.deleteMany({}));
       await del('productSpecs', () => prisma.productSpec.deleteMany({}));
       await del('variants', () => prisma.variant.deleteMany({}));
