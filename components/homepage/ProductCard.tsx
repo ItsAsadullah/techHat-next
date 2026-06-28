@@ -149,12 +149,12 @@ function ProductCard({ product, showStock, className, onQuickView }: ProductCard
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
           {hasDiscount && (
-            <Badge className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 font-bold shadow-sm border-0 rounded-md">
+            <Badge className="bg-red-600 text-white text-[10px] px-1.5 py-0.5 font-bold shadow-sm border-0 rounded-md">
               -{Math.round(product.discountPercentage!)}%
             </Badge>
           )}
           {product.isFlashSale && (
-            <Badge className="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 flex items-center gap-0.5 shadow-sm border-0 rounded-md">
+            <Badge className="bg-orange-700 text-white text-[10px] px-1.5 py-0.5 flex items-center gap-0.5 shadow-sm border-0 rounded-md">
               <Zap className="h-2.5 w-2.5" />
               Flash
             </Badge>
@@ -170,11 +170,11 @@ function ProductCard({ product, showStock, className, onQuickView }: ProductCard
         {/* Stock badge */}
         <div className="absolute top-2 right-2 z-10">
           {isOutOfStock ? (
-            <Badge variant="outline" className="bg-background/80 text-destructive border-destructive/20 text-[10px] rounded-md">
+            <Badge variant="outline" className="bg-background/80 text-red-600 border-red-200 text-[10px] rounded-md font-medium">
               Out of Stock
             </Badge>
           ) : isLowStock && !showStock ? (
-            <Badge variant="outline" className="bg-background/80 text-amber-600 border-amber-200 text-[10px] rounded-md">
+            <Badge variant="outline" className="bg-background/80 text-amber-700 border-amber-300 text-[10px] rounded-md font-medium">
               Only {product.stock} left
             </Badge>
           ) : null}

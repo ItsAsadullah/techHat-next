@@ -178,7 +178,7 @@ function ScannerStatus() {
                 <>
                   <div className="bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 flex justify-center">
                     <img src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(scannerUrl)}`}
-                      className="w-40 h-40" alt="Scanner QR" />
+                      className="w-40 h-40" alt="Scanner QR Code" />
                   </div>
                   <p className="text-xs text-gray-500 text-center">Scan with phone</p>
                   <p className="text-[10px] text-gray-400 font-mono break-all text-center">{scannerUrl}</p>

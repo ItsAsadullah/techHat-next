@@ -140,8 +140,7 @@ export default async function HomePage() {
                       width={800}
                       height={300}
                       unoptimized
-                      priority={false}
-                      loading="lazy"
+                      priority={true}
                       className="w-full h-auto"
                     />
                   </div>
