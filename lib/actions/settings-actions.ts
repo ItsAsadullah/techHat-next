@@ -59,6 +59,7 @@ export async function getSettingsByCategory(category: string) {
     return await prisma.setting.findMany({
       where: { category },
       orderBy: { key: 'asc' },
+      take: 100,
     });
   } catch {
     return [];
@@ -69,6 +70,7 @@ export async function getAllSettings() {
   try {
     return await prisma.setting.findMany({
       orderBy: [{ category: 'asc' }, { key: 'asc' }],
+      take: 500,
     });
   } catch {
     return [];

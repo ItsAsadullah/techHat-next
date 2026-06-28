@@ -731,7 +731,7 @@ export default function OrdersPage() {
                         <div key={item.id} className="flex items-center gap-3 bg-gray-50 rounded-xl p-3">
                           <div className="w-12 h-12 rounded-lg bg-white border border-gray-200 overflow-hidden relative shrink-0">
                             {imgUrl ? (
-                              <Image src={imgUrl} alt="" fill className="object-cover" sizes="48px" />
+                              <Image src={imgUrl} alt={item.productName || 'Product'} fill className="object-cover" sizes="48px" />
                             ) : (
                               <Package className="w-5 h-5 text-gray-300 m-auto mt-3" />
                             )}
@@ -929,7 +929,7 @@ const OrderRow = memo(function OrderRow({
               return (
                 <div key={item.id} className="w-8 h-8 rounded-lg border-2 border-white bg-gray-100 overflow-hidden relative" style={{ zIndex: 3 - idx }}>
                   {imgUrl ? (
-                    <Image src={imgUrl} alt="" fill className="object-cover" sizes="32px" />
+                    <Image src={imgUrl} alt={order.items[0]?.productName || 'Product thumbnail'} fill className="object-cover" sizes="32px" />
                   ) : (
                     <Package className="w-4 h-4 text-gray-400 m-auto mt-1.5" />
                   )}

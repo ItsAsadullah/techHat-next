@@ -80,6 +80,7 @@ export default function EnterpriseFooter() {
       {/* Back to top */}
       <button
         onClick={scrollToTop}
+        aria-label="Scroll back to top"
         className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-sm text-gray-400 hover:text-white transition-colors flex items-center justify-center gap-2"
       >
         <ChevronUp className="w-4 h-4" />
@@ -98,6 +99,8 @@ export default function EnterpriseFooter() {
                   alt="Logo"
                   style={{ maxHeight: '2.5rem', width: 'auto' }}
                   className="object-contain"
+                  loading="lazy"
+                  decoding="async"
                 />
               ) : (
                 <>
@@ -138,6 +141,7 @@ export default function EnterpriseFooter() {
                   target="_blank"
                   rel="noopener noreferrer"
                   title={label}
+                  aria-label={label}
                   className={`w-9 h-9 bg-gray-800 rounded-full flex items-center justify-center text-gray-400 ${color} transition-colors hover:bg-gray-700`}
                 >
                   <Icon className="w-4 h-4" />
@@ -172,16 +176,16 @@ export default function EnterpriseFooter() {
         <div className="container mx-auto px-4 py-6">
           {/* Payment Methods */}
           <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
-            <span className="text-xs text-gray-500 font-medium mr-2">We Accept:</span>
+            <span className="text-xs text-gray-400 font-medium mr-2">We Accept:</span>
             {paymentMethods.map((method) => (
               <div
                 key={method}
                 className="px-3 py-1.5 bg-gray-800 rounded-md text-xs font-medium text-gray-400 flex items-center gap-1.5"
               >
                 {method === 'Visa' || method === 'Mastercard' ? (
-                  <CreditCard className="w-3.5 h-3.5" />
+                  <CreditCard className="w-3.5 h-3.5" aria-hidden="true" />
                 ) : method === 'COD' ? null : (
-                  <Smartphone className="w-3.5 h-3.5" />
+                  <Smartphone className="w-3.5 h-3.5" aria-hidden="true" />
                 )}
                 {method}
               </div>
@@ -189,7 +193,7 @@ export default function EnterpriseFooter() {
           </div>
 
           {/* Copyright */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-400">
             <p>© {new Date().getFullYear()} TechHat. All rights reserved.</p>
             <div className="flex items-center gap-4">
               <Link href="/privacy" className="hover:text-gray-300 transition-colors">Privacy Policy</Link>

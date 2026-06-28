@@ -79,7 +79,7 @@ export default function CategoryPageClient({ data, filters }: Props) {
                 >
                   {child.image && !isLucideIcon(child.image) && (
                     <div className="relative w-5 h-5 rounded-full overflow-hidden flex-shrink-0">
-                      <Image src={child.image} alt="" fill className="object-cover" sizes="20px" />
+                      <Image src={child.image} alt={child.name || 'Category thumbnail'} fill className="object-cover" sizes="20px" />
                     </div>
                   )}
                   {child.image && isLucideIcon(child.image) && (() => {

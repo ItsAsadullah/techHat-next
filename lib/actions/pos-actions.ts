@@ -193,48 +193,64 @@ export async function searchPOSProducts(query: string, categoryId?: string): Pro
 export async function findProductByBarcode(barcode: string): Promise<POSProduct | null> {
   try {
     const b = sanitizeInput(barcode);
-    const product = await prisma.product.findFirst({
+
+    const SELECT_FIELDS = {
+      id: true,
+      name: true,
+      sku: true,
+      model: true,
+      barcode: true,
+      price: true,
+      offerPrice: true,
+      costPrice: true,
+      stock: true,
+      category: { select: { name: true } },
+      productImages: {
+        where: { isThumbnail: true },
+        select: { url: true },
+        take: 1,
+      },
+      variants: {
+        select: {
+          id: true, name: true, sku: true, upc: true,
+          price: true, offerPrice: true, costPrice: true,
+          stock: true, image: true,
+        },
+      },
+    } as any;
+
+    // 1. Try finding by product level first (much faster than OR across relations)
+    let product = await prisma.product.findFirst({
       where: {
         status: 'ACTIVE',
         OR: [
           { barcode: { equals: b, mode: 'insensitive' } },
           { sku: { equals: b, mode: 'insensitive' } },
           { model: { equals: b, mode: 'insensitive' } },
-          { variants: { some: { sku: { equals: b, mode: 'insensitive' } } } },
-          { variants: { some: { upc: { equals: b, mode: 'insensitive' } } } },
         ],
       },
-      select: {
-        id: true,
-        name: true,
-        sku: true,
-        model: true,
-        barcode: true,
-        price: true,
-        offerPrice: true,
-        costPrice: true,
-        stock: true,
-        category: { select: { name: true } },
-        productImages: {
-          where: { isThumbnail: true },
-          select: { url: true },
-          take: 1,
-        },
-        variants: {
-          select: {
-            id: true,
-            name: true,
-            sku: true,
-            upc: true,
-            price: true,
-            offerPrice: true,
-            costPrice: true,
-            stock: true,
-            image: true,
-          },
-        },
-      },
+      select: SELECT_FIELDS,
     });
+
+    // 2. If not found, try finding by variant level and get parent
+    if (!product) {
+      const variantMatch = await prisma.variant.findFirst({
+        where: {
+          OR: [
+            { sku: { equals: b, mode: 'insensitive' } },
+            { upc: { equals: b, mode: 'insensitive' } },
+          ],
+        },
+        select: { productId: true },
+      });
+
+      if (variantMatch) {
+        product = await prisma.product.findFirst({
+          where: { id: variantMatch.productId, status: 'ACTIVE' },
+          select: SELECT_FIELDS,
+        });
+      }
+    }
 
     if (!product) return null;
 

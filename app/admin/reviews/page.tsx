@@ -152,7 +152,7 @@ function ReviewDetailModal({
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg shrink-0">
               {review.user?.avatarUrl ? (
-                <Image src={review.user.avatarUrl} alt="" width={48} height={48} className="rounded-full" />
+                <Image src={review.user.avatarUrl} alt={`${review.user.name || 'User'} avatar`} width={48} height={48} className="rounded-full" />
               ) : (
                 review.name.charAt(0).toUpperCase()
               )}
@@ -225,7 +225,7 @@ function ReviewDetailModal({
                     onClick={() => setImagePreview(img.imageUrl)}
                     className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition-colors"
                   >
-                    <Image src={img.imageUrl} alt="" fill className="object-cover" />
+                    <Image src={img.imageUrl} alt="Review image" fill className="object-cover" />
                   </button>
                 ))}
               </div>
@@ -326,7 +326,7 @@ function ReviewDetailModal({
             onClick={() => setImagePreview(null)}
             className="fixed inset-0 bg-black/90 z-[10000] flex items-center justify-center p-4"
           >
-            <Image src={imagePreview} alt="" width={800} height={600} className="rounded-2xl object-contain max-h-[80vh]" />
+            <Image src={imagePreview} alt="Review full preview" width={800} height={600} className="rounded-2xl object-contain max-h-[80vh]" />
             <button
               onClick={() => setImagePreview(null)}
               className="absolute top-4 right-4 p-2 bg-white/20 rounded-full text-white hover:bg-white/30"

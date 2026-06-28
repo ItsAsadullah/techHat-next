@@ -14,125 +14,107 @@ const getDashboardStatsCached = unstable_cache(
     startOf7DaysAgo.setDate(now.getDate() - 6);
     startOf7DaysAgo.setHours(0, 0, 0, 0);
 
-    const [
-      ordersStatsRaw,
-      productStatsRaw,
-      reviewStatsRaw,
-      recentOrders,
-      last7DaysSales,
-      categorySales,
-      topProducts,
-    ] = await Promise.all([
-      // Consolidated order stats
-      prisma.$queryRaw<any[]>`
-        SELECT 
-          COUNT(*) as "totalOrders",
-          SUM(grand_total) as "totalRevenue",
-          SUM(CASE WHEN created_at >= ${startOfThisMonth} THEN grand_total ELSE 0 END) as "thisMonthRevenue",
-          SUM(CASE WHEN created_at >= ${startOfLastMonth} AND created_at <= ${endOfLastMonth} THEN grand_total ELSE 0 END) as "lastMonthRevenue",
-          SUM(CASE WHEN created_at >= ${startOfToday} THEN grand_total ELSE 0 END) as "todayRevenue",
-          SUM(CASE WHEN created_at >= ${startOfThisMonth} THEN 1 ELSE 0 END) as "thisMonthOrders",
-          SUM(CASE WHEN created_at >= ${startOfToday} THEN 1 ELSE 0 END) as "todayOrders",
-          SUM(CASE WHEN is_pos = false AND payment_status = 'PENDING' THEN 1 ELSE 0 END) as "pendingOrders",
-          SUM(CASE WHEN is_pos = true THEN paid_amount ELSE 0 END) as "totalPOSRevenue",
-          SUM(CASE WHEN is_pos = true THEN due_amount ELSE 0 END) as "totalPOSDue"
-        FROM orders
-      `,
-      
-      // Consolidated product stats
-      prisma.$queryRaw<any[]>`
-        SELECT 
-          COUNT(*) as "totalProducts",
-          SUM(CASE WHEN stock <= 5 AND stock > 0 THEN 1 ELSE 0 END) as "lowStockProducts",
-          SUM(CASE WHEN stock = 0 THEN 1 ELSE 0 END) as "outOfStockProducts"
-        FROM products
-        WHERE status = 'ACTIVE'
-      `,
-      
-      // Consolidated review stats
-      prisma.$queryRaw<any[]>`
-        SELECT 
-          COUNT(*) as "totalReviews",
-          SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) as "pendingReviews"
-        FROM reviews
-      `,
+    // Execute queries sequentially to prevent Prisma connection pool exhaustion
+    // and Turbopack dev server deadlocks
+    const ordersStatsRaw = await prisma.$queryRaw<any[]>`
+      SELECT 
+        COUNT(*) as "totalOrders",
+        SUM(grand_total) as "totalRevenue",
+        SUM(CASE WHEN created_at >= ${startOfThisMonth} THEN grand_total ELSE 0 END) as "thisMonthRevenue",
+        SUM(CASE WHEN created_at >= ${startOfLastMonth} AND created_at <= ${endOfLastMonth} THEN grand_total ELSE 0 END) as "lastMonthRevenue",
+        SUM(CASE WHEN created_at >= ${startOfToday} THEN grand_total ELSE 0 END) as "todayRevenue",
+        SUM(CASE WHEN created_at >= ${startOfThisMonth} THEN 1 ELSE 0 END) as "thisMonthOrders",
+        SUM(CASE WHEN created_at >= ${startOfToday} THEN 1 ELSE 0 END) as "todayOrders",
+        SUM(CASE WHEN is_pos = false AND payment_status = 'PENDING' THEN 1 ELSE 0 END) as "pendingOrders",
+        SUM(CASE WHEN is_pos = true THEN paid_amount ELSE 0 END) as "totalPOSRevenue",
+        SUM(CASE WHEN is_pos = true THEN due_amount ELSE 0 END) as "totalPOSDue"
+      FROM orders
+    `;
+    
+    const productStatsRaw = await prisma.$queryRaw<any[]>`
+      SELECT 
+        COUNT(*) as "totalProducts",
+        SUM(CASE WHEN stock <= 5 AND stock > 0 THEN 1 ELSE 0 END) as "lowStockProducts",
+        SUM(CASE WHEN stock = 0 THEN 1 ELSE 0 END) as "outOfStockProducts"
+      FROM products
+      WHERE status = 'ACTIVE'
+    `;
+    
+    const reviewStatsRaw = await prisma.$queryRaw<any[]>`
+      SELECT 
+        COUNT(*) as "totalReviews",
+        SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) as "pendingReviews"
+      FROM reviews
+    `;
 
-      // Recent 10 orders
-      prisma.order.findMany({
-        take: 10,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          orderNumber: true,
-          customerName: true,
-          grandTotal: true,
-          paidAmount: true,
-          dueAmount: true,
-          paymentMethod: true,
-          paymentStatus: true,
-          posPaymentStatus: true,
-          isPos: true,
-          createdAt: true,
-          items: { select: { productName: true, quantity: true }, take: 1 },
-        },
-      }),
+    const recentOrders = await prisma.order.findMany({
+      take: 10,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        orderNumber: true,
+        customerName: true,
+        grandTotal: true,
+        paidAmount: true,
+        dueAmount: true,
+        paymentMethod: true,
+        paymentStatus: true,
+        posPaymentStatus: true,
+        isPos: true,
+        createdAt: true,
+        items: { select: { productName: true, quantity: true }, take: 1 },
+      },
+    });
 
-      // Last 7 days daily grouped sales - optimized with raw SQL
-      prisma.$queryRaw`
-        SELECT 
-          DATE("created_at") as "createdAt",
-          SUM("grand_total")::integer as sales,
-          COUNT(id)::integer as orders
-        FROM "orders"
-        WHERE "created_at" >= ${startOf7DaysAgo}
-        GROUP BY DATE("created_at")
-        ORDER BY DATE("created_at") ASC
-      `,
+    const last7DaysSales = await prisma.$queryRaw`
+      SELECT 
+        DATE("created_at") as "createdAt",
+        SUM("grand_total")::integer as sales,
+        COUNT(id)::integer as orders
+      FROM "orders"
+      WHERE "created_at" >= ${startOf7DaysAgo}
+      GROUP BY DATE("created_at")
+      ORDER BY DATE("created_at") ASC
+    `;
 
-      // Sales by category (top 6) - using Prisma include to avoid N+1
-      (async () => {
-        const items = await prisma.orderItem.groupBy({
-          by: ['productId'],
-          _sum: { total: true },
-          orderBy: { _sum: { total: 'desc' } },
-          take: 100, // Get top 100 then group by category
-        });
-        
-        // Fetch product categories in one query
-        const products = await prisma.product.findMany({
-          where: { id: { in: items.map((i) => i.productId).filter(Boolean) as string[] } },
-          select: { id: true, categoryId: true },
-        });
-
-        // Fetch categories in another single query
-        const categories = await prisma.category.findMany({
-          select: { id: true, name: true },
-        });
-
-        // Group by category
-        const catMap: Record<string, number> = {};
-        items.forEach((item) => {
-          const prod = products.find((p) => p.id === item.productId);
-          if (!prod) return;
-          const cat = categories.find((c) => c.id === prod.categoryId);
-          const catName = cat?.name || 'Other';
-          catMap[catName] = (catMap[catName] || 0) + (item._sum.total || 0);
-        });
-
-        return Object.entries(catMap)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 6)
-          .map(([name, value]) => ({ name, value: Math.round(value) }));
-      })(),
-
-      // Top 5 selling products
-      prisma.orderItem.groupBy({
-        by: ['productName'],
-        _sum: { total: true, quantity: true },
+    const categorySales = await (async () => {
+      const items = await prisma.orderItem.groupBy({
+        by: ['productId'],
+        _sum: { total: true },
         orderBy: { _sum: { total: 'desc' } },
-        take: 5,
-      }),
-    ]);
+        take: 100, // Get top 100 then group by category
+      });
+      
+      const products = await prisma.product.findMany({
+        where: { id: { in: items.map((i) => i.productId).filter(Boolean) as string[] } },
+        select: { id: true, categoryId: true },
+      });
+
+      const categories = await prisma.category.findMany({
+        select: { id: true, name: true },
+      });
+
+      const catMap: Record<string, number> = {};
+      items.forEach((item) => {
+        const prod = products.find((p) => p.id === item.productId);
+        if (!prod) return;
+        const cat = categories.find((c) => c.id === prod.categoryId);
+        const catName = cat?.name || 'Other';
+        catMap[catName] = (catMap[catName] || 0) + (item._sum.total || 0);
+      });
+
+      return Object.entries(catMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([name, value]) => ({ name, value: Math.round(value) }));
+    })();
+
+    const topProducts = await prisma.orderItem.groupBy({
+      by: ['productName'],
+      _sum: { total: true, quantity: true },
+      orderBy: { _sum: { total: 'desc' } },
+      take: 5,
+    });
 
     // Build last 7 days chart data
     const dailySalesMap: Record<string, { sales: number; orders: number }> = {};

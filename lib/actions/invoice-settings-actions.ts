@@ -3,34 +3,42 @@
 import { prisma } from '@/lib/prisma';
 import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 
+const _getInvoiceSettingsCached = unstable_cache(
+  async () => {
+    const settings = await prisma.setting.findMany({
+      where: { category: 'invoice' },
+    });
+
+    const settingsMap = settings.reduce((acc, setting) => {
+      acc[setting.key] = setting.value;
+      return acc;
+    }, {} as Record<string, string>);
+
+    return {
+      invoiceLogo: settingsMap['invoiceLogo'] || '',
+      invoiceBackground: settingsMap['invoiceBackground'] || '',
+      invoiceCompanyName: settingsMap['invoiceCompanyName'] || 'TechHat',
+      invoiceCompanyAddress: settingsMap['invoiceCompanyAddress'] || '',
+      invoiceCompanyPhone: settingsMap['invoiceCompanyPhone'] || '',
+      invoiceCompanyEmail: settingsMap['invoiceCompanyEmail'] || '',
+      invoiceFooterText: settingsMap['invoiceFooterText'] || 'Thank you for shopping with us!',
+      showLogo: settingsMap['showLogo'] === 'true',
+      showBackground: settingsMap['showBackground'] === 'true',
+      invoiceLayout: settingsMap['invoiceLayout'] || '[]',
+      // Enhanced fields
+      invoicePrefix: settingsMap['invoicePrefix'] || 'INV-',
+      nextInvoiceNumber: settingsMap['nextInvoiceNumber'] || '1001',
+      showTax: settingsMap['showTax'] !== 'false',
+      termsAndConditions: settingsMap['termsAndConditions'] || '',
+      receiptWidth: settingsMap['receiptWidth'] || '80',
+    };
+  },
+  ['invoice-settings'],
+  { revalidate: 300, tags: ['invoice-settings'] }
+);
+
 export async function getInvoiceSettings() {
-  const settings = await prisma.setting.findMany({
-    where: { category: 'invoice' },
-  });
-
-  const settingsMap = settings.reduce((acc, setting) => {
-    acc[setting.key] = setting.value;
-    return acc;
-  }, {} as Record<string, string>);
-
-  return {
-    invoiceLogo: settingsMap['invoiceLogo'] || '',
-    invoiceBackground: settingsMap['invoiceBackground'] || '',
-    invoiceCompanyName: settingsMap['invoiceCompanyName'] || 'TechHat',
-    invoiceCompanyAddress: settingsMap['invoiceCompanyAddress'] || '',
-    invoiceCompanyPhone: settingsMap['invoiceCompanyPhone'] || '',
-    invoiceCompanyEmail: settingsMap['invoiceCompanyEmail'] || '',
-    invoiceFooterText: settingsMap['invoiceFooterText'] || 'Thank you for shopping with us!',
-    showLogo: settingsMap['showLogo'] === 'true',
-    showBackground: settingsMap['showBackground'] === 'true',
-    invoiceLayout: settingsMap['invoiceLayout'] || '[]',
-    // Enhanced fields
-    invoicePrefix: settingsMap['invoicePrefix'] || 'INV-',
-    nextInvoiceNumber: settingsMap['nextInvoiceNumber'] || '1001',
-    showTax: settingsMap['showTax'] !== 'false',
-    termsAndConditions: settingsMap['termsAndConditions'] || '',
-    receiptWidth: settingsMap['receiptWidth'] || '80',
-  };
+  return _getInvoiceSettingsCached();
 }
 
 export type InvoiceSettings = Awaited<ReturnType<typeof getInvoiceSettings>>;
@@ -134,6 +142,8 @@ export async function updateInvoiceSettings(input: {
     ];
 
     await prisma.$transaction(upserts);
+    // @ts-expect-error - Next.js 16 requires a second argument for revalidateTag
+    revalidateTag('invoice-settings');
     revalidatePath('/admin/settings/invoice');
     return { success: true };
   } catch (error: any) {
@@ -388,6 +398,7 @@ export const getBrandingSettings = unstable_cache(
     return {
       siteLogo:           m['site_logo']          ?? '',
       siteFavicon:        m['site_favicon']       ?? '',
+      siteOgImage:        m['site_og_image']      ?? '',
       topbarHotline:      m['topbar_hotline']     ?? '01700-000000',
       topbarDelivery:     m['topbar_delivery']    ?? 'Free Delivery on Orders Over ৳2,000',
       topbarShowDelivery: m['topbar_show_delivery'] !== 'false',
@@ -404,11 +415,12 @@ export async function updateBrandingSettings(data: BrandingSettings) {
     const pairs: Array<[string, string]> = [
       ['site_logo',            data.siteLogo],
       ['site_favicon',         data.siteFavicon],
+      ['site_og_image',        data.siteOgImage ?? ''],
       ['topbar_hotline',       data.topbarHotline],
       ['topbar_delivery',      data.topbarDelivery],
       ['topbar_show_delivery', String(data.topbarShowDelivery)],
     ];
-    await Promise.all(
+    await prisma.$transaction(
       pairs.map(([key, value]) =>
         prisma.setting.upsert({
           where: { key },

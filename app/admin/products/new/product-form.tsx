@@ -45,13 +45,13 @@ const DynamicPreviewModal = dynamic(
 interface ProductFormProps {
   categories: { id: string; name: string }[];
   brands: { id: string; name: string }[];
-  attributesList: any[];
-  categoryAttributes?: any[];
+  attributesList: { id: string; name: string; values: { id: string; value: string; label: string; shortCode: string | null }[] }[];
+  categoryAttributes?: { attributeId: string }[];
   initialData?: Record<string, unknown> & {
     id?: string;
     createdAt?: string | Date;
     updatedAt?: string | Date;
-    images?: any[];
+    images?: { id: string; url: string; isThumbnail?: boolean; alt?: string | null }[];
     stock?: number;
     soldCount?: number;
     costPrice?: number;
@@ -170,18 +170,18 @@ export default function ProductForm({ categories, brands, attributesList, catego
     const cleaned = { ...initialData };
     if (cleaned.attributes && Array.isArray(cleaned.attributes)) {
       cleaned.attributes = cleaned.attributes
-        .filter((a: any) => a.name && a.name.trim() !== '')
-        .map((a: any) => {
-          const attributeId = a.attributeId || '';
+        .filter((a: Record<string, unknown>) => typeof a.name === 'string' && a.name.trim() !== '')
+        .map((a: Record<string, unknown>) => {
+          const attributeId = typeof a.attributeId === 'string' ? a.attributeId : '';
           const realDef = attributesList.find(al => al.id === attributeId || al.name === a.name);
 
           return {
             ...a,
             attributeId: realDef ? realDef.id : attributeId,
             values: Array.isArray(a.values)
-              ? a.values.map((v: any) => {
-                const labelStr = typeof v === 'string' ? v : v.label;
-                const realVal = realDef?.values?.find((rv: any) => rv.value === labelStr || rv.label === labelStr);
+              ? a.values.map((v: unknown) => {
+                const labelStr = typeof v === 'string' ? v : (v as { label: string }).label;
+                const realVal = realDef?.values?.find((rv) => rv.value === labelStr || rv.label === labelStr);
 
                 if (realVal) {
                   return { id: realVal.id, label: realVal.value || realVal.label, shortCode: realVal.shortCode };
@@ -286,7 +286,7 @@ export default function ProductForm({ categories, brands, attributesList, catego
   const soldCount = initialData?.soldCount ?? null;
   const costPrice = initialData?.costPrice ?? null;
 
-  const onError = (errors: any) => {
+  const onError = (errors: Record<string, unknown>) => {
     console.warn("Form validation failed:", errors);
     const errorKeys = Object.keys(errors);
     if (errorKeys.length > 0) {
@@ -314,7 +314,7 @@ export default function ProductForm({ categories, brands, attributesList, catego
               brandName: brands.find(b => b.id === form.getValues('brandId'))?.name,
               templateSpecs: [],
               specs: form.getValues('productSpecs') || [],
-            } as any}
+            } as Record<string, unknown>}
           />
         )}
 
@@ -528,7 +528,7 @@ export default function ProductForm({ categories, brands, attributesList, catego
                           <div className="mt-4 pt-4 border-t">
                             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Recent Movements</p>
                             <div className="space-y-2">
-                              {initialData.stockLedgers.slice(0, 3).map((l: any, i: number) => (
+                              {initialData.stockLedgers.slice(0, 3).map((l: { referenceType: string; createdAt: string | Date; inQty: number; outQty: number }, i: number) => (
                                 <div key={i} className="flex justify-between items-center text-xs">
                                   <span className="text-muted-foreground">{l.referenceType} ({new Date(l.createdAt).toLocaleDateString()})</span>
                                   <span className={`font-mono font-medium ${l.inQty > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -567,7 +567,7 @@ export default function ProductForm({ categories, brands, attributesList, catego
                           <div className="mt-4 pt-4 border-t">
                             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Recent POs</p>
                             <div className="space-y-2">
-                              {initialData.purchaseOrderItems.map((pi: any, i: number) => (
+                              {initialData.purchaseOrderItems.map((pi: { purchaseOrder: { poNumber: string; supplier?: { name?: string } }; receivedQty: number; quantity: number }, i: number) => (
                                 <div key={i} className="flex justify-between items-center text-xs">
                                   <span className="text-muted-foreground truncate max-w-[120px]" title={pi.purchaseOrder.supplier?.name}>
                                     {pi.purchaseOrder.poNumber}
@@ -674,7 +674,7 @@ export default function ProductForm({ categories, brands, attributesList, catego
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 bg-white">
-                            {initialData.stockLedgers.map((l: any, i: number) => (
+                            {initialData.stockLedgers.map((l: { createdAt: string | Date; referenceType: string; referenceId?: string; warehouse?: { name?: string }; inQty: number; outQty: number; unitCost: number }, i: number) => (
                               <tr key={i} className="hover:bg-slate-50/80 transition-colors">
                                 <td className="px-4 py-3 whitespace-nowrap text-slate-600">{new Date(l.createdAt).toLocaleString()}</td>
                                 <td className="px-4 py-3 whitespace-nowrap">
@@ -726,7 +726,7 @@ export default function ProductForm({ categories, brands, attributesList, catego
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 bg-white">
-                            {initialData.purchaseOrderItems.map((pi: any, i: number) => {
+                            {initialData.purchaseOrderItems.map((pi: { purchaseOrder: { status: string; expectedDeliveryDate?: string | number | Date | null; poNumber: string; supplier?: { name?: string } }; quantity: number; receivedQty: number; unitCost: number }, i: number) => {
                               const poStatus = pi.purchaseOrder.status;
                               let statusBadge = "bg-slate-100 text-slate-700 border-slate-200";
                               if (poStatus === 'COMPLETED' || poStatus === 'RECEIVED' || poStatus === 'CONFIRMED') statusBadge = "bg-emerald-50 text-emerald-700 border-emerald-200";

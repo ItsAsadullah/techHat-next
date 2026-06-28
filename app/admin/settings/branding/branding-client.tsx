@@ -20,17 +20,18 @@ import {
 export function BrandingClient({ initial }: { initial: BrandingSettings }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<BrandingSettings>(initial);
-  const [uploading, setUploading] = useState<'logo' | 'favicon' | null>(null);
+  const [uploading, setUploading] = useState<'logo' | 'favicon' | 'ogImage' | null>(null);
 
   const logoRef    = useRef<HTMLInputElement>(null);
   const faviconRef = useRef<HTMLInputElement>(null);
+  const ogImageRef = useRef<HTMLInputElement>(null);
 
   function set<K extends keyof BrandingSettings>(key: K, val: BrandingSettings[K]) {
     setForm(f => ({ ...f, [key]: val }));
   }
 
-  async function uploadFile(file: File, field: 'siteLogo' | 'siteFavicon') {
-    const type = field === 'siteLogo' ? 'logo' : 'favicon';
+  async function uploadFile(file: File, field: 'siteLogo' | 'siteFavicon' | 'siteOgImage') {
+    const type = field === 'siteLogo' ? 'logo' : field === 'siteFavicon' ? 'favicon' : 'ogImage';
     setUploading(type);
     try {
       const fd = new FormData();
@@ -40,7 +41,7 @@ export function BrandingClient({ initial }: { initial: BrandingSettings }) {
       const data = await res.json();
       if (!data.url) throw new Error(data.error ?? 'Upload failed');
       set(field, data.url);
-      toast.success(`${type === 'logo' ? 'Logo' : 'Favicon'} uploaded`);
+      toast.success(`${type === 'logo' ? 'Logo' : type === 'favicon' ? 'Favicon' : 'OG Image'} uploaded`);
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -223,6 +224,80 @@ export function BrandingClient({ initial }: { initial: BrandingSettings }) {
             value={form.siteFavicon}
             onChange={e => set('siteFavicon', e.target.value)}
             placeholder="https://example.com/favicon.png"
+            className="rounded-xl h-9 text-sm"
+          />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* ── Open Graph Image ── */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+          <ImageIcon className="w-4 h-4" /> Global Open Graph Image
+        </h3>
+        <p className="text-xs text-gray-400">Shown when sharing the website link on social media. Recommended: 1200×630 px. (Leave empty to auto-generate)</p>
+
+        <div className="flex items-center gap-4">
+          {/* Preview */}
+          <div className="w-40 h-24 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
+            {form.siteOgImage ? (
+              <Image src={form.siteOgImage} alt="OG Image preview" width={160} height={96} className="object-cover w-full h-full" />
+            ) : (
+              <ImageIcon className="w-6 h-6 text-gray-300" />
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                disabled={uploading === 'ogImage'}
+                onClick={() => ogImageRef.current?.click()}
+              >
+                {uploading === 'ogImage'
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <Upload className="w-3.5 h-3.5" />}
+                Upload OG Image
+              </Button>
+              {form.siteOgImage && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-red-500 hover:text-red-600"
+                  onClick={() => set('siteOgImage', '')}
+                >
+                  <X className="w-3.5 h-3.5" /> Remove
+                </Button>
+              )}
+            </div>
+            <p className="text-[11px] text-gray-400">JPG / PNG / WEBP — max 2 MB</p>
+          </div>
+
+          <input
+            ref={ogImageRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={e => {
+              const f = e.target.files?.[0];
+              if (f) uploadFile(f, 'siteOgImage');
+              e.target.value = '';
+            }}
+          />
+        </div>
+
+        {/* URL fallback */}
+        <div className="space-y-1.5">
+          <Label className="text-xs text-gray-500">Or paste image URL</Label>
+          <Input
+            value={form.siteOgImage || ''}
+            onChange={e => set('siteOgImage', e.target.value)}
+            placeholder="https://example.com/og-image.jpg"
             className="rounded-xl h-9 text-sm"
           />
         </div>

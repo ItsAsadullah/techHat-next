@@ -630,7 +630,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     {/* Image */}
                     <div className="w-16 h-16 rounded-xl bg-gray-50 border border-gray-200 overflow-hidden relative shrink-0">
                       {imgUrl ? (
-                        <Image src={imgUrl} alt="" fill className="object-cover" sizes="64px" />
+                        <Image src={imgUrl} alt="Product image thumbnail" fill className="object-cover" sizes="64px" />
                       ) : (
                         <Package className="w-6 h-6 text-gray-300 m-auto mt-4" />
                       )}
@@ -730,7 +730,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
                   {order.user?.avatarUrl ? (
-                    <Image src={order.user.avatarUrl} alt="" width={40} height={40} className="rounded-full" />
+                    <Image src={order.user.avatarUrl} alt={`${order.customerName || 'Customer'} avatar`} width={40} height={40} className="rounded-full" />
                   ) : (
                     <User className="w-5 h-5 text-blue-600" />
                   )}

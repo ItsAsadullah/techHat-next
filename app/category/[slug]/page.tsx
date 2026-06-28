@@ -29,17 +29,18 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     : '';
 
   return {
-    title: `${category.name}${brandFilter}${page} | TechHat`,
+    title: `${category.name}${brandFilter}${page}`,
     description:
       category.description ??
-      `Shop the best ${category.name} deals at TechHat. Fast delivery across Bangladesh.`,
+      `Shop the best ${category.name} deals. Fast delivery across Bangladesh.`,
     openGraph: {
-      title: `${category.name} | TechHat`,
+      title: category.name,
       description:
         category.description ??
-        `Shop the best ${category.name} deals at TechHat.`,
-      images: (category.image && !isLucideIcon(category.image)) ? [{ url: category.image }] : [],
+        `Shop the best ${category.name} deals.`,
       type: 'website',
+      // We purposefully DO NOT set openGraph.images here so that 
+      // Next.js automatically uses our opengraph-image.tsx routes!
     },
     alternates: {
       canonical: `/category/${slug}`,
@@ -63,8 +64,8 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
     name: data.category.name,
-    description: data.category.description ?? `Shop ${data.category.name} at TechHat`,
-    url: `https://techhat.com/category/${slug}`,
+    description: data.category.description ?? `Shop ${data.category.name}`,
+    url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://techhat.shop'}/category/${slug}`,
     numberOfItems: data.totalCount,
     ...(data.category.image && !isLucideIcon(data.category.image) ? { image: data.category.image } : {}),
     breadcrumb: {
@@ -73,7 +74,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
         '@type': 'ListItem',
         position: index + 1,
         name: crumb.name,
-        item: `https://techhat.com/category/${crumb.slug}`,
+        item: `${process.env.NEXT_PUBLIC_APP_URL || 'https://techhat.shop'}/category/${crumb.slug}`,
       })),
     },
   };

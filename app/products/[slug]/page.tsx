@@ -165,21 +165,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = product.description?.slice(0, 160) || `Buy ${product.name} at the best price on TechHat`;
 
   return {
-    title: `${product.name} - TechHat`,
+    title: product.name,
     description,
     openGraph: {
-      title: `${product.name} - TechHat`,
+      title: product.name,
       description,
       url: productUrl,
       siteName: 'TechHat',
       type: 'website',
-      images: ogImage ? [{ url: ogImage, width: 1200, height: 630, alt: product.name }] : [],
+      // We purposefully DO NOT set openGraph.images here so that 
+      // Next.js automatically uses our opengraph-image.tsx routes!
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${product.name} - TechHat`,
+      title: product.name,
       description,
-      images: ogImage ? [ogImage] : [],
     },
   };
 }

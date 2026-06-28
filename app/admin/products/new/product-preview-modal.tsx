@@ -302,7 +302,7 @@ export function ProductPreviewModal({ open, onClose, data }: Props) {
                             : 'border-gray-200 hover:border-gray-300 opacity-70 hover:opacity-100'
                         )}
                       >
-                        <Image src={img.url} alt="" width={80} height={80} className="w-full h-full object-cover" />
+                        <Image src={img.url} alt="Product gallery thumbnail" width={80} height={80} className="w-full h-full object-cover" />
                       </button>
                     ))}
                   </div>

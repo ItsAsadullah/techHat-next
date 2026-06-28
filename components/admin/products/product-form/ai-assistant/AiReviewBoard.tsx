@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useFormContext } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -291,7 +292,7 @@ export function AiReviewBoard({ data, onClose, onRegenerate }: AiReviewBoardProp
                   <div key={i} className="text-sm bg-muted/30 p-2 rounded flex gap-3 items-center">
                     {alt.url ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={alt.url} alt="thumbnail" className="w-8 h-8 rounded object-cover flex-shrink-0" />
+                      <Image src={alt.url} alt="thumbnail" width={32} height={32} className="w-8 h-8 rounded object-cover flex-shrink-0" />
                     ) : (
                       <div className="w-8 h-8 rounded bg-muted flex-shrink-0" />
                     )}

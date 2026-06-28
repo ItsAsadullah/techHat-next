@@ -26,6 +26,7 @@ export default function CampaignBanner({ campaigns }: { campaigns: Campaign[] })
                     src={campaign.bannerImage}
                     alt={campaign.title}
                     fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
                   />

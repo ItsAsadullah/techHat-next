@@ -39,23 +39,47 @@ function publicImageUrl(url: string | undefined | null): string | null {
 
 export async function generateMetadata(): Promise<Metadata> {
   let branding = { siteLogo: '', siteFavicon: '' };
-  try { branding = await getBrandingSettings(); } catch {}
+  let store = { storeName: 'TechHat', tagline: 'Your one-stop shop for premium electronics and gadgets.' };
+  
+  try { 
+    branding = await getBrandingSettings(); 
+    const storeSettings = await getStoreSettings();
+    if (storeSettings) {
+      store.storeName = storeSettings.storeName || 'TechHat';
+      store.tagline = storeSettings.tagline || 'Your one-stop shop for premium electronics and gadgets.';
+    }
+  } catch {}
+  
   const logoUrl = publicImageUrl(branding.siteLogo);
 
   return {
-    title: 'TechHat - Premium Electronics Store',
-    description: 'Your one-stop shop for premium electronics and gadgets.',
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: store.storeName,
+      template: `%s | ${store.storeName}`,
+    },
+    description: store.tagline,
     icons: {
       icon: '/api/favicon',
       shortcut: '/api/favicon',
       apple: '/api/favicon',
     },
     openGraph: {
-      title: 'TechHat - Premium Electronics Store',
-      description: 'Your one-stop shop for premium electronics and gadgets.',
+      title: {
+        default: store.storeName,
+        template: `%s | ${store.storeName}`,
+      },
+      description: store.tagline,
       url: SITE_URL,
-      siteName: 'TechHat',
-      ...(logoUrl ? { images: [{ url: logoUrl, width: 512, height: 512, alt: 'TechHat Logo' }] } : {}),
+      siteName: store.storeName,
+      type: 'website',
+      // We purposefully DO NOT set openGraph.images here so that 
+      // Next.js automatically uses our opengraph-image.tsx routes!
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: store.storeName,
+      description: store.tagline,
     },
     verification: {
       google: 'ZPYxZN1XQs1qJIp1W7Q80GbcbZIuZYPexmEg6m1k5gg',
