@@ -77,16 +77,13 @@ export default async function RootLayout({
   };
   const analyticsDefaults = { metaPixelId: '', googleAnalyticsId: '', googleTagManagerId: '', tiktokPixelId: '' };
 
-  // Parallelize all global settings fetches to drastically reduce TTFB blocking time
-  const [brandingResult, storeSettingsResult, analyticsResult] = await Promise.allSettled([
-    getBrandingSettings(),
-    getStoreSettings(),
-    getAnalyticsSettings()
-  ]);
-
-  const branding = brandingResult.status === 'fulfilled' ? brandingResult.value : brandingDefaults;
-  const storeSettings = storeSettingsResult.status === 'fulfilled' ? storeSettingsResult.value : storeSettingsDefaults;
-  const analytics = analyticsResult.status === 'fulfilled' ? analyticsResult.value : analyticsDefaults;
+  // Next.js Turbopack dev server has a known bug where running multiple unstable_cache functions 
+  // concurrently via Promise.all or Promise.allSettled can cause the server to hang indefinitely.
+  // We fetch them sequentially to bypass this deadlock.
+  
+  const branding = await getBrandingSettings().catch(() => brandingDefaults);
+  const storeSettings = await getStoreSettings().catch(() => storeSettingsDefaults);
+  const analytics = await getAnalyticsSettings().catch(() => analyticsDefaults);
 
   const logoUrl = publicImageUrl(branding.siteLogo);
 

@@ -66,56 +66,55 @@ export async function getProducts(params: ProductFilterParams) {
     }
   }
 
-  const [products, total] = await Promise.all([
-    prisma.product.findMany({
-      where,
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        sku: true,
-        price: true,
-        offerPrice: true,
-        costPrice: true,
-        minStock: true,
-        status: true,
-        updatedAt: true,
-        category: {
-          select: {
-            id: true,
-            name: true,
-          }
-        },
-        brand: {
-          select: {
-            id: true,
-            name: true,
-          }
-        },
-        productImages: {
-          select: {
-            id: true,
-            url: true,
-            isThumbnail: true,
-          },
-          orderBy: { isThumbnail: 'desc' }, // thumbnail (true) comes first
-          take: 1,
-        },
-        variants: {
-          select: {
-            id: true,
-            name: true,
-            sku: true,
-          },
-          take: 5,
+  const products = await prisma.product.findMany({
+    where,
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      sku: true,
+      price: true,
+      offerPrice: true,
+      costPrice: true,
+      minStock: true,
+      status: true,
+      updatedAt: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
         }
       },
-      skip,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.product.count({ where }),
-  ]);
+      brand: {
+        select: {
+          id: true,
+          name: true,
+        }
+      },
+      productImages: {
+        select: {
+          id: true,
+          url: true,
+          isThumbnail: true,
+        },
+        orderBy: { isThumbnail: 'desc' }, // thumbnail (true) comes first
+        take: 1,
+      },
+      variants: {
+        select: {
+          id: true,
+          name: true,
+          sku: true,
+        },
+        take: 5,
+      }
+    },
+    skip,
+    take: limit,
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const total = await prisma.product.count({ where });
 
   const stockQueries = [];
   for (const p of products) {
@@ -242,16 +241,14 @@ export async function bulkUpdateStatus(ids: string[], isActive: boolean) {
 const getInventoryStatsCached = unstable_cache(
   async () => {
     // Single aggregation query — avoids loading all products into JS memory
-    const [[agg], totalProducts, outOfStock] = await Promise.all([
-        prisma.$queryRaw<[{ low_stock: bigint; total_value: number }]>`
-            SELECT
-                COUNT(*) FILTER (WHERE stock > 0 AND stock <= COALESCE("minStock", 5))::int AS low_stock,
-                COALESCE(SUM(COALESCE("costPrice", 0) * GREATEST(stock, 0)), 0)::float8 AS total_value
-            FROM "products"
-        `,
-        prisma.product.count(),
-        prisma.product.count({ where: { stock: { lte: 0 } } }),
-    ]);
+    const [agg] = await prisma.$queryRaw<[{ low_stock: bigint; total_value: number }]>`
+        SELECT
+            COUNT(*) FILTER (WHERE stock > 0 AND stock <= COALESCE("minStock", 5))::int AS low_stock,
+            COALESCE(SUM(COALESCE("costPrice", 0) * GREATEST(stock, 0)), 0)::float8 AS total_value
+        FROM "products"
+    `;
+    const totalProducts = await prisma.product.count();
+    const outOfStock = await prisma.product.count({ where: { stock: { lte: 0 } } });
 
     return {
         totalProducts,

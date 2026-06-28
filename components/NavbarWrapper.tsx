@@ -3,10 +3,8 @@ import { getCategoriesTree } from '@/lib/actions/category-actions';
 import { getBrandingSettings } from '@/lib/actions/invoice-settings-actions';
 
 export default async function NavbarWrapper() {
-  const [categories, branding] = await Promise.all([
-    getCategoriesTree(),
-    getBrandingSettings(),
-  ]);
+  const categories = await getCategoriesTree();
+  const branding = await getBrandingSettings();
   return (
     <MainHeader
       initialCategories={categories}

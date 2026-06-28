@@ -38,16 +38,15 @@ export const InventoryService = {
     const productIds = Array.from(new Set(items.map(i => i.productId)));
     const variantIds = Array.from(new Set(items.filter(i => i.variantId).map(i => i.variantId as string)));
     
-    const [products, variants] = await Promise.all([
-      prisma.product.findMany({
-        where: { id: { in: productIds } },
-        select: { id: true, stock: true }
-      }),
-      variantIds.length > 0 ? prisma.variant.findMany({
-        where: { id: { in: variantIds } },
-        select: { id: true, productId: true, stock: true }
-      }) : Promise.resolve([])
-    ]);
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, stock: true }
+    });
+    
+    const variants = variantIds.length > 0 ? await prisma.variant.findMany({
+      where: { id: { in: variantIds } },
+      select: { id: true, productId: true, stock: true }
+    }) : [];
 
     const productMap = new Map(products.map(p => [p.id, p.stock]));
     const variantMap = new Map(variants.map(v => [`${v.productId}-${v.id}`, v.stock]));
