@@ -142,7 +142,7 @@ export default async function HomePage() {
                       height={300}
                       unoptimized
                       priority={true}
-                      className="w-full h-auto"
+                      style={{ width: '100%', height: 'auto', aspectRatio: '8/3' }}
                     />
                   </div>
                 ) : null}

@@ -202,66 +202,66 @@ export default function MainHeader({
                 <CartHeaderButton />
 
                 {/* User / Auth */}
-                {mounted && (
-                  <div className="relative">
-                    {user ? (
-                      <>
-                        <button
-                          onClick={() => setShowUserMenu(!showUserMenu)}
-                          className="flex items-center gap-2 p-1.5 pr-3 hover:bg-gray-50 rounded-full border border-gray-200 transition-colors"
-                        >
-                          <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                            {(user.user_metadata?.full_name || user.email || '').slice(0, 2).toUpperCase() || <UserIcon className="w-3.5 h-3.5 text-white" />}
-                          </div>
-                          <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
-                        </button>
-                        <AnimatePresence>
-                          {showUserMenu && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 4 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: 4 }}
-                              className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50"
-                            >
-                              <div className="p-3 border-b border-gray-50">
-                                <p className="text-sm font-semibold text-gray-800 truncate">
-                                  {user.user_metadata?.full_name || user.email?.split('@')[0]}
-                                </p>
-                                <p className="text-xs text-gray-400 truncate mt-0.5">{user.email}</p>
-                              </div>
-                              <div className="py-1">
-                                {isAdmin || isTechHatAdminEmail(user.email) ? (
-                                  <Link href="/admin/dashboard" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setShowUserMenu(false)}>
-                                    <LayoutDashboard className="w-4 h-4 text-indigo-500" /> Admin Panel
-                                  </Link>
-                                ) : (
-                                  <>
-                                    <Link href="/account" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setShowUserMenu(false)}>
-                                      <UserCircle2 className="w-4 h-4 text-blue-600" /> My Account
-                                    </Link>
-                                    <Link href="/account/orders" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setShowUserMenu(false)}>
-                                      <Package className="w-4 h-4 text-green-600" /> My Orders
-                                    </Link>
-                                  </>
-                                )}
-                                <button onClick={() => { setShowUserMenu(false); handleLogout(); }} className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors w-full">
-                                  <LogOut className="w-4 h-4" /> Logout
-                                </button>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </>
-                    ) : (
-                      <button onClick={() => setShowAuthModal(true)} className="flex items-center gap-2 p-1.5 pr-3 hover:bg-gray-50 rounded-full border border-gray-200 transition-colors">
-                        <div className="w-7 h-7 bg-gray-100 rounded-full flex items-center justify-center">
-                          <UserIcon className="w-3.5 h-3.5 text-gray-600" />
+                <div className="relative">
+                  {!mounted ? (
+                    <div className="w-[86px] h-10 bg-gray-100 rounded-full animate-pulse" />
+                  ) : user ? (
+                    <>
+                      <button
+                        onClick={() => setShowUserMenu(!showUserMenu)}
+                        className="flex items-center gap-2 p-1.5 pr-3 hover:bg-gray-50 rounded-full border border-gray-200 transition-colors"
+                      >
+                        <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                          {(user.user_metadata?.full_name || user.email || '').slice(0, 2).toUpperCase() || <UserIcon className="w-3.5 h-3.5 text-white" />}
                         </div>
-                        <span className="text-sm font-medium text-gray-700">Login</span>
+                        <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
                       </button>
-                    )}
-                  </div>
-                )}
+                      <AnimatePresence>
+                        {showUserMenu && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 4 }}
+                            className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50"
+                          >
+                            <div className="p-3 border-b border-gray-50">
+                              <p className="text-sm font-semibold text-gray-800 truncate">
+                                {user.user_metadata?.full_name || user.email?.split('@')[0]}
+                              </p>
+                              <p className="text-xs text-gray-400 truncate mt-0.5">{user.email}</p>
+                            </div>
+                            <div className="py-1">
+                              {isAdmin || isTechHatAdminEmail(user.email) ? (
+                                <Link href="/admin/dashboard" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setShowUserMenu(false)}>
+                                  <LayoutDashboard className="w-4 h-4 text-indigo-500" /> Admin Panel
+                                </Link>
+                              ) : (
+                                <>
+                                  <Link href="/account" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setShowUserMenu(false)}>
+                                    <UserCircle2 className="w-4 h-4 text-blue-600" /> My Account
+                                  </Link>
+                                  <Link href="/account/orders" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setShowUserMenu(false)}>
+                                    <Package className="w-4 h-4 text-green-600" /> My Orders
+                                  </Link>
+                                </>
+                              )}
+                              <button onClick={() => { setShowUserMenu(false); handleLogout(); }} className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors w-full">
+                                <LogOut className="w-4 h-4" /> Logout
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </>
+                  ) : (
+                    <button onClick={() => setShowAuthModal(true)} className="flex items-center gap-2 p-1.5 pr-3 hover:bg-gray-50 rounded-full border border-gray-200 transition-colors">
+                      <div className="w-7 h-7 bg-gray-100 rounded-full flex items-center justify-center">
+                        <UserIcon className="w-3.5 h-3.5 text-gray-600" />
+                      </div>
+                      <span className="text-sm font-medium text-gray-700">Login</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
