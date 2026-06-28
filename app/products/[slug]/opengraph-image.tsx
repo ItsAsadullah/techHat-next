@@ -52,7 +52,7 @@ export default async function Image({ params }: { params: { slug: string } }) {
           fontFamily: 'sans-serif',
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', width: '55%', pr: '40px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '55%', paddingRight: '40px' }}>
           <div style={{ fontSize: 24, fontWeight: 800, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px' }}>
             {brandName}
           </div>

@@ -152,7 +152,7 @@ function ReviewDetailModal({
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg shrink-0">
               {review.user?.avatarUrl ? (
-                <Image src={review.user.avatarUrl} alt={`${review.user.name || 'User'} avatar`} width={48} height={48} className="rounded-full" />
+                <Image src={review.user.avatarUrl} alt={`${review.user.fullName || 'User'} avatar`} width={48} height={48} className="rounded-full" />
               ) : (
                 review.name.charAt(0).toUpperCase()
               )}

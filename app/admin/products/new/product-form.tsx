@@ -314,7 +314,7 @@ export default function ProductForm({ categories, brands, attributesList, catego
               brandName: brands.find(b => b.id === form.getValues('brandId'))?.name,
               templateSpecs: [],
               specs: form.getValues('productSpecs') || [],
-            } as Record<string, unknown>}
+            } as any}
           />
         )}
 

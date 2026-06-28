@@ -38,7 +38,7 @@ function publicImageUrl(url: string | undefined | null): string | null {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  let branding = { siteLogo: '', siteFavicon: '' };
+  let branding = { siteLogo: '', siteFavicon: '', siteOgImage: '' };
   let store = { storeName: 'TechHat', tagline: 'Your one-stop shop for premium electronics and gadgets.' };
   
   try { 
@@ -92,7 +92,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const brandingDefaults = { siteLogo: '', siteFavicon: '', topbarHotline: '', topbarDelivery: '', topbarShowDelivery: true };
+  const brandingDefaults = { siteLogo: '', siteFavicon: '', siteOgImage: '', topbarHotline: '', topbarDelivery: '', topbarShowDelivery: true };
   const storeSettingsDefaults = {
     storeName: 'TechHat', tagline: '', phone: '', altPhone: '',
     email: '', website: '', address: '', city: '', country: '',

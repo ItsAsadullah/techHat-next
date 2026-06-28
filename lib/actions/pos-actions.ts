@@ -220,7 +220,7 @@ export async function findProductByBarcode(barcode: string): Promise<POSProduct 
     } as any;
 
     // 1. Try finding by product level first (much faster than OR across relations)
-    let product = await prisma.product.findFirst({
+    let product: any = await prisma.product.findFirst({
       where: {
         status: 'ACTIVE',
         OR: [

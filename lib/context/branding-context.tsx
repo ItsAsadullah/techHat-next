@@ -6,6 +6,7 @@ import type { BrandingSettings } from '@/lib/actions/invoice-settings-actions';
 const defaults: BrandingSettings = {
   siteLogo: '',
   siteFavicon: '',
+  siteOgImage: '',
   topbarHotline: '01700-000000',
   topbarDelivery: 'Free Delivery on Orders Over ৳2,000',
   topbarShowDelivery: true,
