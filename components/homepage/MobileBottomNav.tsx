@@ -223,7 +223,7 @@ export default function MobileBottomNav({ categories = [], branding }: MobileBot
                   </div>
                 )}
               </Link>
-              <button onClick={() => { setMenuOpen(false); setActiveTab(null); }} className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
+              <button onClick={() => { setMenuOpen(false); setActiveTab(null); }} className="p-2 rounded-full hover:bg-gray-100 text-gray-500" aria-label="Close menu">
                 <X className="w-5 h-5" />
               </button>
             </div>

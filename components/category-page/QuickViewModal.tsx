@@ -81,7 +81,7 @@ export default function QuickViewModal({ product, onClose }: Props) {
                       selectedImg === i ? 'border-primary' : 'border-transparent hover:border-muted-foreground/30'
                     )}
                   >
-                    <Image src={src} alt="" fill className="object-cover" sizes="48px" />
+                    <Image src={src} alt="Product image thumbnail" fill className="object-cover" sizes="48px" />
                   </button>
                 ))}
               </div>

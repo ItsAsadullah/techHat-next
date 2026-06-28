@@ -293,7 +293,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string; onSubmitted
                   <div className="flex items-center gap-3 flex-wrap">
                     {images.map((img, i) => (
                       <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 group">
-                        <Image src={img} alt="" fill sizes="96px" className="object-cover" />
+                        <Image src={img} alt="Review image thumbnail" fill sizes="96px" className="object-cover" />
                         <button
                           type="button"
                           onClick={() => removeImage(i)}
@@ -417,7 +417,7 @@ function ReviewCard({ review }: { review: ReviewData }) {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden">
               {avatar ? (
-                <Image src={avatar} alt="" width={40} height={40} className="rounded-full object-cover" />
+                <Image src={avatar} alt="User avatar" width={40} height={40} className="rounded-full object-cover" />
               ) : (
                 <User className="w-5 h-5" />
               )}
@@ -454,7 +454,7 @@ function ReviewCard({ review }: { review: ReviewData }) {
                 onClick={() => openImageGallery(index)}
                 className="relative w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition-colors"
               >
-                <Image src={img.imageUrl} alt="" fill sizes="400px" className="object-cover" />
+                <Image src={img.imageUrl} alt="Review image enlarged" fill sizes="400px" className="object-cover" />
               </button>
             ))}
           </div>
@@ -497,7 +497,7 @@ function ReviewCard({ review }: { review: ReviewData }) {
             >
               <Image
                 src={imagePreview}
-                alt=""
+                alt="Selected review image"
                 width={1200}
                 height={800}
                 className="rounded-2xl object-contain mx-auto max-h-[85vh] w-auto"

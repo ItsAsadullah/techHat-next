@@ -97,6 +97,8 @@ export default function EnterpriseFooter() {
                 <img
                   src={siteLogo}
                   alt="Logo"
+                  width={160}
+                  height={40}
                   style={{ maxHeight: '2.5rem', width: 'auto' }}
                   className="object-contain"
                   loading="lazy"

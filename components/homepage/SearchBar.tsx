@@ -183,7 +183,7 @@ export default function SearchBar() {
           onChange={(e) => handleChange(e.target.value)}
           onFocus={() => setIsOpen(true)}
           placeholder="Search products, brands, model..."
-          className="min-w-0 flex-1 bg-transparent px-2 text-sm text-gray-800 outline-none placeholder:text-gray-400"
+          className="min-w-0 flex-1 bg-transparent px-2 text-sm text-gray-800 outline-none placeholder:text-gray-500"
           autoComplete="off"
         />
         <input
@@ -359,7 +359,7 @@ export default function SearchBar() {
                       {p.offerPrice ? (
                         <>
                           <span className="text-sm font-bold text-blue-600">৳{p.offerPrice.toLocaleString()}</span>
-                          <span className="text-xs text-gray-400 line-through ml-1">৳{p.price.toLocaleString()}</span>
+                          <span className="text-xs text-gray-500 line-through ml-1">৳{p.price.toLocaleString()}</span>
                         </>
                       ) : (
                         <span className="text-sm font-bold text-gray-800">৳{p.price.toLocaleString()}</span>
@@ -389,7 +389,7 @@ export default function SearchBar() {
               <p className="text-sm text-gray-500">
                 {imagePreview ? 'No visually similar products found' : `No results found for "${query}"`}
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 {imagePreview ? 'Try a clearer product photo' : 'Try searching with different keywords'}
               </p>
             </div>

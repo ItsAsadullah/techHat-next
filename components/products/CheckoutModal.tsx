@@ -487,7 +487,7 @@ export default function CheckoutModal({ isOpen, onClose, items }: CheckoutModalP
                       <div key={idx} className="flex items-center gap-3 bg-gray-50 rounded-xl p-3">
                         <div className="w-12 h-12 rounded-lg bg-white border border-gray-200 overflow-hidden relative shrink-0">
                           {item.image ? (
-                            <Image src={item.image} alt="" fill className="object-cover" sizes="48px" />
+                            <Image src={item.image} alt={item.productName || "Product image"} fill className="object-cover" sizes="48px" />
                           ) : (
                             <Package className="w-5 h-5 text-gray-300 m-auto mt-3" />
                           )}

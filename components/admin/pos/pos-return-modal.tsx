@@ -291,7 +291,7 @@ export function POSReturnModal({ isOpen, onClose, onReturnComplete }: POSReturnM
                           <td className="p-4">
                             <div className="flex items-center gap-3">
                               {item.variant?.image ? (
-                                <Image src={item.variant.image} alt="" width={40} height={40} className="rounded-lg object-cover bg-gray-100" />
+                                <Image src={item.variant.image} alt={item.productName || "Product image"} width={40} height={40} className="rounded-lg object-cover bg-gray-100" />
                               ) : (
                                 <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
                                   <Package className="w-5 h-5 text-gray-400" />
