@@ -342,7 +342,7 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
 
         {/* ════ SIDEBAR ════ */}
         <aside className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-transform duration-300 print:hidden",
+          "fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-transform duration-300 print:hidden shrink-0",
           "lg:static lg:translate-x-0 lg:w-64 lg:z-auto",
           drawerOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}>
@@ -483,9 +483,9 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
 
         {/* ════ RIGHT SIDEBAR (COPILOT) ════ */}
         <aside className={cn(
-          "fixed inset-y-0 right-0 z-40 w-[350px] border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-all duration-300 print:hidden shadow-2xl 2xl:shadow-none",
+          "fixed inset-y-0 right-0 z-40 w-[350px] border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-all duration-300 print:hidden shadow-2xl 2xl:shadow-none shrink-0",
           "2xl:static 2xl:z-auto",
-          copilotOpen ? "translate-x-0 2xl:mr-0" : "translate-x-full 2xl:translate-x-0 2xl:-mr-[350px]"
+          copilotOpen ? "translate-x-0 2xl:mr-0" : "translate-x-full 2xl:-mr-[350px]"
         )}>
           {/* Edge Toggle Handle */}
           <button
