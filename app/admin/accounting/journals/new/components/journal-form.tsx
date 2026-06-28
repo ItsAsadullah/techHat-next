@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,10 @@ import { Plus, Trash2, Save, AlertTriangle } from 'lucide-react';
 import { createJournalEntry } from '@/lib/actions/accounting-actions';
 import { format } from 'date-fns';
 
-export function JournalForm({ accounts }: { accounts: any[] }) {
+type JournalItem = { accountId: string; description: string; debit: number; credit: number };
+type Account = { id: string; code: string; name: string };
+
+export function JournalForm({ accounts }: { accounts: Account[] }) {
   const router = useRouter();
   
   const [loading, setLoading] = useState(false);
@@ -27,16 +30,44 @@ export function JournalForm({ accounts }: { accounts: any[] }) {
     { accountId: '', description: '', debit: 0, credit: 0 }
   ]);
 
+  useEffect(() => {
+    const handleAiFill = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const data = customEvent.detail;
+      if (!data) return;
+      
+      if (data.date) setDate(data.date);
+      if (data.reference) setReference(data.reference);
+      if (data.notes) setNotes(data.notes);
+      
+      if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+        // Ensure missing fields are populated
+        const formattedItems: JournalItem[] = data.items.map((item: Partial<JournalItem>) => ({
+          accountId: item.accountId || '',
+          description: item.description || '',
+          debit: Number(item.debit) || 0,
+          credit: Number(item.credit) || 0,
+        }));
+        setItems(formattedItems);
+      }
+      
+      toast.success('Form magically auto-filled by AI! 🪄');
+    };
+
+    window.addEventListener('ai-fill-journal', handleAiFill);
+    return () => window.removeEventListener('ai-fill-journal', handleAiFill);
+  }, []);
+
   const handleAddItem = () => setItems([...items, { accountId: '', description: '', debit: 0, credit: 0 }]);
   const handleRemoveItem = (index: number) => setItems(items.filter((_, i) => i !== index));
 
-  const handleItemChange = (index: number, field: string, value: any) => {
-    const newItems = [...items];
-    (newItems[index] as any)[field] = value;
+  const handleItemChange = (index: number, field: keyof JournalItem, value: string | number) => {
+    const newItems = [...items] as JournalItem[];
+    (newItems[index] as Record<string, string | number>)[field] = value;
     
     // Auto-balance logic: if typing in debit, clear credit and vice versa
-    if (field === 'debit' && value > 0) newItems[index].credit = 0;
-    if (field === 'credit' && value > 0) newItems[index].debit = 0;
+    if (field === 'debit' && typeof value === 'number' && value > 0) newItems[index].credit = 0;
+    if (field === 'credit' && typeof value === 'number' && value > 0) newItems[index].debit = 0;
     
     setItems(newItems);
   };

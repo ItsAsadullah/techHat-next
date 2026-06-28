@@ -1,7 +1,12 @@
 'use client';
 
 import React from 'react';
-import Barcode from 'react-barcode';
+import dynamic from 'next/dynamic';
+
+const Barcode = dynamic(() => import('react-barcode'), {
+  ssr: false,
+  loading: () => <div style={{ height: '30px', width: '100px', backgroundColor: '#f3f4f6' }} />
+});
 
 export interface GRNLabelPrinterProps {
   grnItems: any[];

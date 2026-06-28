@@ -2,6 +2,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
@@ -28,7 +29,7 @@ interface OrderSummary {
   items: { productName: string; quantity: number; unitPrice: number }[];
 }
 
-const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+const statusConfig: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
   PENDING:    { label: 'Pending',    color: 'text-yellow-600 bg-yellow-50 border-yellow-200',  icon: Clock },
   CONFIRMED:  { label: 'Confirmed',  color: 'text-blue-600   bg-blue-50   border-blue-200',    icon: CheckCircle2 },
   PROCESSING: { label: 'Processing', color: 'text-indigo-600 bg-indigo-50 border-indigo-200',  icon: Package },
@@ -53,7 +54,7 @@ const quickLinks = [
 ];
 
 export default function AccountOverviewPage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [stats, setStats] = useState({ total: 0, active: 0, delivered: 0, cancelled: 0 });
   const [loading, setLoading] = useState(true);
@@ -84,7 +85,7 @@ export default function AccountOverviewPage() {
             cancelled: all.filter(o => o.status === 'CANCELLED').length,
           });
         }
-      } catch (_) {
+      } catch {
         // API not available; stats stay 0
       }
       setLoading(false);

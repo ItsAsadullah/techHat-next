@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, startTransition } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useBranding } from '@/lib/context/branding-context';
@@ -28,12 +28,18 @@ import {
   BookOpen,
   RotateCcw,
   Shield,
+  Activity,
+  Sparkles,
+  ChevronLeft,
+  FileText,
+  Building2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { GlobalScannerProvider, useGlobalScanner } from '@/components/admin/global-scanner-provider';
 import usePerformanceMonitor from '@/lib/hooks/use-performance-monitor';
+import { ErpCopilot } from '@/components/admin/erp-copilot';
 
 // Programmatically lock body scroll and hide main header for Admin
 function AdminBodyLock({ isPOS }: { isPOS: boolean }) {
@@ -177,7 +183,7 @@ function ScannerStatus() {
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => { startTransition(() => setMounted(true)); }, []);
   if (!mounted) return <div className="w-8 h-8" />;
   const isDark = theme === 'dark';
   return (
@@ -200,6 +206,7 @@ interface AdminLayoutClientProps {
 
 export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: AdminLayoutClientProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
   const { siteLogo } = useBranding();
   const router = useRouter();
   const pathname = usePathname();
@@ -210,7 +217,7 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
   usePerformanceMonitor();
 
   // Close drawer on route change
-  useEffect(() => { setDrawerOpen(false); }, [pathname]);
+  useEffect(() => { startTransition(() => setDrawerOpen(false)); }, [pathname]);
 
   // Handle Auth Redirects Immediately (no loading spinners)
   useEffect(() => {
@@ -271,6 +278,10 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
     {
       category: "Finance & Accounting",
       items: [
+        { name: 'Finance Dashboard', href: '/admin/finance', icon: BarChart3, roles: ['ADMIN'] },
+        { name: 'Cash Flow',   href: '/admin/finance/cash-flow', icon: Activity, roles: ['ADMIN'] },
+        { name: 'Income Statement', href: '/admin/finance/income-statement', icon: FileText, roles: ['ADMIN'] },
+        { name: 'Balance Sheet', href: '/admin/finance/balance-sheet', icon: Building2, roles: ['ADMIN'] },
         { name: 'Expenses',    href: '/admin/expenses',  icon: Wallet,          roles: ['ADMIN','MANAGER'] },
         { name: 'Payables',    href: '/admin/reports/payables', icon: Wallet,   roles: ['ADMIN','MANAGER'] },
         { name: 'Accounting',  href: '/admin/accounting',icon: BookOpen,        roles: ['ADMIN'] },
@@ -441,6 +452,13 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
 
             <div className="flex items-center gap-2 shrink-0">
               <ScannerStatus />
+              <button 
+                onClick={() => setCopilotOpen(!copilotOpen)}
+                className="hidden lg:flex 2xl:hidden w-8 h-8 items-center justify-center rounded-full border border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+                title="Toggle Copilot"
+              >
+                <Sparkles className="w-4 h-4" />
+              </button>
               <ThemeToggle />
               <div className="hidden lg:flex items-center gap-2 ml-1">
                 <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
@@ -463,6 +481,30 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
           </main>
         </div>
 
+        {/* ════ RIGHT SIDEBAR (COPILOT) ════ */}
+        <aside className={cn(
+          "fixed inset-y-0 right-0 z-40 w-[350px] border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-all duration-300 print:hidden shadow-2xl 2xl:shadow-none",
+          "2xl:static 2xl:z-auto",
+          copilotOpen ? "translate-x-0 2xl:mr-0" : "translate-x-full 2xl:translate-x-0 2xl:-mr-[350px]"
+        )}>
+          {/* Edge Toggle Handle */}
+          <button
+            onClick={() => setCopilotOpen(!copilotOpen)}
+            className="hidden md:flex absolute top-1/2 -translate-y-1/2 -left-[28px] w-[28px] h-16 bg-white dark:bg-gray-900 border border-r-0 border-gray-200 dark:border-gray-800 rounded-l-xl items-center justify-center shadow-[-4px_0_10px_rgba(0,0,0,0.05)] text-gray-500 hover:text-indigo-600 transition-colors z-50 group"
+          >
+            {copilotOpen ? <ChevronRight className="w-5 h-5 group-hover:scale-110 transition-transform" /> : <ChevronLeft className="w-5 h-5 group-hover:scale-110 transition-transform" />}
+          </button>
+
+          {/* Mobile close button for copilot */}
+          <button 
+            onClick={() => setCopilotOpen(false)} 
+            className="2xl:hidden absolute top-4 right-4 z-50 p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 md:hidden"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          <ErpCopilot staffRole={staffRole} staffName={staffName} onClose={() => setCopilotOpen(false)} />
+        </aside>
+
         {/* ════ MOBILE BOTTOM NAV ════ */}
         <nav id="admin-bottom-nav" className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
           <div className="flex items-stretch h-14">
@@ -481,6 +523,17 @@ export function AdminLayoutClient({ children, staffRole, staffName, isAuthed }: 
                 </Link>
               );
             })}
+            <button
+              onClick={() => setCopilotOpen(v => !v)}
+              className={cn(
+                "flex-1 flex flex-col items-center justify-center gap-0.5 relative text-[10px] font-semibold transition-colors",
+                copilotOpen ? "text-indigo-600 dark:text-indigo-400" : "text-gray-400 dark:text-gray-500"
+              )}
+            >
+              {copilotOpen && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-indigo-600 rounded-full" />}
+              <Sparkles className="w-5 h-5" />
+              <span>Copilot</span>
+            </button>
             <button
               onClick={() => setDrawerOpen(v => !v)}
               className={cn(

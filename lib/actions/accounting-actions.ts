@@ -35,6 +35,39 @@ export async function createChartOfAccount(data: {
   }
 }
 
+export async function suggestAccountCode(type: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE') {
+  try {
+    const baseCode: Record<string, number> = {
+      'ASSET': 1000,
+      'LIABILITY': 2000,
+      'EQUITY': 3000,
+      'REVENUE': 4000,
+      'EXPENSE': 5000
+    };
+    const base = baseCode[type];
+    if (!base) return { success: false, error: 'Invalid type' };
+
+    const maxAccount = await prisma.chartOfAccount.findFirst({
+      where: { type },
+      orderBy: { code: 'desc' }
+    });
+
+    let nextCode = base;
+    if (maxAccount && !isNaN(parseInt(maxAccount.code))) {
+      // Add 10 to the highest existing code for this type
+      const maxCodeNum = parseInt(maxAccount.code);
+      if (maxCodeNum >= base && maxCodeNum < base + 1000) {
+        nextCode = maxCodeNum + 10;
+      }
+    }
+
+    return { success: true, data: nextCode.toString() };
+  } catch (error: any) {
+    console.error('Failed to suggest account code:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // ─── Journal Entries ───
 
 export async function getJournalEntries() {

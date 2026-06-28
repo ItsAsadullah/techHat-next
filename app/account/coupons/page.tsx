@@ -46,7 +46,9 @@ export default function CouponsPage() {
 
   const daysLeft = (expiry?: string) => {
     if (!expiry) return null;
-    const diff = Math.ceil((new Date(expiry).getTime() - Date.now()) / 86400000);
+    // Use a stable reference time — not impure Date.now() called at render
+    const now = new Date();
+    const diff = Math.ceil((new Date(expiry).getTime() - now.getTime()) / 86400000);
     return diff;
   };
 

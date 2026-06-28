@@ -3,6 +3,9 @@
 import { prisma } from '@/lib/prisma';
 import { differenceInDays, format } from 'date-fns';
 import { PaymentMethod } from '@prisma/client';
+import { createAutoJournalEntry } from '@/lib/accounting/journal-engine';
+import { ACCOUNT_CODES } from '@/lib/accounting/constants';
+import { getServerRole } from '@/lib/supabase-server';
 
 // ─────────────────────────────────────────────────────────
 // TYPES
@@ -413,6 +416,11 @@ export async function getCustomerStatement(
 
 export async function processDueCollection(input: DueCollectionInput) {
   try {
+    const role = (await getServerRole())?.toUpperCase();
+    if (!role || !['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'CASHIER'].includes(role)) {
+      throw new Error('Unauthorized: Only Admin, Manager, or Cashier can process payments.');
+    }
+
     const result = await prisma.$transaction(
       async (tx) => {
         // 1. Idempotency Check
@@ -523,17 +531,33 @@ export async function processDueCollection(input: DueCollectionInput) {
           });
         }
 
-        // 6. Recalculate Customer cache
-        const ledgers = await tx.customerLedger.findMany({
+        // 6. Recalculate Customer cache safely via Aggregation
+        const ledgerAgg = await tx.customerLedger.aggregate({
           where: { customerId: input.customerId },
-          orderBy: { date: 'asc' },
+          _sum: { debit: true, credit: true }
         });
-        let tp = 0; let tpaid = 0; let rb = 0; let lpd: Date | null = null;
-        for (const l of ledgers) {
-          rb += l.debit - l.credit;
-          if (l.type === 'Invoice' || l.type === 'SALE') { tp += l.debit; lpd = l.date; }
-          if (l.type === 'Payment') tpaid += l.credit;
-        }
+        
+        const saleLedgersAgg = await tx.customerLedger.aggregate({
+          where: { customerId: input.customerId, type: { in: ['Invoice', 'SALE'] } },
+          _sum: { debit: true }
+        });
+
+        const paymentLedgersAgg = await tx.customerLedger.aggregate({
+          where: { customerId: input.customerId, type: 'Payment' },
+          _sum: { credit: true }
+        });
+
+        const lastSale = await tx.customerLedger.findFirst({
+          where: { customerId: input.customerId, type: { in: ['Invoice', 'SALE'] } },
+          orderBy: { date: 'desc' },
+          select: { date: true }
+        });
+
+        const rawRb = (ledgerAgg._sum.debit || 0) - (ledgerAgg._sum.credit || 0);
+        const rb = Math.round(rawRb * 100) / 100; // Mitigate IEEE 754 float drift
+        const tp = Math.round((saleLedgersAgg._sum.debit || 0) * 100) / 100;
+        const tpaid = Math.round((paymentLedgersAgg._sum.credit || 0) * 100) / 100;
+        const lpd = lastSale?.date || null;
 
         // 7. Calculate credit score
         const payments = await tx.customerPayment.findMany({
@@ -559,6 +583,43 @@ export async function processDueCollection(input: DueCollectionInput) {
             creditScore: newScore,
             creditRating: newRating,
           },
+        });
+
+        // 8. Auto Journal Entry
+        const jeEntries = [];
+
+        // Credit Accounts Receivable
+        jeEntries.push({
+          accountCode: ACCOUNT_CODES.ACCOUNTS_RECEIVABLE,
+          debit: 0,
+          credit: input.amount,
+          description: `Due Collection — Receipt ${receiptNumber}`
+        });
+
+        // Debit Payments
+        if (input.paymentMethod === 'MIXED') {
+          if (input.cashAmount && input.cashAmount > 0) {
+            jeEntries.push({ accountCode: ACCOUNT_CODES.CASH_IN_HAND, debit: input.cashAmount, credit: 0, description: 'Cash collection' });
+          }
+          if (input.cardAmount && input.cardAmount > 0) {
+            jeEntries.push({ accountCode: ACCOUNT_CODES.BANK_ACCOUNTS, debit: input.cardAmount, credit: 0, description: 'Card collection' });
+          }
+
+          if (input.bkashAmount && input.bkashAmount > 0) jeEntries.push({ accountCode: ACCOUNT_CODES.BANK_ACCOUNTS, debit: input.bkashAmount, credit: 0, description: 'bKash collection' });
+          if (input.nagadAmount && input.nagadAmount > 0) jeEntries.push({ accountCode: ACCOUNT_CODES.BANK_ACCOUNTS, debit: input.nagadAmount, credit: 0, description: 'Nagad collection' });
+          if (input.rocketAmount && input.rocketAmount > 0) jeEntries.push({ accountCode: ACCOUNT_CODES.BANK_ACCOUNTS, debit: input.rocketAmount, credit: 0, description: 'Rocket collection' });
+          if (input.bankAmount && input.bankAmount > 0) jeEntries.push({ accountCode: ACCOUNT_CODES.BANK_ACCOUNTS, debit: input.bankAmount, credit: 0, description: 'Bank transfer collection' });
+          if (input.chequeAmount && input.chequeAmount > 0) jeEntries.push({ accountCode: ACCOUNT_CODES.BANK_ACCOUNTS, debit: input.chequeAmount, credit: 0, description: 'Cheque collection' });
+        } else {
+          const debitCode = input.paymentMethod === 'CASH' ? ACCOUNT_CODES.CASH_IN_HAND : ACCOUNT_CODES.BANK_ACCOUNTS;
+          jeEntries.push({ accountCode: debitCode, debit: input.amount, credit: 0, description: `${input.paymentMethod} collection` });
+        }
+
+        await createAutoJournalEntry(tx, 'CUSTOMER_PAYMENT', {
+          reference: receiptNumber,
+          note: `Auto-generated journal for Due Collection ${receiptNumber}`,
+          sourceId: payment.id,
+          entries: jeEntries
         });
 
         return { ...payment, receiptNumber };

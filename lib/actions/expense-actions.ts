@@ -1,9 +1,10 @@
 'use server';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
-
-const db = prisma as any
+import { createAutoJournalEntry, createContraEntry } from '@/lib/accounting/journal-engine';
+import { ACCOUNT_CODES } from '@/lib/accounting/constants';
 
 // ═══════════════ TYPES ═══════════════
 
@@ -80,8 +81,8 @@ export async function getExpenseCategories() {
       },
     });
     return { success: true, data: categories };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
@@ -105,9 +106,9 @@ export async function createExpenseCategory(input: ExpenseCategoryInput) {
     });
     revalidatePath('/admin/expenses');
     return { success: true, data: category };
-  } catch (error: any) {
-    if ((error as any)?.code === 'P2002') {
-      if ((error as any)?.meta?.target?.includes('name')) {
+  } catch (error: unknown) {
+    if ((error as { code?: string })?.code === 'P2002') {
+      if ((error as { meta?: { target?: string[] } })?.meta?.target?.includes('name')) {
         return { success: false, error: 'এই নামের ক্যাটাগরি আগে থেকেই আছে' };
       }
       // slug collision — retry with a unique slug
@@ -152,8 +153,8 @@ export async function updateExpenseCategory(id: string, input: Partial<ExpenseCa
     });
     revalidatePath('/admin/expenses');
     return { success: true, data: category };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
@@ -166,8 +167,8 @@ export async function deleteExpenseCategory(id: string) {
     await prisma.expenseCategory.delete({ where: { id } });
     revalidatePath('/admin/expenses');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
@@ -175,55 +176,135 @@ export async function deleteExpenseCategory(id: string) {
 
 export async function createExpense(input: ExpenseInput) {
   try {
-    const expense = await prisma.expense.create({
-      data: {
-        categoryId: input.categoryId,
-        title: input.title,
-        amount: input.amount,
-        date: input.date ? new Date(input.date) : new Date(),
-        note: input.note || null,
-        attachment: input.attachment || null,
-        reference: input.reference || null,
-        paymentMethod: input.paymentMethod || 'CASH',
-        paidTo: input.paidTo || null,
-        isRecurring: input.isRecurring || false,
-        vendorId: input.vendorId || null,
-      },
-      include: { category: true },
+    const expense = await prisma.$transaction(async (tx) => {
+      const newExpense = await tx.expense.create({
+        data: {
+          categoryId: input.categoryId,
+          title: input.title,
+          amount: input.amount,
+          date: input.date ? new Date(input.date) : new Date(),
+          note: input.note || null,
+          attachment: input.attachment || null,
+          reference: input.reference || null,
+          paymentMethod: input.paymentMethod || 'CASH',
+          paidTo: input.paidTo || null,
+          isRecurring: input.isRecurring || false,
+          vendorId: input.vendorId || null,
+        },
+        include: { category: true },
+      });
+
+      // Auto Journal Entry
+      const jeEntries = [];
+      
+      // Debit Expense
+      jeEntries.push({
+        accountCode: ACCOUNT_CODES.OPERATING_EXPENSES,
+        debit: input.amount,
+        credit: 0,
+        description: `Expense: ${input.title}`
+      });
+
+      // Credit Cash/Bank
+      const creditCode = (input.paymentMethod || 'CASH') === 'CASH' ? ACCOUNT_CODES.CASH_IN_HAND : ACCOUNT_CODES.BANK_ACCOUNTS;
+      jeEntries.push({
+        accountCode: creditCode,
+        debit: 0,
+        credit: input.amount,
+        description: `Payment for expense: ${input.title}`
+      });
+
+      await createAutoJournalEntry(tx, 'EXPENSE', {
+        reference: `EXP-${newExpense.id.slice(-6)}`,
+        note: `Auto-generated journal for Expense: ${input.title}`,
+        sourceId: newExpense.id,
+        entries: jeEntries,
+        date: newExpense.date,
+      });
+
+      return newExpense;
     });
+
     revalidatePath('/admin/expenses');
     return { success: true, data: expense };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
 export async function updateExpense(id: string, input: Partial<ExpenseInput>) {
   try {
-    const data: any = {};
-    if (input.categoryId !== undefined) data.categoryId = input.categoryId;
-    if (input.title !== undefined) data.title = input.title;
-    if (input.amount !== undefined) data.amount = input.amount;
-    if (input.date !== undefined) data.date = new Date(input.date);
-    if (input.note !== undefined) data.note = input.note;
-    if (input.attachment !== undefined) data.attachment = input.attachment;
-    if (input.reference !== undefined) data.reference = input.reference;
-    if (input.paymentMethod !== undefined) data.paymentMethod = input.paymentMethod;
-    if (input.paidTo !== undefined) data.paidTo = input.paidTo;
-    if (input.isRecurring !== undefined) data.isRecurring = input.isRecurring;
-    if (input.status !== undefined) data.status = input.status;
-    if (input.addedBy !== undefined) data.addedBy = input.addedBy;
-    if (input.staffId !== undefined) data.staffId = input.staffId;
+    const expense = await prisma.$transaction(async (tx) => {
+      const oldExpense = await tx.expense.findUnique({ where: { id } });
+      if (!oldExpense) throw new Error("Expense not found");
 
-    const expense = await prisma.expense.update({
-      where: { id },
-      data,
-      include: { category: true },
+      const data: any = {};
+      if (input.categoryId !== undefined) data.categoryId = input.categoryId;
+      if (input.title !== undefined) data.title = input.title;
+      if (input.amount !== undefined) data.amount = input.amount;
+      if (input.date !== undefined) data.date = new Date(input.date);
+      if (input.note !== undefined) data.note = input.note;
+      if (input.attachment !== undefined) data.attachment = input.attachment;
+      if (input.reference !== undefined) data.reference = input.reference;
+      if (input.paymentMethod !== undefined) data.paymentMethod = input.paymentMethod;
+      if (input.paidTo !== undefined) data.paidTo = input.paidTo;
+      if (input.isRecurring !== undefined) data.isRecurring = input.isRecurring;
+      if (input.status !== undefined) data.status = input.status;
+      if (input.addedBy !== undefined) data.addedBy = input.addedBy;
+      if (input.staffId !== undefined) data.staffId = input.staffId;
+  
+      const updatedExpense = await tx.expense.update({
+        where: { id },
+        data,
+        include: { category: true },
+      });
+
+      const amountChanged = input.amount !== undefined && input.amount !== oldExpense.amount;
+      const titleChanged = input.title !== undefined && input.title !== oldExpense.title;
+      const paymentMethodChanged = input.paymentMethod !== undefined && input.paymentMethod !== oldExpense.paymentMethod;
+      
+      if (amountChanged || titleChanged || paymentMethodChanged) {
+        const relatedJournal = await tx.journalEntry.findFirst({
+          where: { sourceId: id, source: 'EXPENSE' },
+          select: { entryNumber: true },
+        });
+
+        if (relatedJournal) {
+          await createContraEntry(tx, relatedJournal.entryNumber, `Auto-reversal for updated expense ${id}`);
+
+          const jeEntries = [];
+          
+          jeEntries.push({
+            accountCode: ACCOUNT_CODES.OPERATING_EXPENSES,
+            debit: updatedExpense.amount,
+            credit: 0,
+            description: `Expense: ${updatedExpense.title}`
+          });
+
+          const creditCode = (updatedExpense.paymentMethod || 'CASH') === 'CASH' ? ACCOUNT_CODES.CASH_IN_HAND : ACCOUNT_CODES.BANK_ACCOUNTS;
+          jeEntries.push({
+            accountCode: creditCode,
+            debit: 0,
+            credit: updatedExpense.amount,
+            description: `Payment for expense: ${updatedExpense.title}`
+          });
+
+          await createAutoJournalEntry(tx, 'EXPENSE', {
+            reference: `EXP-${updatedExpense.id.slice(-6)}`,
+            note: `Auto-generated journal for updated Expense: ${updatedExpense.title}`,
+            sourceId: updatedExpense.id,
+            entries: jeEntries,
+            date: updatedExpense.date,
+          });
+        }
+      }
+      return updatedExpense;
     });
+
     revalidatePath('/admin/expenses');
     return { success: true, data: expense };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
@@ -236,18 +317,28 @@ export async function updateExpenseStatus(id: string, status: string) {
     });
     revalidatePath('/admin/expenses');
     return { success: true, data: expense };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
 export async function deleteExpense(id: string) {
   try {
-    await prisma.expense.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      // Reverse the auto-generated journal entry to keep ledger correct
+      const relatedJournal = await tx.journalEntry.findFirst({
+        where: { sourceId: id, source: 'EXPENSE' },
+        select: { entryNumber: true },
+      });
+      if (relatedJournal) {
+        await createContraEntry(tx, relatedJournal.entryNumber, `Auto-reversal for deleted expense ${id}`);
+      }
+      await tx.expense.delete({ where: { id } });
+    });
     revalidatePath('/admin/expenses');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
@@ -281,14 +372,14 @@ export async function getExpenses(filters: ExpenseFilters = {}) {
     }
 
     const [expenses, total] = await Promise.all([
-      db.expense.findMany({
+      prisma.expense.findMany({
         where,
         include: { category: true },
         orderBy: { date: 'desc' },
         skip,
         take: limit,
       }),
-      db.expense.count({ where }),
+      prisma.expense.count({ where }),
     ]);
 
     return {
@@ -301,8 +392,8 @@ export async function getExpenses(filters: ExpenseFilters = {}) {
         totalPages: Math.ceil(total / limit),
       },
     };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message, data: [], pagination: { total: 0, page: 1, limit: 20, totalPages: 0 } };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message, data: [], pagination: { total: 0, page: 1, limit: 20, totalPages: 0 } };
   }
 }
 
@@ -314,8 +405,8 @@ export async function getExpenseById(id: string) {
     });
     if (!expense) return { success: false, error: 'খরচ পাওয়া যায়নি' };
     return { success: true, data: expense };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
@@ -344,38 +435,38 @@ export async function getExpenseStats() {
       salaryDueBreakdown,
     ] = await Promise.all([
       // Total all time
-      db.expense.aggregate({ _sum: { amount: true } }),
+      prisma.expense.aggregate({ _sum: { amount: true } }),
       // This month
-      db.expense.aggregate({
+      prisma.expense.aggregate({
         where: { date: { gte: startOfMonth } },
         _sum: { amount: true },
         _count: true,
       }),
       // Last month
-      db.expense.aggregate({
+      prisma.expense.aggregate({
         where: { date: { gte: startOfLastMonth, lte: endOfLastMonth } },
         _sum: { amount: true },
       }),
       // Today
-      db.expense.aggregate({
+      prisma.expense.aggregate({
         where: { date: { gte: startOfToday } },
         _sum: { amount: true },
         _count: true,
       }),
       // This year
-      db.expense.aggregate({
+      prisma.expense.aggregate({
         where: { date: { gte: startOfYear } },
         _sum: { amount: true },
       }),
       // Category breakdown this month
-      db.expense.groupBy({
+      prisma.expense.groupBy({
         by: ['categoryId'],
         where: { date: { gte: startOfMonth } },
         _sum: { amount: true },
         _count: true,
       }),
       // Monthly trend (last 6 months)
-      db.$queryRaw`
+      prisma.$queryRaw`
         SELECT 
           EXTRACT(MONTH FROM date) as month,
           EXTRACT(YEAR FROM date) as year,
@@ -387,23 +478,23 @@ export async function getExpenseStats() {
         ORDER BY year, month
       `,
       // Recent 5 expenses
-      db.expense.findMany({
+      prisma.expense.findMany({
         include: { category: true },
         orderBy: { date: 'desc' },
         take: 5,
       }),
       // This month salary total
-      db.staffSalary.aggregate({
+      prisma.staffSalary.aggregate({
         where: { month: now.getMonth() + 1, year: now.getFullYear() },
         _sum: { netSalary: true, paidAmount: true },
       }),
       // Total salary due
-      db.staffSalary.aggregate({
+      prisma.staffSalary.aggregate({
         where: { status: { in: ['PENDING', 'PARTIAL'] } },
         _sum: { dueAmount: true },
       }),
       // Per-staff due breakdown
-      db.staffSalary.findMany({
+      prisma.staffSalary.findMany({
         where: { status: { in: ['PENDING', 'PARTIAL'] } },
         select: {
           id: true,
@@ -478,8 +569,8 @@ export async function getExpenseStats() {
         })),
       },
     };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
@@ -489,24 +580,24 @@ export async function getMonthlyReport(month: number, year: number) {
     const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
 
     const [expenses, categoryBreakdown, paymentBreakdown, salaries] = await Promise.all([
-      db.expense.findMany({
+      prisma.expense.findMany({
         where: { date: { gte: startOfMonth, lte: endOfMonth } },
         include: { category: true },
         orderBy: { date: 'desc' },
       }),
-      db.expense.groupBy({
+      prisma.expense.groupBy({
         by: ['categoryId'],
         where: { date: { gte: startOfMonth, lte: endOfMonth } },
         _sum: { amount: true },
         _count: true,
       }),
-      db.expense.groupBy({
+      prisma.expense.groupBy({
         by: ['paymentMethod'],
         where: { date: { gte: startOfMonth, lte: endOfMonth } },
         _sum: { amount: true },
         _count: true,
       }),
-      db.staffSalary.findMany({
+      prisma.staffSalary.findMany({
         where: { month, year },
         include: { staff: true },
         orderBy: { staff: { name: 'asc' } },
@@ -545,8 +636,8 @@ export async function getMonthlyReport(month: number, year: number) {
         salaries,
       },
     };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
@@ -562,24 +653,24 @@ export async function getReport(params: {
     const end = new Date(params.dateTo + 'T23:59:59.999');
 
     const [expenses, categoryBreakdown, paymentBreakdown, dailyTrend] = await Promise.all([
-      db.expense.findMany({
+      prisma.expense.findMany({
         where: { date: { gte: start, lte: end } },
         include: { category: true },
         orderBy: { date: 'desc' },
       }),
-      db.expense.groupBy({
+      prisma.expense.groupBy({
         by: ['categoryId'],
         where: { date: { gte: start, lte: end } },
         _sum: { amount: true },
         _count: true,
       }),
-      db.expense.groupBy({
+      prisma.expense.groupBy({
         by: ['paymentMethod'],
         where: { date: { gte: start, lte: end } },
         _sum: { amount: true },
         _count: true,
       }),
-      db.$queryRaw`
+      prisma.$queryRaw`
         SELECT DATE(date) as day, SUM(amount)::float as total, COUNT(*)::int as count
         FROM expenses
         WHERE date >= ${start} AND date <= ${end}
@@ -664,8 +755,8 @@ export async function getReport(params: {
         yearlySalaryByMonth,
       },
     };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
@@ -680,8 +771,8 @@ export async function getStaffMembers() {
       },
     });
     return { success: true, data: staff };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
@@ -692,8 +783,8 @@ export async function getStaffByEmail(email: string) {
       select: { id: true, name: true, role: true, permissions: true },
     });
     return { success: true, data: staff ?? null };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message, data: null };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message, data: null };
   }
 }
 
@@ -714,11 +805,11 @@ export async function createStaff(input: StaffInput) {
     });
     revalidatePath('/admin/expenses');
     return { success: true, data: staff };
-  } catch (error: any) {
-    if ((error as any)?.code === 'P2002') {
+  } catch (error: unknown) {
+    if ((error as { code?: string })?.code === 'P2002') {
       return { success: false, error: 'এই ফোন নম্বর দিয়ে আগে থেকেই একজন স্টাফ আছে' };
     }
-    return { success: false, error: (error as any)?.message };
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
@@ -742,8 +833,8 @@ export async function updateStaff(id: string, input: Partial<StaffInput>) {
     });
     revalidatePath('/admin/expenses');
     return { success: true, data: staff };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
@@ -752,8 +843,8 @@ export async function deleteStaff(id: string) {
     await prisma.staff.delete({ where: { id } });
     revalidatePath('/admin/expenses');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
@@ -765,44 +856,48 @@ export async function generateMonthlySalaries(month: number, year: number) {
       where: { isActive: true },
     });
 
-    const results = [];
-
-    for (const staff of activeStaff) {
-      // Check if salary already exists
-      const existing = await prisma.staffSalary.findUnique({
-        where: {
-          staffId_month_year: {
-            staffId: staff.id,
-            month,
-            year,
-          },
-        },
-      });
-
-      if (!existing) {
-        const netSalary = staff.baseSalary;
-        const salary = await prisma.staffSalary.create({
-          data: {
-            staffId: staff.id,
-            month,
-            year,
-            basicSalary: staff.baseSalary,
-            netSalary,
-            dueAmount: netSalary,
-          },
-        });
-        results.push(salary);
-      }
+    if (activeStaff.length === 0) {
+      return { success: true, data: [], message: 'কোনো সক্রিয় স্টাফ নেই' };
     }
+
+    // ✅ Single query to get all existing salaries for this month/year (fix N+1)
+    const existingIds = new Set(
+      (await prisma.staffSalary.findMany({
+        where: { month, year, staffId: { in: activeStaff.map((s) => s.id) } },
+        select: { staffId: true },
+      })).map((s) => s.staffId)
+    );
+
+    const newStaff = activeStaff.filter((s) => !existingIds.has(s.id));
+
+    if (newStaff.length === 0) {
+      return {
+        success: true,
+        data: [],
+        message: 'সকল স্টাফের বেতন ইতিমধ্যে তৈরি হয়েছে',
+      };
+    }
+
+    // ✅ Bulk create in a single DB round-trip
+    await prisma.staffSalary.createMany({
+      data: newStaff.map((staff) => ({
+        staffId: staff.id,
+        month,
+        year,
+        basicSalary: staff.baseSalary,
+        netSalary: staff.baseSalary,
+        dueAmount: staff.baseSalary,
+      })),
+    });
 
     revalidatePath('/admin/expenses');
     return {
       success: true,
-      data: results,
-      message: `${results.length}জন স্টাফের বেতন তৈরি করা হয়েছে`,
+      data: newStaff,
+      message: `${newStaff.length}জন স্টাফের বেতন তৈরি করা হয়েছে`,
     };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
@@ -814,8 +909,8 @@ export async function getSalaries(month: number, year: number) {
       orderBy: { staff: { name: 'asc' } },
     });
     return { success: true, data: salaries };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
@@ -869,41 +964,72 @@ export async function updateSalary(id: string, input: Partial<SalaryInput> & { p
     });
     revalidatePath('/admin/expenses');
     return { success: true, data: salary };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
 export async function paySalary(id: string, amount: number, paymentMethod: string = 'CASH') {
   try {
-    const existing = await prisma.staffSalary.findUnique({ where: { id } });
-    if (!existing) return { success: false, error: 'বেতন রেকর্ড পাওয়া যায়নি' };
+    const salary = await prisma.$transaction(async (tx) => {
+      const existing = await tx.staffSalary.findUnique({ where: { id }, include: { staff: true } });
+      if (!existing) throw new Error('বেতন রেকর্ড পাওয়া যায়নি');
 
-    const newPaidAmount = existing.paidAmount + amount;
-    const newDueAmount = existing.netSalary - newPaidAmount;
+      const newPaidAmount = existing.paidAmount + amount;
+      const newDueAmount = existing.netSalary - newPaidAmount;
 
-    let status = 'PARTIAL';
-    if (newPaidAmount >= existing.netSalary) {
-      status = 'PAID';
-    } else if (newPaidAmount <= 0) {
-      status = 'PENDING';
-    }
+      let status = 'PARTIAL';
+      if (newPaidAmount >= existing.netSalary) {
+        status = 'PAID';
+      } else if (newPaidAmount <= 0) {
+        status = 'PENDING';
+      }
 
-    const salary = await prisma.staffSalary.update({
-      where: { id },
-      data: {
-        paidAmount: newPaidAmount,
-        dueAmount: Math.max(0, newDueAmount),
-        status,
-        paymentMethod,
-        paymentDate: new Date(),
-      },
-      include: { staff: true },
+      const updatedSalary = await tx.staffSalary.update({
+        where: { id },
+        data: {
+          paidAmount: newPaidAmount,
+          dueAmount: Math.max(0, newDueAmount),
+          status,
+          paymentMethod,
+          paymentDate: new Date(),
+        },
+      });
+
+      // Auto Journal Entry
+      const jeEntries = [];
+      
+      // Debit Payroll Expense
+      jeEntries.push({
+        accountCode: ACCOUNT_CODES.PAYROLL_EXPENSE,
+        debit: amount,
+        credit: 0,
+        description: `Salary Payment for ${existing.staff.name} (${existing.month}/${existing.year})`
+      });
+
+      // Credit Cash/Bank
+      const creditCode = paymentMethod === 'CASH' ? ACCOUNT_CODES.CASH_IN_HAND : ACCOUNT_CODES.BANK_ACCOUNTS;
+      jeEntries.push({
+        accountCode: creditCode,
+        debit: 0,
+        credit: amount,
+        description: `Payment for Salary: ${existing.staff.name}`
+      });
+
+      await createAutoJournalEntry(tx, 'SALARY', {
+        reference: `SAL-${updatedSalary.id.slice(-6)}`,
+        note: `Auto-generated journal for Salary Payment`,
+        sourceId: updatedSalary.id,
+        entries: jeEntries
+      });
+
+      return updatedSalary;
     });
+
     revalidatePath('/admin/expenses');
     return { success: true, data: salary };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }
 
@@ -912,7 +1038,7 @@ export async function deleteSalary(id: string) {
     await prisma.staffSalary.delete({ where: { id } });
     revalidatePath('/admin/expenses');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: (error as any)?.message };
+  } catch (error: unknown) {
+    return { success: false, error: (error as Error)?.message };
   }
 }

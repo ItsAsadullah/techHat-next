@@ -7,6 +7,11 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { PrintButton } from '@/components/admin/print-button';
 
+interface LedgerLine {
+  id: string; date: Date | string; referenceId?: string | null;
+  type: string; note?: string | null; debit: number; credit: number; runningBalance: number;
+}
+
 export default async function CustomerStatementPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ from?: string, to?: string }> }) {
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
@@ -70,7 +75,7 @@ export default async function CustomerStatementPage({ params, searchParams }: { 
                 </TableCell>
               </TableRow>
 
-              {lines.map((l: any) => (
+              {lines.map((l: LedgerLine) => (
                 <TableRow key={l.id}>
                   <TableCell>{format(new Date(l.date), 'dd MMM yyyy')}</TableCell>
                   <TableCell className="font-mono text-xs">

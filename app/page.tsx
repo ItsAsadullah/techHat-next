@@ -30,6 +30,8 @@ import {
 // ─── ISR: Revalidate every 60 seconds ──────────────────────
 export const revalidate = 60;
 
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://techhat.shop';
+
 // ─── SEO Metadata ──────────────────────────────────────────
 export const metadata: Metadata = {
   title: 'TechHat - Premium Electronics Store | Best Deals on Gadgets & Tech',
@@ -50,16 +52,9 @@ export const metadata: Metadata = {
     description: 'Your one-stop shop for premium electronics and gadgets. Free delivery on orders over ৳2,000.',
     type: 'website',
     locale: 'en_US',
-    url: 'https://techhat.com',
+    url: SITE_URL,
     siteName: 'TechHat',
-    images: [
-      {
-        url: 'https://techhat.com/og-image.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'TechHat - Premium Electronics Store',
-      },
-    ],
+    // Let layout.tsx handle the dynamic logo image for OG
   },
   twitter: {
     card: 'summary_large_image',
@@ -78,7 +73,7 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: 'https://techhat.com',
+    canonical: SITE_URL,
   },
 };
 
@@ -108,43 +103,6 @@ function WebsiteSchema() {
   );
 }
 
-function OrganizationSchema() {
-  const schema = {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'TechHat',
-    url: 'https://techhat.com',
-    logo: 'https://techhat.com/logo.png',
-    contactPoint: {
-      '@type': 'ContactPoint',
-      telephone: '+880-1700-000000',
-      contactType: 'customer service',
-      areaServed: 'BD',
-      availableLanguage: ['English', 'Bengali'],
-    },
-    sameAs: [
-      'https://facebook.com/techhat',
-      'https://twitter.com/techhat',
-      'https://instagram.com/techhat',
-      'https://youtube.com/techhat',
-    ],
-    address: {
-      '@type': 'PostalAddress',
-      streetAddress: 'House #12, Road #5, Dhanmondi',
-      addressLocality: 'Dhaka',
-      postalCode: '1205',
-      addressCountry: 'BD',
-    },
-  };
-
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-    />
-  );
-}
-
 // ─── Main Homepage ─────────────────────────────────────────
 export default async function HomePage() {
   // Fetch only the lightweight configuration data to unblock the initial render
@@ -159,7 +117,6 @@ export default async function HomePage() {
   return (
     <>
       <WebsiteSchema />
-      <OrganizationSchema />
 
       <main className="min-h-screen bg-white">
         {/* Hero Section with Mega Category Nav */}

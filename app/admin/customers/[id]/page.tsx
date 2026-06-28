@@ -1,4 +1,5 @@
 import { getCustomerById } from '@/lib/actions/customer-actions';
+import { getCustomerFullProfile } from '@/lib/actions/receivables-actions';
 import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Edit } from 'lucide-react';
@@ -13,6 +14,8 @@ export default async function CustomerDetailsPage({ params }: { params: Promise<
   const resolvedParams = await params;
   const res = await getCustomerById(resolvedParams.id);
   const customer = res.success ? res.data : null;
+  const profileRes = await getCustomerFullProfile(resolvedParams.id);
+  const initialProfile = profileRes.success ? profileRes.data : null;
 
   if (!customer) notFound();
 
@@ -36,7 +39,7 @@ export default async function CustomerDetailsPage({ params }: { params: Promise<
       </div>
 
       {/* Financial Workspace */}
-      <DueCollectionClient customer={customer} />
+      <DueCollectionClient customer={customer} initialProfile={initialProfile} />
     </div>
   );
 }

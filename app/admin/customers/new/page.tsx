@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createCustomer } from '@/lib/actions/customer-actions';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,8 +41,8 @@ export default function NewCustomerPage() {
       } else {
         toast.error(res.error || 'Failed to create customer');
       }
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'An error occurred');
     } finally {
       setLoading(false);
     }

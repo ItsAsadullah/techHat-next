@@ -46,7 +46,7 @@ export default async function TrialBalancePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.accounts.map((acc: any) => (
+              {(data.accounts as Array<{ id: string; code: string; name: string; type: string; balanceType: string; netBalance: number }>).map((acc) => (
                 <TableRow key={acc.id}>
                   <TableCell className="font-mono text-xs">{acc.code}</TableCell>
                   <TableCell className="font-medium">

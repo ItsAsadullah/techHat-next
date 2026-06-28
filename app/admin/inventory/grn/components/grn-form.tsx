@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -27,9 +26,11 @@ import {
 import { createGRN, GRNFormData, submitGRN } from '@/lib/actions/grn-actions';
 import { getPurchaseOrderById } from '@/lib/actions/po-actions';
 
+interface ApprovedPO { id: string; poNumber: string; supplier: { name: string }; warehouseId?: string; }
+interface Warehouse { id: string; name: string; }
 interface GRNFormProps {
-  approvedPOs: any[];
-  warehouses: any[];
+  approvedPOs: ApprovedPO[];
+  warehouses: Warehouse[];
 }
 
 export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
@@ -42,7 +43,8 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
   const [warehouseId, setWarehouseId] = useState('');
   const [supplierId, setSupplierId] = useState('');
   const [note, setNote] = useState('');
-  const [items, setItems] = useState<any[]>([]);
+  type GRNItem = { poItemId: string; productId: string; variantId?: string | null; name: string; variantName?: string; sku: string; orderedQty: number; previouslyReceivedQty: number; pendingQty: number; receivedQty: number; rejectedQty: number; acceptedQty: number; batchNumber: string; imei: string; serialNumber: string; unitCost: number; landedCost?: number; newRetailPrice: number; newOfferPrice: number; newWholesalePrice: number; newOnlinePrice: number; newTaxClass: string; serials?: string[]; product?: { trackBatch?: boolean; trackSerials?: boolean }; expiryDate?: Date };
+  const [items, setItems] = useState<GRNItem[]>([]);
 
   // Advanced Tracking Modal State
   const [showSerialsModal, setShowSerialsModal] = useState(false);
@@ -113,13 +115,16 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
     setPoLoading(false);
   };
 
-  const updateItem = (index: number, field: string, value: any) => {
+  const updateItem = (index: number, field: string, value: number | string | Date | undefined) => {
     setItems(prev => {
       const updated = [...prev];
-      updated[index][field] = value;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const copy = { ...updated[index] } as any;
+      copy[field] = value;
       if (field === 'receivedQty' || field === 'rejectedQty') {
-        updated[index].acceptedQty = Math.max(0, updated[index].receivedQty - updated[index].rejectedQty);
+        copy.acceptedQty = Math.max(0, copy.receivedQty - copy.rejectedQty);
       }
+      updated[index] = copy;
       return updated;
     });
   };
@@ -142,7 +147,7 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
         note,
         items: items.filter(i => i.receivedQty > 0).map(i => ({
           productId: i.productId,
-          variantId: i.variantId,
+          variantId: i.variantId ?? undefined,
           receivedQty: i.receivedQty,
           rejectedQty: i.rejectedQty,
           acceptedQty: i.acceptedQty,
@@ -159,17 +164,20 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
       };
 
       const res = await createGRN(payload);
-      if (('data' in res)) {
-        const submitRes = await submitGRN((res as any).data.id, payload.items);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resAny = res as any;
+      if (resAny.success && resAny.data?.id) {
+        const submitRes = await submitGRN(resAny.data.id, payload.items);
         if (submitRes.success) {
           toast.success('Goods received and inventory updated successfully!');
           router.push('/admin/inventory/grn');
         } else {
-          toast.error(submitRes.error || 'GRN created but failed to finalize.');
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          toast.error((submitRes as any).error || 'GRN created but failed to finalize.');
           router.push('/admin/inventory/grn');
         }
       } else {
-        toast.error(('error' in res ? res.error : 'Error') || 'Something went wrong.');
+        toast.error(resAny.error || 'Something went wrong.');
       }
     } catch (error) {
       toast.error('Failed to submit form.');
@@ -197,7 +205,14 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
 
   const saveSerials = () => {
     if (activeItemIndex !== null) {
-      updateItem(activeItemIndex, 'serials', tempSerials);
+      // serials is string[] which doesn't fit the generic updateItem value type,
+      // so we handle it directly
+      setItems(prev => {
+        const updated = [...prev];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        updated[activeItemIndex] = { ...updated[activeItemIndex], serials: tempSerials } as any;
+        return updated;
+      });
     }
     setShowSerialsModal(false);
   };

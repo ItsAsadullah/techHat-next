@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import { createServerClient } from '@/lib/supabase-server';
 import { AdminLayoutClient } from './admin-layout-client';
 import { prisma } from '@/lib/prisma';
@@ -6,27 +5,32 @@ import { unstable_cache } from 'next/cache';
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'STAFF'];
 
-const getAdminRoleCached = async (email: string) => {
-  try {
-    const dbUser = await prisma.user.findFirst({
-      where: { email },
-      select: { role: true, fullName: true },
-    });
-    if (dbUser && ADMIN_ROLES.includes(dbUser.role)) {
-      return { role: dbUser.role === 'SUPER_ADMIN' ? 'super_admin' : 'staff', name: dbUser.fullName };
+// ✅ Module-level cache — correct pattern so cache persists across requests
+const getAdminRoleCached = unstable_cache(
+  async (email: string) => {
+    try {
+      const dbUser = await prisma.user.findFirst({
+        where: { email },
+        select: { role: true, fullName: true },
+      });
+      if (dbUser && ADMIN_ROLES.includes(dbUser.role)) {
+        return { role: dbUser.role === 'SUPER_ADMIN' ? 'ADMIN' : 'STAFF', name: dbUser.fullName };
+      }
+      const staff = await prisma.staff.findFirst({
+        where: { email, isActive: true },
+        select: { role: true },
+      });
+      if (staff) {
+        return { role: (staff.role || 'ADMIN').toUpperCase(), name: null as string | null };
+      }
+    } catch (err) {
+      console.error('Role check error:', err);
     }
-    const staff = await prisma.staff.findFirst({
-      where: { email, isActive: true },
-      select: { role: true },
-    });
-    if (staff) {
-      return { role: staff.role || 'ADMIN', name: null };
-    }
-  } catch (err) {
-    console.error('Role check error:', err);
-  }
-  return null;
-};
+    return null;
+  },
+  ['admin-role'],
+  { revalidate: 300 } // 5 minutes cache
+);
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerClient();

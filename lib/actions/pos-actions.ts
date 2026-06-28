@@ -3,6 +3,9 @@
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { PaymentMethod } from '@prisma/client';
+import { createAutoJournalEntry } from '@/lib/accounting/journal-engine';
+import { ACCOUNT_CODES } from '@/lib/accounting/constants';
+import { getServerRole } from '@/lib/supabase-server';
 
 // Helper to sanitize scanner input (remove CR/LF and trim)
 function sanitizeInput(input?: string | null) {
@@ -315,6 +318,11 @@ export interface SaleResult {
 
 export async function completeSale(input: CompleteSaleInput): Promise<SaleResult> {
   try {
+    const role = (await getServerRole())?.toUpperCase();
+    if (!role || !['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'CASHIER'].includes(role)) {
+      throw new Error('Unauthorized: Only Admin, Manager, or Cashier can process POS sales.');
+    }
+
     // PERF: Batch stock validation — replaces the original per-item sequential
     // findUnique loop (2N DB queries for N items) with 2 batch findMany calls
     // + Map lookups. For a 10-item cart this goes from 20 queries → 2 queries.
@@ -640,6 +648,69 @@ export async function completeSale(input: CompleteSaleInput): Promise<SaleResult
           data: { balance: rb, totalPurchase: tp, totalPaid: tpaid, totalDue: rb > 0 ? rb : 0, lastPurchaseDate: lpd }
         });
       }
+
+      // 6. Create Auto Journal Entry for the Sale
+      const totalCostPrice = input.items.reduce((sum, item) => sum + (item.costPrice * item.quantity), 0);
+      const jeEntries = [];
+
+      // Credit Sales Revenue
+      jeEntries.push({
+        accountCode: ACCOUNT_CODES.SALES_REVENUE,
+        debit: 0,
+        credit: input.grandTotal,
+        description: `Revenue from POS Sale ${orderNumber}`
+      });
+
+      // Debit Payments
+      if (input.paymentMethod === 'MIXED') {
+        if (input.cashPayment && input.cashPayment > 0) {
+          jeEntries.push({ accountCode: ACCOUNT_CODES.CASH_IN_HAND, debit: input.cashPayment, credit: 0, description: 'Cash payment received' });
+        }
+        if (input.cardPayment && input.cardPayment > 0) {
+          jeEntries.push({ accountCode: ACCOUNT_CODES.BANK_ACCOUNTS, debit: input.cardPayment, credit: 0, description: 'Card payment received' });
+        }
+        if (input.mobilePayment && input.mobilePayment > 0) {
+          jeEntries.push({ accountCode: ACCOUNT_CODES.BANK_ACCOUNTS, debit: input.mobilePayment, credit: 0, description: 'Mobile banking payment received' });
+        }
+      } else {
+        if (paidAmount > 0) {
+          const accountCode = input.paymentMethod === 'CASH' ? ACCOUNT_CODES.CASH_IN_HAND : ACCOUNT_CODES.BANK_ACCOUNTS;
+          jeEntries.push({ accountCode, debit: paidAmount, credit: 0, description: `${input.paymentMethod} payment received` });
+        }
+      }
+
+      // Debit Accounts Receivable for Due Amount
+      if (dueAmount > 0) {
+        jeEntries.push({
+          accountCode: ACCOUNT_CODES.ACCOUNTS_RECEIVABLE,
+          debit: dueAmount,
+          credit: 0,
+          description: `Due amount for POS Sale ${orderNumber}`
+        });
+      }
+
+      // COGS and Inventory (if there is cost)
+      if (totalCostPrice > 0) {
+        jeEntries.push({
+          accountCode: ACCOUNT_CODES.COGS,
+          debit: totalCostPrice,
+          credit: 0,
+          description: `COGS for POS Sale ${orderNumber}`
+        });
+        jeEntries.push({
+          accountCode: ACCOUNT_CODES.INVENTORY_ASSET,
+          debit: 0,
+          credit: totalCostPrice,
+          description: `Inventory reduction for POS Sale ${orderNumber}`
+        });
+      }
+
+      await createAutoJournalEntry(tx, 'POS_SALE', {
+        reference: orderNumber,
+        note: `Auto-generated journal for POS Sale ${orderNumber}`,
+        sourceId: order.id,
+        entries: jeEntries
+      });
 
       return order;
     }, { timeout: 30000 });

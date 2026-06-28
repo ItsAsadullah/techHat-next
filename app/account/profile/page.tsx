@@ -2,13 +2,14 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { User, Camera, Save, CheckCircle2, Mail, Phone, Calendar } from 'lucide-react';
+import { User as UserIcon, Camera, Save, CheckCircle2, Mail, Phone, Calendar } from 'lucide-react';
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -85,15 +86,15 @@ export default function ProfilePage() {
         });
       }
 
-      setUser((prev: any) => ({
+      setUser((prev: User | null) => prev ? ({
         ...prev,
         user_metadata: { ...prev.user_metadata, full_name: fullName.trim(), phone: phone.trim(), avatar_url: avatarUrl },
-      }));
+      }) : prev);
       setSaved(true);
       toast.success('Profile updated successfully!');
       setTimeout(() => setSaved(false), 3000);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to update profile');
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to update profile');
     }
     setSaving(false);
   };
@@ -181,7 +182,7 @@ export default function ProfilePage() {
               Full Name <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 value={fullName}
                 onChange={e => setFullName(e.target.value)}

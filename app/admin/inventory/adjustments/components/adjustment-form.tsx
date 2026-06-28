@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -28,8 +27,9 @@ import { createAdjustment, getSystemQtyForAdjustment, AdjustmentFormData } from 
 import { searchProductsForPO } from '@/lib/actions/po-actions'; // we can reuse product search
 import { StockAdjustmentReason } from '@prisma/client';
 
+interface Warehouse { id: string; name: string; }
 interface AdjFormProps {
-  warehouses: any[];
+  warehouses: Warehouse[];
 }
 
 export function AdjustmentForm({ warehouses }: AdjFormProps) {
@@ -41,12 +41,13 @@ export function AdjustmentForm({ warehouses }: AdjFormProps) {
   const [reason, setReason] = useState<StockAdjustmentReason>('COUNT');
   const [note, setNote] = useState('');
 
-  // Items State
-  const [items, setItems] = useState<any[]>([]);
+  type SearchProduct = { id: string; name: string; sku: string; costPrice?: number; variations: Array<{ id: string; name: string; sku: string; costPrice?: number }> };
+  type AdjItem = { id: string; productId: string; variantId: string | null; name: string; variantName: string | null; sku: string; systemQty: number; actualQty: number; adjustedQty: number; unitCost: number };
+  const [items, setItems] = useState<AdjItem[]>([]);
 
   // Product Search State
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchProduct[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
   // Product Search Effect
@@ -65,7 +66,7 @@ export function AdjustmentForm({ warehouses }: AdjFormProps) {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
-  const addProductToAdjustment = async (product: any, variant: any = null) => {
+  const addProductToAdjustment = async (product: SearchProduct, variant: SearchProduct['variations'][number] | null = null) => {
     if (!warehouseId) return toast.error('Please select a warehouse first');
 
     // Check if already added
@@ -131,7 +132,7 @@ export function AdjustmentForm({ warehouses }: AdjFormProps) {
         note,
         items: items.map(i => ({
           productId: i.productId,
-          variantId: i.variantId,
+          variantId: i.variantId ?? undefined,
           systemQty: i.systemQty,
           actualQty: i.actualQty,
           adjustedQty: i.adjustedQty,
@@ -141,11 +142,14 @@ export function AdjustmentForm({ warehouses }: AdjFormProps) {
 
       const res = await createAdjustment(payload);
 
-      if (('data' in res)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((res as any).id) {
         toast.success('Adjustment Draft created!');
-        router.push(`/admin/inventory/adjustments/${('data' in res ? res.data : null).id}`);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        router.push(`/admin/inventory/adjustments/${(res as any).id}`);
       } else {
-        toast.error(('error' in res ? res.error : 'Error') || 'Something went wrong.');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        toast.error((res as any).message || 'Something went wrong.');
       }
     } catch (error) {
       toast.error('Failed to submit form.');
@@ -193,7 +197,7 @@ export function AdjustmentForm({ warehouses }: AdjFormProps) {
             </div>
             <div className="space-y-2">
               <Label>Reason <span className="text-red-500">*</span></Label>
-              <Select value={reason} onValueChange={(val: any) => setReason(val)} required>
+              <Select value={reason} onValueChange={(val) => setReason(val as StockAdjustmentReason)} required>
                 <SelectTrigger>
                   <SelectValue placeholder="Select reason..." />
                 </SelectTrigger>
@@ -233,7 +237,7 @@ export function AdjustmentForm({ warehouses }: AdjFormProps) {
                       {product.variations.length > 0 ? (
                         <div className="space-y-1">
                           <div className="text-sm font-semibold px-2 text-muted-foreground">{product.name} (Select Variant)</div>
-                          {product.variations.map((v: any) => (
+                          {product.variations.map((v) => (
                             <button
                               key={v.id}
                               type="button"

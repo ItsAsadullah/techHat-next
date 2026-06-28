@@ -5,7 +5,12 @@ import { ProductFormValues } from '../schemas/product.schema';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import RichTextEditor from '@/components/ui/rich-text-editor';
+import dynamic from 'next/dynamic';
+
+const RichTextEditor = dynamic(() => import('@/components/ui/rich-text-editor'), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-gray-100 animate-pulse rounded-xl border border-gray-200" />
+});
 import { Video } from 'lucide-react';
 
 export function ProductDescriptionSection() {

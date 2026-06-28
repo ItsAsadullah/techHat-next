@@ -6,7 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Copy, RefreshCw, Loader2, Barcode } from 'lucide-react';
-import BarcodeLib from 'react-barcode';
+import dynamic from 'next/dynamic';
+
+const BarcodeLib = dynamic(() => import('react-barcode'), {
+  ssr: false,
+  loading: () => <div className="h-[50px] w-full bg-gray-100 animate-pulse rounded my-2" />
+});
 import { toast } from 'sonner';
 import { useCallback, useState, useEffect } from 'react';
 import { generateSKU } from '@/lib/actions/product-enterprise-actions';

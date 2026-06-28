@@ -8,10 +8,8 @@ import { toast } from 'sonner';
 import { ShieldCheck, Lock, Eye, EyeOff, CheckCircle2, AlertCircle, Key } from 'lucide-react';
 
 export default function SecurityPage() {
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -44,11 +42,11 @@ export default function SecurityPage() {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
       toast.success('Password updated successfully!');
-      setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+      setNewPassword(''); setConfirmPassword('');
       setResetSaved(true);
       setTimeout(() => setResetSaved(false), 3000);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to update password');
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to update password');
     }
     setSaving(false);
   };
@@ -64,8 +62,8 @@ export default function SecurityPage() {
       if (error) throw error;
       setForgotSent(true);
       toast.success('Password reset email sent!');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to send reset email');
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to send reset email');
     }
     setForgotSaving(false);
   };
@@ -173,7 +171,7 @@ export default function SecurityPage() {
         className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
       >
         <h2 className="font-semibold text-gray-800 mb-1">Reset via Email</h2>
-        <p className="text-xs text-gray-400 mb-5">Forgot your password? We'll send a reset link to your email.</p>
+        <p className="text-xs text-gray-400 mb-5">Forgot your password? We&apos;ll send a reset link to your email.</p>
 
         {forgotSent ? (
           <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
@@ -210,7 +208,7 @@ export default function SecurityPage() {
         </h3>
         <ul className="space-y-2 text-xs text-blue-700">
           <li className="flex items-start gap-2"><span className="mt-0.5">•</span>Use at least 8 characters with a mix of letters, numbers, and symbols.</li>
-          <li className="flex items-start gap-2"><span className="mt-0.5">•</span>Don't reuse passwords from other websites.</li>
+          <li className="flex items-start gap-2"><span className="mt-0.5">•</span>Don&apos;t reuse passwords from other websites.</li>
           <li className="flex items-start gap-2"><span className="mt-0.5">•</span>Never share your password with anyone.</li>
         </ul>
       </div>

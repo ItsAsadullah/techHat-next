@@ -17,10 +17,10 @@ export async function getAiModel(modelId: string) {
         baseURL: 'https://api.groq.com/openai/v1',
         apiKey: matchedModel.apiKey,
       });
-      return groq(matchedModel.modelName);
+      return groq.chat(matchedModel.modelName);
     } else if (matchedModel.provider === 'openai') {
       const openai = createOpenAI({ apiKey: matchedModel.apiKey });
-      return openai(matchedModel.modelName);
+      return openai.chat(matchedModel.modelName);
     }
   }
 
@@ -50,13 +50,13 @@ export async function getAiModel(modelId: string) {
       baseURL: 'https://api.groq.com/openai/v1',
       apiKey: groqKey,
     });
-    return groq(modelId.replace('groq:', ''));
+    return groq.chat(modelId.replace('groq:', ''));
   }
 
   if (modelId.startsWith('openai:')) {
     if (!openaiKey) throw new Error('OpenAI API Key is missing. Please configure it in settings.');
     const openai = createOpenAI({ apiKey: openaiKey });
-    return openai(modelId.replace('openai:', ''));
+    return openai.chat(modelId.replace('openai:', ''));
   }
 
   // Fallback default

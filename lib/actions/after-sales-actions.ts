@@ -640,8 +640,8 @@ export async function generatePickupOTP(claimId: string) {
       },
     });
 
-    // Mock SMS / Telegram Send Log
-    console.log(`[Notification Engine] Sent OTP ${otp} to Customer for claim ${claimId}`);
+    // TODO: Send OTP via SMS/Telegram integration (do NOT log OTP to console in production)
+    // e.g. await sendSMS(customerPhone, `Your TechHat pickup OTP is: ${otp}`)
 
     await appendTimeline(claimId, 'WAITING_CUSTOMER_APPROVAL', `Delivery OTP generated & sent to customer.`);
 

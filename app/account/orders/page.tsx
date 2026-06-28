@@ -1,18 +1,16 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, startTransition } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import {
   Package,
-  Clock,
   CheckCircle2,
   Truck,
   XCircle,
   Search,
-  Filter,
   ChevronRight,
   ChevronLeft,
   X,
@@ -323,7 +321,7 @@ export default function AccountOrdersPage() {
       setOrders(data.orders || []);
       setTotal(data.total || 0);
       setPages(data.pages || 1);
-    } catch (_) {
+    } catch {
       setOrders([]);
     }
     setLoading(false);
@@ -339,7 +337,7 @@ export default function AccountOrdersPage() {
   }, [fetchOrders]);
 
   useEffect(() => {
-    if (token) fetchOrders(token, activeStatus, page);
+    if (token) startTransition(() => { fetchOrders(token, activeStatus, page); });
   }, [activeStatus, page, token, fetchOrders]);
 
   // Open order from URL param
@@ -347,7 +345,7 @@ export default function AccountOrdersPage() {
     const id = searchParams.get('id');
     if (id && orders.length > 0) {
       const found = orders.find(o => o.id === id);
-      if (found) setSelectedOrder(found);
+      if (found) startTransition(() => setSelectedOrder(found));
     }
   }, [searchParams, orders]);
 

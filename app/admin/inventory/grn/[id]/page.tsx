@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -32,11 +31,14 @@ import { getPOSConfig } from '@/lib/actions/settings-actions';
 export default function GRNDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  type GRNItem = { id: string; productId: string; product: { name: string; sku: string; category?: { name: string }; model?: string; costPrice?: number }; variant?: { name: string; sku: string } | null; receivedQty: number; rejectedQty: number; acceptedQty: number; unitCost?: number; serialNumber?: string; imei?: string; batchNumber?: string };
+  type POSConfig = { pos_label_width?: string; pos_label_height?: string; pos_logo?: string } | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [grn, setGrn] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
-  const [posConfig, setPosConfig] = useState<any>(null);
+  const [posConfig, setPosConfig] = useState<POSConfig>(null);
 
   // TechHat cipher: I=1, Z=2, E=3, A=4, S=5, G=6, T=7, B=8, P=9, O=0
   const cipherMap: Record<string, string> = { '1': 'I', '2': 'Z', '3': 'E', '4': 'A', '5': 'S', '6': 'G', '7': 'T', '8': 'B', '9': 'P', '0': 'O' };
@@ -299,7 +301,8 @@ export default function GRNDetailsPage() {
   useEffect(() => {
     async function load() {
       const res = await getGRNById(params.id as string);
-      if (res.success) setGrn(res.data);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (res.success) setGrn((res as any).data);
       else toast.error('Failed to load GRN');
 
       const config = await getPOSConfig();
@@ -314,20 +317,22 @@ export default function GRNDetailsPage() {
     if (!confirm('Are you sure you want to Submit this GRN? This will IMMUTABLY update the Stock Ledger and product stock quantities. This action cannot be undone.')) return;
 
     setActionLoading(true);
-    const res = await submitGRN(grn.id);
-    setActionLoading(false); // End loading first
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await submitGRN((grn as any).id);
+    setActionLoading(false);
 
     if (res.success) {
       toast.success('Goods Receive Note Submitted & Locked successfully!');
-      setGrn({ ...grn, status: 'SUBMITTED' });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setGrn((prev: any) => prev ? { ...prev, status: 'SUBMITTED' } : prev);
       
-      // Delay the modal slightly to ensure DOM updates and router.refresh don't clash
       setTimeout(() => {
         setShowPrintModal(true);
         router.refresh();
       }, 300);
     } else {
-      toast.error(res.error || 'Failed to submit GRN');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      toast.error((res as any).error || 'Failed to submit GRN');
     }
   };
 
@@ -361,7 +366,7 @@ export default function GRNDetailsPage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold font-mono">{grn.grnNumber}</h1>
-              <Badge variant={getStatusColor(grn.status) as any} className="text-[10px] uppercase">
+              <Badge variant={getStatusColor(grn.status) as 'secondary' | 'destructive' | 'default' | 'outline'} className="text-[10px] uppercase">
                 {grn.status === 'SUBMITTED' ? <><Lock className="mr-1 h-3 w-3" /> LOCKED</> : grn.status}
               </Badge>
             </div>
@@ -404,7 +409,7 @@ export default function GRNDetailsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {grn.items.map((item: any) => (
+                {grn.items.map((item: GRNItem) => (
                   <TableRow key={item.id}>
                     <TableCell>
                       <div className="font-medium text-sm"><Link href={`/admin/products/${item.productId}`} className="hover:underline text-primary">{item.product.name}</Link></div>

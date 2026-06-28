@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, memo, useCallback } from 'react';
+import { useState, useEffect, memo, startTransition } from 'react';
 import dynamic from 'next/dynamic';
 import {
-  TrendingUp, TrendingDown, DollarSign, ShoppingCart, Package, AlertTriangle,
-  ArrowUpRight, ArrowDownRight, Star, Clock, Zap, Users, CreditCard, Smartphone,
+  DollarSign, ShoppingCart, Package, AlertTriangle,
+  ArrowUpRight, ArrowDownRight, Zap, CreditCard, Smartphone,
 } from 'lucide-react';
 
 // PERF: Lazy-load recharts — it's ~60KB and only needed for the chart section.
@@ -34,7 +34,7 @@ function fmt(n: number) {
 const StatCard = memo(function StatCard({
   title, value, sub, Icon, gradient, growth, growthLabel,
 }: {
-  title: string; value: string; sub?: string; Icon: any;
+  title: string; value: string; sub?: string; Icon: React.ComponentType<{ className?: string }>;
   gradient: string; growth?: number; growthLabel?: string;
 }) {
   const up = growth === undefined || growth >= 0;
@@ -63,14 +63,24 @@ const StatCard = memo(function StatCard({
 });
 
 export function DashboardClient({ stats, salesChartData, categorySales, topProducts, recentOrders }: {
-  stats: any;
-  salesChartData: any[];
-  categorySales: any[];
-  topProducts: any[];
-  recentOrders: any[];
+  stats: {
+    todayRevenue: number; todayOrders: number;
+    thisMonthRevenue: number; lastMonthRevenue: number; totalRevenue: number; revenueGrowth: number;
+    totalOrders: number; thisMonthOrders: number; pendingOrders: number;
+    totalProducts: number; lowStockProducts: number; outOfStockProducts: number;
+    totalPOSDue: number; totalPOSRevenue: number; pendingReviews: number;
+  };
+  salesChartData: { name: string; sales: number }[];
+  categorySales: { name: string; value: number }[];
+  topProducts: { name: string; qty: number; revenue: number }[];
+  recentOrders: {
+    id: string; orderNumber: string; isPos: boolean;
+    customerName: string; firstItem: string; grandTotal: number; dueAmount: number | null;
+    paymentMethod: string; paymentStatus?: string | null; posPaymentStatus?: string | null;
+  }[];
 }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { startTransition(() => setMounted(true)); }, []);
 
   const pmIcon = (method: string) => {
     if (method === 'CASH') return <DollarSign className="w-3 h-3" />;
@@ -79,10 +89,10 @@ export function DashboardClient({ stats, salesChartData, categorySales, topProdu
     return <Zap className="w-3 h-3" />;
   };
 
-  const statusBadge = (order: any) => {
+  const statusBadge = (order: typeof recentOrders[0]) => {
     if (order.isPos) {
       const s = order.posPaymentStatus || 'PAID';
-      const map: any = {
+      const map: Record<string, string> = {
         PAID: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400',
         PARTIAL: 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400',
         DUE: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400',
@@ -90,7 +100,7 @@ export function DashboardClient({ stats, salesChartData, categorySales, topProdu
       return <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${map[s] || map.PAID}`}>{s}</span>;
     }
     const s = order.paymentStatus || 'PENDING';
-    const map: any = {
+    const map: Record<string, string> = {
       PAID: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400',
       PENDING: 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400',
       FAILED: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400',
@@ -108,7 +118,7 @@ export function DashboardClient({ stats, salesChartData, categorySales, topProdu
           <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Real-time business overview</p>
         </div>
         <div className="text-right text-xs text-gray-400 dark:text-gray-500">
-          <div className="font-semibold text-gray-600 dark:text-gray-300">Today's Sales</div>
+          <div className="font-semibold text-gray-600 dark:text-gray-300">Today&apos;s Sales</div>
           <div className="text-2xl font-black text-indigo-600">{fmt(stats.todayRevenue)}</div>
           <div className="text-gray-400">{stats.todayOrders} orders</div>
         </div>
@@ -174,7 +184,7 @@ export function DashboardClient({ stats, salesChartData, categorySales, topProdu
                 <LazyXAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 11 }} dy={8} />
                 <LazyYAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 11 }} tickFormatter={(v) => fmt(v)} />
                 <LazyTooltip
-                  formatter={(v: any) => [`৳${Number(v).toLocaleString()}`, 'Sales']}
+                  formatter={(v: any) => [`৳${Number(v || 0).toLocaleString()}`, 'Sales']}
                   contentStyle={{ borderRadius: 12, border: '1px solid #e0e7ff', fontSize: 12 }}
                 />
                 <LazyArea type="monotone" dataKey="sales" stroke="#8b5cf6" strokeWidth={3} fill="url(#gSales)" />
@@ -194,7 +204,7 @@ export function DashboardClient({ stats, salesChartData, categorySales, topProdu
                     <LazyPie data={categorySales} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={4} dataKey="value">
                       {categorySales.map((_, i) => <LazyCell key={i} fill={COLORS[i % COLORS.length]} />)}
                     </LazyPie>
-                    <LazyTooltip formatter={(v: any) => [`৳${Number(v).toLocaleString()}`, '']} contentStyle={{ borderRadius: 10, fontSize: 12 }} />
+                    <LazyTooltip formatter={(v: any) => [`৳${Number(v || 0).toLocaleString()}`, '']} contentStyle={{ borderRadius: 10, fontSize: 12 }} />
                   </LazyPieChart>
                 </LazyResponsiveContainer>}
               </div>
@@ -287,8 +297,8 @@ export function DashboardClient({ stats, salesChartData, categorySales, topProdu
                     <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 truncate max-w-[120px]">{o.firstItem}</td>
                     <td className="px-4 py-3 text-right font-bold text-gray-900 dark:text-gray-100">
                       ৳{o.grandTotal.toLocaleString()}
-                      {o.dueAmount > 0 && (
-                        <div className="text-xs text-red-500 dark:text-red-400 font-normal">বাকি: ৳{o.dueAmount.toLocaleString()}</div>
+                      {(o.dueAmount ?? 0) > 0 && (
+                        <div className="text-xs text-red-500 dark:text-red-400 font-normal">বাকি: ৳{(o.dueAmount ?? 0).toLocaleString()}</div>
                       )}
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -325,7 +335,7 @@ export function DashboardClient({ stats, salesChartData, categorySales, topProdu
                   </div>
                   <div className="text-right shrink-0 ml-3">
                     <div className="font-bold text-sm text-indigo-600 dark:text-indigo-400">৳{o.grandTotal.toLocaleString()}</div>
-                    {o.dueAmount > 0 && <div className="text-[10px] text-red-500 font-medium">Due: ৳{o.dueAmount.toLocaleString()}</div>}
+                    {(o.dueAmount ?? 0) > 0 && <div className="text-[10px] text-red-500 font-medium">Due: ৳{(o.dueAmount ?? 0).toLocaleString()}</div>}
                   </div>
                 </div>
                 

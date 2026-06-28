@@ -1,37 +1,52 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, Phone, Wallet, Receipt, FileText, Activity, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Phone, FileText, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { getCustomerFullProfile } from '@/lib/actions/receivables-actions';
 import { PaymentDrawer } from './payment-drawer';
 import { toast } from 'sonner';
 import Link from 'next/link';
 
-export function DueCollectionClient({ customer }: { customer: any }) {
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+interface Customer {
+  id: string; name: string; phone: string | null; balance: number;
+  creditLimit: number; creditScore?: number | null; creditRating?: string | null;
+  totalPurchase: number; totalPaid: number; paymentScore?: number | null;
+}
+interface Invoice { id: string; orderNumber: string; createdAt: Date | string; grandTotal: number; paidAmount?: number | null; dueAmount: number | null; ageDays: number; }
+interface Payment { id: string; receiptNumber?: string | null; paymentNumber?: string; paymentDate: Date | string; paymentMethod: string; amount: number; allocations: { order: { orderNumber: string } }[]; }
+interface LedgerEntry { id: string; date: Date | string; type: string; referenceId: string | null; debit: number; credit: number; runningBalance: number; orderId?: string | null; }
+
+interface Profile {
+  customer: Customer;
+  creditWarning?: string | null;
+  outstandingInvoices: Invoice[];
+  recentPayments: Payment[];
+  recentLedger: LedgerEntry[];
+}
+
+export function DueCollectionClient({ customer, initialProfile }: { customer: Customer, initialProfile?: Profile | null }) {
+  const router = useRouter();
+  const [profile, setProfile] = useState<Profile | null>(initialProfile || null);
+  const [loading, setLoading] = useState(!initialProfile);
   const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false);
 
-  useEffect(() => {
-    loadProfile();
-  }, [customer.id]);
-
-  const loadProfile = async () => {
+  const refreshProfile = async () => {
     setLoading(true);
     const res = await getCustomerFullProfile(customer.id);
     if (res.success) {
-      setProfile(res.data);
+      setProfile(res.data || null);
     } else {
-      toast.error('Failed to load profile');
+      toast.error('Failed to reload profile');
     }
     setLoading(false);
   };
 
-  const getCreditWarning = (c: any) => {
+  const getCreditWarning = (c: Customer | undefined) => {
     if (!c || c.balance <= 0) return null;
     const score = c.creditScore ?? 100;
     const rating = c.creditRating ?? 'GOOD';
@@ -92,8 +107,7 @@ export function DueCollectionClient({ customer }: { customer: any }) {
                 disabled={loading}
                 className="bg-green-600 hover:bg-green-700 text-white font-semibold text-base px-6 shadow-lg shadow-green-900/20 disabled:opacity-50"
               >
-                <Wallet className="mr-2 h-5 w-5" />
-                {loading ? 'Loading...' : 'Collect Payment'}
+                Collect Payment
               </Button>
             </div>
           </div>
@@ -167,13 +181,13 @@ export function DueCollectionClient({ customer }: { customer: any }) {
                          </tr>
                        </thead>
                        <tbody className="divide-y">
-                         {profile.outstandingInvoices.map((inv: any) => (
+                         {profile.outstandingInvoices.map((inv: Invoice) => (
                            <tr key={inv.id} className="hover:bg-slate-50">
                              <td className="px-4 py-3 font-medium">{inv.orderNumber}</td>
                              <td className="px-4 py-3">{new Date(inv.createdAt).toLocaleDateString()}</td>
                              <td className="px-4 py-3 text-right">৳{inv.grandTotal.toLocaleString()}</td>
                              <td className="px-4 py-3 text-right">৳{(inv.paidAmount || 0).toLocaleString()}</td>
-                             <td className="px-4 py-3 text-right font-semibold text-red-600">৳{inv.dueAmount.toLocaleString()}</td>
+                             <td className="px-4 py-3 text-right font-semibold text-red-600">৳{(inv.dueAmount || 0).toLocaleString()}</td>
                              <td className="px-4 py-3 text-center">
                                <Badge variant={inv.ageDays > 30 ? "destructive" : "secondary"}>
                                  {inv.ageDays} Days
@@ -210,14 +224,14 @@ export function DueCollectionClient({ customer }: { customer: any }) {
                           </tr>
                         </thead>
                         <tbody className="divide-y">
-                          {profile.recentPayments.map((p: any) => (
+                          {profile.recentPayments.map((p: Payment) => (
                             <tr key={p.id}>
                               <td className="px-4 py-3 font-medium">{p.receiptNumber || p.paymentNumber}</td>
                               <td className="px-4 py-3">{new Date(p.paymentDate).toLocaleDateString()}</td>
                               <td className="px-4 py-3"><Badge variant="outline">{p.paymentMethod}</Badge></td>
                               <td className="px-4 py-3 text-right font-semibold text-green-600">৳{p.amount.toLocaleString()}</td>
                               <td className="px-4 py-3 pl-6 text-slate-500">
-                                {p.allocations.map((a:any) => a.order.orderNumber).join(', ') || 'Advance/Unallocated'}
+                                {p.allocations.map((a) => a.order.orderNumber).join(', ') || 'Advance/Unallocated'}
                               </td>
                             </tr>
                           ))}
@@ -250,7 +264,7 @@ export function DueCollectionClient({ customer }: { customer: any }) {
                          </tr>
                        </thead>
                        <tbody className="divide-y">
-                         {profile.recentLedger.map((l: any) => (
+                         {profile.recentLedger.map((l: LedgerEntry) => (
                            <tr key={l.id} className="hover:bg-slate-50">
                              <td className="px-4 py-3 whitespace-nowrap">{new Date(l.date).toLocaleString()}</td>
                              <td className="px-4 py-3">
@@ -298,7 +312,8 @@ export function DueCollectionClient({ customer }: { customer: any }) {
       {profile && (
         <PaymentDrawer 
           open={paymentDrawerOpen} 
-          onClose={() => { setPaymentDrawerOpen(false); loadProfile(); }} 
+          onSuccess={() => { setPaymentDrawerOpen(false); refreshProfile(); router.refresh(); }}
+          onClose={() => setPaymentDrawerOpen(false)}
           customer={profile.customer}
           outstandingInvoices={profile.outstandingInvoices}
         />

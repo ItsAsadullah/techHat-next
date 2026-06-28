@@ -17,7 +17,8 @@ export default async function NewGRNPage() {
   return (
     <div className="p-2 md:p-4 w-full">
       <GRNForm 
-        approvedPOs={poRes.success ? (poRes.data || []) : []} 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        approvedPOs={poRes.success ? ((poRes.data || []) as any[]) : []} 
         warehouses={warehouseRes.success ? (warehouseRes.data || []) : []} 
       />
     </div>

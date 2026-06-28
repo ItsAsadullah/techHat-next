@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -21,6 +20,9 @@ import { getAdjustmentById, approveAdjustment } from '@/lib/actions/adjustment-a
 export default function AdjustmentDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  type AdjItem = { id: string; productId: string; systemQty: number; actualQty: number; adjustedQty: number; product: { name: string; sku: string }; variant?: { name: string; sku: string } | null };
+  // Use a flexible type that accepts any shape from the action
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [adj, setAdj] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -28,7 +30,8 @@ export default function AdjustmentDetailsPage() {
   useEffect(() => {
     async function load() {
       const res = await getAdjustmentById(params.id as string);
-      if (res.success) setAdj(res.data);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (res.success) setAdj((res as any).data);
       else toast.error('Failed to load Adjustment');
       setLoading(false);
     }
@@ -39,13 +42,16 @@ export default function AdjustmentDetailsPage() {
     if (!confirm('Are you sure you want to Approve this Adjustment? This will IMMUTABLY update the Stock Ledger. This action cannot be undone.')) return;
     
     setActionLoading(true);
-    const res = await approveAdjustment(adj.id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await approveAdjustment((adj as any).id);
     if (res.success) {
       toast.success('Stock Adjustment Approved & Ledger Updated!');
-      setAdj({ ...adj, status: 'APPROVED' });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setAdj((prev: any) => prev ? { ...prev, status: 'APPROVED' } : prev);
       router.refresh();
     } else {
-      toast.error(res.error || 'Failed to approve adjustment');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      toast.error((res as any).error || 'Failed to approve adjustment');
     }
     setActionLoading(false);
   };
@@ -79,7 +85,7 @@ export default function AdjustmentDetailsPage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold font-mono">{adj.adjustmentNumber}</h1>
-              <Badge variant={getStatusColor(adj.status) as any} className="text-[10px] uppercase">
+              <Badge variant={getStatusColor(adj.status) as 'secondary' | 'destructive' | 'default' | 'outline'} className="text-[10px] uppercase">
                 {adj.status === 'APPROVED' ? <><Lock className="mr-1 h-3 w-3" /> LOCKED (APPROVED)</> : adj.status}
               </Badge>
             </div>
@@ -118,7 +124,7 @@ export default function AdjustmentDetailsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {adj.items.map((item: any) => (
+                {adj.items.map((item: AdjItem) => (
                   <TableRow key={item.id}>
                     <TableCell>
                       <div className="font-medium text-sm"><Link href={`/admin/products/${item.productId}`} className="hover:underline text-primary">{item.product.name}</Link></div>

@@ -43,8 +43,8 @@ export default function FiscalYearFormModal() {
       } else {
         toast.error(res.error || 'Failed to create fiscal year');
       }
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e: unknown) {
+      toast.error((e as Error)?.message ?? 'Unknown error');
     } finally {
       setLoading(false);
     }

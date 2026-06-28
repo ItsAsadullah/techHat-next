@@ -9,9 +9,9 @@ function makePrismaClient() {
     const url = new URL(databaseUrl)
 
     if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PHASE) {
-      url.searchParams.set('connection_limit', '20')  // Increased from 5 for better concurrency
+      url.searchParams.set('connection_limit', '5')  // Serverless safe connection limit
     } else {
-      url.searchParams.set('connection_limit', '15')  // Increased from 3 for dev testing
+      url.searchParams.set('connection_limit', '3')  // Dev testing
     }
 
     if (!url.searchParams.has('pool_timeout')) {

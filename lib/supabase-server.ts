@@ -8,6 +8,7 @@
  */
 import { createServerClient as _createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { prisma } from '@/lib/prisma';
 
 export async function createServerClient() {
   const cookieStore = await cookies();
@@ -50,14 +51,26 @@ export async function getServerRole(): Promise<string | null> {
 
   // Primary: JWT claim (fast, no DB hit)
   const jwtRole = user.app_metadata?.app_role as string | undefined;
-  if (jwtRole) return jwtRole;
+  if (jwtRole) return jwtRole.toUpperCase();
 
-  // Fallback: DB query
-  const { data } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+  // Fallback: Query Prisma tables (Single Source of Truth)
+  if (user.email) {
+    const dbUser = await prisma.user.findFirst({
+      where: { email: user.email },
+      select: { role: true },
+    });
+    if (dbUser && ['SUPER_ADMIN', 'STAFF'].includes(dbUser.role)) {
+      return dbUser.role === 'SUPER_ADMIN' ? 'ADMIN' : 'STAFF'; // Normalize
+    }
 
-  return data?.role ?? 'customer';
+    const staff = await prisma.staff.findFirst({
+      where: { email: user.email, isActive: true },
+      select: { role: true },
+    });
+    if (staff && staff.role) {
+      return staff.role.toUpperCase(); // e.g. ADMIN, MANAGER, CASHIER
+    }
+  }
+
+  return 'CUSTOMER';
 }

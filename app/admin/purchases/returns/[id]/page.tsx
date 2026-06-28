@@ -1,11 +1,10 @@
-// @ts-nocheck
 import { getPurchaseReturnById } from '@/lib/actions/purchase-return-actions';
 import { notFound } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { FileText, PackageMinus, Store, CreditCard } from 'lucide-react';
+import { FileText, PackageMinus, Store } from 'lucide-react';
 import { ReturnStatusActions } from './components/return-status-actions';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -19,7 +18,8 @@ export default async function PurchaseReturnDetailPage({ params }: { params: Pro
   }
 
   const pr = res.data;
-  const totalValue = pr.items.reduce((sum: number, item: any) => sum + (item.unitCost * item.returnQty), 0);
+  type ReturnItem = { id: string; unitCost: number; returnQty: number; product: { name: string; sku: string }; variant?: { name: string; sku: string } | null };
+  const totalValue = (pr.items as ReturnItem[]).reduce((sum, item) => sum + (item.unitCost * item.returnQty), 0);
 
   return (
     <div className="space-y-6">
@@ -61,7 +61,7 @@ export default async function PurchaseReturnDetailPage({ params }: { params: Pro
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pr.items.map((item: any) => {
+                {(pr.items as ReturnItem[]).map((item) => {
                   const lineTotal = item.unitCost * item.returnQty;
                   return (
                     <TableRow key={item.id}>

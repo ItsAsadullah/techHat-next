@@ -2,20 +2,29 @@ import { getJournalEntries } from '@/lib/actions/accounting-actions';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 
 export default async function JournalEntriesPage() {
   const res = await getJournalEntries();
-  const entries = res.success ? res.data : [];
+  type JournalEntry = NonNullable<typeof res.data>[number];
+  type JournalItem = JournalEntry extends { journalEntryItems: Array<infer I> } ? I : never;
+  const entries = res.success ? (res.data ?? []) as JournalEntry[] : [];
 
   return (
     <div className="space-y-6 max-w-[1200px] mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Journal Entries</h1>
-          <p className="text-muted-foreground">Record and review double-entry accounting transactions</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/admin/accounting">
+              <ChevronLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Journal Entries (জার্নাল এন্ট্রি)</h1>
+            <p className="text-muted-foreground mt-1">Record and review double-entry accounting transactions (লেনদেনগুলোর রেকর্ড এবং রিভিউ)</p>
+          </div>
         </div>
         <Link href="/admin/accounting/journals/new">
           <Button>
@@ -32,9 +41,9 @@ export default async function JournalEntriesPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-8">
-            {entries?.map((entry: any) => {
-              const items = entry.journalEntryItems || [];
-              const totalDebit = items.reduce((sum: number, item: any) => sum + item.debit, 0);
+            {entries?.map((entry: JournalEntry) => {
+              const items = (entry.journalEntryItems ?? []) as JournalItem[];
+              const totalDebit = items.reduce((sum: number, item: JournalItem) => sum + (item as JournalItem & { debit: number }).debit, 0);
 
               return (
                 <div key={entry.id} className="border rounded-lg overflow-hidden">
@@ -49,9 +58,9 @@ export default async function JournalEntriesPage() {
                     </div>
                   </div>
                   
-                  {entry.notes && (
+                  {entry.note && (
                     <div className="px-4 py-2 text-sm text-muted-foreground border-b italic">
-                      {entry.notes}
+                      {entry.note}
                     </div>
                   )}
 
@@ -65,7 +74,7 @@ export default async function JournalEntriesPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {items.map((item: any) => (
+                      {items.map((item: JournalItem) => (
                         <TableRow key={item.id} className="hover:bg-transparent">
                           <TableCell>
                             <div className="font-medium">{item.chartOfAccount?.name}</div>

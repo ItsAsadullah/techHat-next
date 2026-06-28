@@ -5,23 +5,27 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { processDueCollection } from '@/lib/actions/receivables-actions';
-import { Wallet, CheckCircle2, ChevronRight, Calculator } from 'lucide-react';
+import { Wallet, Calculator } from 'lucide-react';
 import { PaymentMethod } from '@prisma/client';
+
+interface Customer { id: string; name: string; balance: number; }
+interface Invoice { id: string; orderNumber: string; createdAt: Date | string; dueAmount: number | null; ageDays: number; }
 
 export function PaymentDrawer({ 
   open, 
   onClose, 
+  onSuccess,
   customer, 
   outstandingInvoices 
 }: { 
   open: boolean; 
   onClose: () => void; 
-  customer: any; 
-  outstandingInvoices: any[];
+  onSuccess?: () => void;
+  customer: Customer; 
+  outstandingInvoices: Invoice[];
 }) {
   const [amount, setAmount] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
@@ -72,7 +76,7 @@ export function PaymentDrawer({
 
   for (const inv of selectedList) {
     if (remainingAmount <= 0) break;
-    const alloc = Math.min(remainingAmount, inv.dueAmount);
+    const alloc = Math.min(remainingAmount, inv.dueAmount || 0);
     allocations.push({ orderId: inv.id, amount: alloc, orderNumber: inv.orderNumber });
     remainingAmount -= alloc;
   }
@@ -95,6 +99,7 @@ export function PaymentDrawer({
     setIsProcessing(true);
     
     // Generate idempotency key to prevent double clicks
+    // eslint-disable-next-line react-hooks/purity
     const idempotencyKey = `pay_${customer.id}_${Date.now()}`;
 
     const res = await processDueCollection({
@@ -121,7 +126,8 @@ export function PaymentDrawer({
       setRemarks('');
       setMixed({ CASH: '', BKASH: '', NAGAD: '', ROCKET: '', CARD: '', BANK: '', CHEQUE: '' });
       setSelectedInvoices(new Set());
-      onClose();
+      if (onSuccess) onSuccess();
+      else onClose();
     } else {
       toast.error(res.error || 'Payment failed');
     }
@@ -187,7 +193,7 @@ export function PaymentDrawer({
                         <td className="px-3 py-2 text-center">
                            <span className={inv.ageDays > 30 ? 'text-red-600 font-medium' : 'text-slate-500'}>{inv.ageDays}d</span>
                         </td>
-                        <td className="px-3 py-2 text-right font-semibold">৳{inv.dueAmount.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-right font-semibold">৳{(inv.dueAmount || 0).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -223,7 +229,7 @@ export function PaymentDrawer({
                      <Input 
                        type="number" 
                        min="0"
-                       value={(mixed as any)[k]} 
+                       value={mixed[k as keyof typeof mixed]} 
                        onChange={e => setMixed({...mixed, [k]: e.target.value})}
                        className="bg-white h-9"
                      />
@@ -247,7 +253,7 @@ export function PaymentDrawer({
                   />
                   <div className="flex gap-2 mt-2">
                     <Button variant="outline" size="sm" onClick={() => setAmount(customer.balance.toString())}>Full Due</Button>
-                    <Button variant="outline" size="sm" onClick={() => setAmount(selectedList.reduce((s,i) => s + i.dueAmount, 0).toString())}>Selected Invoices</Button>
+                     <Button variant="outline" size="sm" onClick={() => setAmount(selectedList.reduce((s,i) => s + (i.dueAmount || 0), 0).toString())}>Selected Invoices</Button>
                   </div>
                </div>
             )}

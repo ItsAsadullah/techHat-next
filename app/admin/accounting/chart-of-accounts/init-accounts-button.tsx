@@ -17,8 +17,8 @@ export default function InitAccountsButton() {
       } else {
         toast.error(res.error || 'Failed to initialize accounts');
       }
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e: unknown) {
+      toast.error((e as Error)?.message ?? 'Unknown error');
     } finally {
       setLoading(false);
     }
