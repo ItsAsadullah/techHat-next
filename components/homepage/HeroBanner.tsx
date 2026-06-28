@@ -100,6 +100,7 @@ function BannerPanel({
           sizes={sizes ?? (compact ? '33vw' : '66vw')}
           className="object-cover transition-transform duration-700 group-hover:scale-105"
           priority={priority}
+          loading={priority ? "eager" : "lazy"}
           quality={85}
         />
       ) : null}

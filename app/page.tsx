@@ -119,6 +119,7 @@ export default async function HomePage() {
       <WebsiteSchema />
 
       <main className="min-h-screen bg-white">
+        <h1 className="sr-only">TechHat - Premium Electronics Store</h1>
         {/* Hero Section with Mega Category Nav */}
         <section className="bg-gray-50/50 py-4 lg:py-6">
           <div className="container mx-auto px-4">
