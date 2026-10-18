@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/table";
 import { getAdjustments } from '@/lib/actions/adjustment-actions';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Stock Adjustments | ERP',
   description: 'Manage inventory corrections and adjustments',

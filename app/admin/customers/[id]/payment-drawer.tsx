@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { processDueCollection } from '@/lib/actions/receivables-actions';
 import { useConfirm } from '@/components/providers/confirm-provider';
 import { Wallet, Calculator } from 'lucide-react';
-import { PaymentMethod } from '@prisma/client';
+import type { PaymentMethod } from '@prisma/client';
 
 interface Customer { id: string; name: string; balance: number; }
 interface Invoice { id: string; orderNumber: string; createdAt: Date | string; dueAmount: number | null; ageDays: number; }

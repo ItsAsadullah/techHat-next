@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AttributeDataType, AttributeUIType } from '@prisma/client';
+import type { AttributeDataType, AttributeUIType } from '@prisma/client';
 import { Plus, Pencil, Trash2, Settings2, ListTodo } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

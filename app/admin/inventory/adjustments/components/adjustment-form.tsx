@@ -24,8 +24,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { createAdjustment, getSystemQtyForAdjustment, AdjustmentFormData } from '@/lib/actions/adjustment-actions';
-import { searchProductsForPO } from '@/lib/actions/po-actions'; // we can reuse product search
-import { StockAdjustmentReason } from '@prisma/client';
+import { searchProductsForPO } from '@/lib/actions/po-actions';
+
+export type StockAdjustmentReason = 'COUNT' | 'DAMAGE' | 'THEFT' | 'EXPIRED';
 
 interface Warehouse { id: string; name: string; }
 interface AdjFormProps {
@@ -41,9 +42,23 @@ export function AdjustmentForm({ warehouses }: AdjFormProps) {
   const [reason, setReason] = useState<StockAdjustmentReason>('COUNT');
   const [note, setNote] = useState('');
 
-  type SearchProduct = { id: string; name: string; sku: string; costPrice?: number; variations: Array<{ id: string; name: string; sku: string; costPrice?: number }> };
+  type SearchVariant = { id: string; name: string; sku: string; costPrice?: number };
+  type SearchProduct = { 
+    id: string; 
+    name: string; 
+    sku: string; 
+    costPrice?: number; 
+    variants?: SearchVariant[];
+    variations?: SearchVariant[]; 
+  };
   type AdjItem = { id: string; productId: string; variantId: string | null; name: string; variantName: string | null; sku: string; systemQty: number; actualQty: number; adjustedQty: number; unitCost: number };
   const [items, setItems] = useState<AdjItem[]>([]);
+
+  useEffect(() => {
+    if (warehouses && warehouses.length > 0 && !warehouseId) {
+      setWarehouseId(warehouses[0].id);
+    }
+  }, [warehouses, warehouseId]);
 
   // Product Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,7 +81,7 @@ export function AdjustmentForm({ warehouses }: AdjFormProps) {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
-  const addProductToAdjustment = async (product: SearchProduct, variant: SearchProduct['variations'][number] | null = null) => {
+  const addProductToAdjustment = async (product: SearchProduct, variant: SearchVariant | null = null) => {
     if (!warehouseId) return toast.error('Please select a warehouse first');
 
     // Check if already added
@@ -184,7 +199,7 @@ export function AdjustmentForm({ warehouses }: AdjFormProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Warehouse <span className="text-red-500">*</span></Label>
-              <Select value={warehouseId} onValueChange={setWarehouseId} required>
+              <Select value={warehouseId} onValueChange={setWarehouseId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select warehouse..." />
                 </SelectTrigger>
@@ -197,7 +212,7 @@ export function AdjustmentForm({ warehouses }: AdjFormProps) {
             </div>
             <div className="space-y-2">
               <Label>Reason <span className="text-red-500">*</span></Label>
-              <Select value={reason} onValueChange={(val) => setReason(val as StockAdjustmentReason)} required>
+              <Select value={reason} onValueChange={(val) => setReason(val as StockAdjustmentReason)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select reason..." />
                 </SelectTrigger>
@@ -232,33 +247,36 @@ export function AdjustmentForm({ warehouses }: AdjFormProps) {
               
               {searchResults.length > 0 && (
                 <div className="absolute top-full left-4 right-4 mt-1 bg-popover text-popover-foreground border rounded-md shadow-lg z-50 max-h-[300px] overflow-y-auto">
-                  {searchResults.map((product) => (
-                    <div key={product.id} className="p-2 border-b last:border-0">
-                      {product.variations.length > 0 ? (
-                        <div className="space-y-1">
-                          <div className="text-sm font-semibold px-2 text-muted-foreground">{product.name} (Select Variant)</div>
-                          {product.variations.map((v) => (
-                            <button
-                              key={v.id}
-                              type="button"
-                              onClick={() => addProductToAdjustment(product, v)}
-                              className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded flex justify-between items-center"
-                            >
-                              <span>{v.name} <span className="text-xs text-muted-foreground ml-2 font-mono">{v.sku}</span></span>
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => addProductToAdjustment(product)}
-                          className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded flex justify-between items-center"
-                        >
-                          <span className="font-medium">{product.name} <span className="text-xs text-muted-foreground ml-2 font-mono">{product.sku}</span></span>
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                  {searchResults.map((product) => {
+                    const productVariants = product.variants || product.variations || [];
+                    return (
+                      <div key={product.id} className="p-2 border-b last:border-0">
+                        {productVariants.length > 0 ? (
+                          <div className="space-y-1">
+                            <div className="text-sm font-semibold px-2 text-muted-foreground">{product.name} (Select Variant)</div>
+                            {productVariants.map((v) => (
+                              <button
+                                key={v.id}
+                                type="button"
+                                onClick={() => addProductToAdjustment(product, v)}
+                                className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded flex justify-between items-center"
+                              >
+                                <span>{v.name} <span className="text-xs text-muted-foreground ml-2 font-mono">{v.sku}</span></span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => addProductToAdjustment(product)}
+                            className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded flex justify-between items-center"
+                          >
+                            <span className="font-medium">{product.name} <span className="text-xs text-muted-foreground ml-2 font-mono">{product.sku}</span></span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

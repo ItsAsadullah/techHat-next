@@ -24,6 +24,13 @@ export default function InventoryError({
       <p className="text-sm text-gray-500 max-w-md">
         We encountered an issue loading this inventory page. It might be a temporary connection issue.
       </p>
+      {error?.message && (
+        <div className="max-w-lg p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-left">
+          <p className="text-xs font-mono text-red-700 dark:text-red-300 break-words">
+            {error.message}
+          </p>
+        </div>
+      )}
       
       <Button onClick={() => reset()} className="flex items-center gap-2 mt-4">
         <RefreshCw className="w-4 h-4" />
