@@ -34,7 +34,7 @@ import { ProductFAQSection } from '@/components/admin/products/product-form/sect
 import { ProductTagsInput } from '@/components/admin/products/product-form/sections/ProductTagsInput';
 
 import { createProductJSON, updateProductJSON } from '@/lib/actions/product-json-actions';
-import { generateNumericBarcode } from '@/lib/actions/product-enterprise-actions';
+import { generateNumericBarcode, generateSKU } from '@/lib/actions/product-enterprise-actions';
 import { ProductFormValues, statusConfig } from '@/components/admin/products/product-form/schemas/product.schema';
 import { AiProductPanel } from '@/components/admin/products/product-form/ai-assistant/AiProductPanel';
 
@@ -258,8 +258,20 @@ export default function ProductForm({ categories, brands, attributesList, catego
         }
       }
 
+      let finalSku = data.sku?.trim() || '';
+      if (!finalSku && !initialData?.id) {
+        const genSkuRes = await generateSKU(data.categoryId, data.model || undefined, data.name || undefined, data.brandId || undefined);
+        if (genSkuRes.success && genSkuRes.sku) {
+          finalSku = genSkuRes.sku;
+        } else {
+          const fallbackClean = (data.model || data.name || 'PROD').replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase();
+          finalSku = `TH-${fallbackClean || 'PROD'}-${String(Date.now()).slice(-4)}`;
+        }
+      }
+
       const payload = {
         ...data,
+        sku: finalSku || undefined,
         barcode: finalBarcode || undefined,
         images: data.images || [],
         // Simple products must not carry stale variant data
