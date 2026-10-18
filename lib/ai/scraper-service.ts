@@ -22,7 +22,7 @@ export async function scrapeUrlContent(url: string): Promise<string> {
     let text = $('body').text();
     text = text.replace(/\s+/g, ' ').trim();
 
-    return text.substring(0, 15000); // Limit to ~15k characters to fit context limits nicely
+    return text.substring(0, 5000); // Limit to ~5k characters to keep token usage low and avoid rate limits
   } catch (error) {
     console.error(`Error scraping URL ${url}:`, error);
     return `Error scraping ${url}`;

@@ -213,6 +213,31 @@ export async function generateProductData(
     }
   } catch (error: any) {
     console.error('Error generating product data:', error);
+    // If 3-step fails (e.g. rate limit midway or timeout), attempt a lightweight 1-step recovery
+    if (analysisType === '3-step') {
+      try {
+        console.log('Attempting 1-step recovery after 3-step failure...');
+        const aiModel = await getAiModel(modelId);
+        const { object } = await generateObject({
+          model: aiModel,
+          system: PRODUCT_GENERATION_SYSTEM_PROMPT,
+          prompt: `
+            Input Context (Scraped Data):
+            ${scrapedContext}
+            
+            Images Content / Analysis:
+            ${imageAnalysisContext}
+
+            For your reference, here are the exact URLs of the images that were analyzed:
+            ${imageUrls.map((url, i) => `Image ${i + 1}: ${url}`).join('\n')}
+          `,
+          schema: aiProductSchema,
+        });
+        return object;
+      } catch (fallbackErr: any) {
+        throw new Error(`Failed to generate AI product data: ${fallbackErr.message || error.message || 'Unknown error'}`);
+      }
+    }
     throw new Error(`Failed to generate AI product data: ${error.message || 'Unknown error'}`);
   }
 }

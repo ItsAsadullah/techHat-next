@@ -20,7 +20,7 @@ export function AiProductPanel() {
   const [competitorUrls, setCompetitorUrls] = useState<string[]>(['']);
   const [aiResult, setAiResult] = useState<any>(null);
   const [modelId, setModelId] = useState('google:gemini-flash-latest');
-  const [analysisType, setAnalysisType] = useState<'1-step' | '3-step'>('3-step');
+  const [analysisType, setAnalysisType] = useState<'1-step' | '3-step'>('1-step');
   const [availableModels, setAvailableModels] = useState<{value: string, label: string}[]>([]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -59,7 +59,7 @@ export function AiProductPanel() {
   const handleAnalyze = async () => {
     const productName = getValues('name');
     if (!productName) {
-      toast.error('Please enter a product name first.');
+      toast.error('প্রথমে প্রোডাক্টের নাম লিখুন।');
       return;
     }
 
@@ -104,7 +104,12 @@ export function AiProductPanel() {
       toast.success(`AI Analysis Complete in ${elapsedSeconds}s`);
       setAiResult(res.data);
     } else {
-      toast.error(res.error || 'Analysis failed');
+      const errStr = (res.error || '').toLowerCase();
+      if (errStr.includes('quota') || errStr.includes('rate limit') || errStr.includes('429') || errStr.includes('exhausted')) {
+        toast.error('AI API কোটা সাময়িকভাবে শেষ হয়েছে (Rate Limit)। ১-২ মিনিট অপেক্ষা করে আবার চেষ্টা করুন অথবা 1-Step মোড ব্যবহার করুন।', { duration: 6000 });
+      } else {
+        toast.error(res.error || 'Analysis failed');
+      }
     }
   };
 
@@ -180,14 +185,17 @@ export function AiProductPanel() {
               </div>
 
               <div className="space-y-2 pt-2">
-                <Label>Analysis Depth</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Analysis Depth (অ্যানালাইসিস মোড)</Label>
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">1-Step মোডে কোটা বাঁচে</span>
+                </div>
                 <Select value={analysisType} onValueChange={(val: any) => setAnalysisType(val)}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select Analysis Depth" />
                   </SelectTrigger>
                   <SelectContent className="z-[105]">
-                    <SelectItem value="3-step">3-Step Deep Analysis (Best Quality, Slower)</SelectItem>
-                    <SelectItem value="1-step">1-Step Fast Analysis (Basic Quality, Faster)</SelectItem>
+                    <SelectItem value="1-step">⚡ 1-Step Fast Analysis (সুপার ফাস্ট ও ৭৫% কোটা সাশ্রয়ী - Recommended)</SelectItem>
+                    <SelectItem value="3-step">🔬 3-Step Deep Analysis (বেস্ট কোয়ালিটি, ৪ গুণ বেশি কোটা খরচ করে)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
