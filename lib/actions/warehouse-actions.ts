@@ -18,6 +18,21 @@ export async function getWarehouseOptions() {
       select: { id: true, name: true, code: true, type: true },
       orderBy: { name: 'asc' },
     });
+    // Sort so MAIN warehouses come first, then STORE, and DAMAGE/TRANSIT last
+    const typePriority: Record<string, number> = {
+      MAIN: 1,
+      STORE: 2,
+      SERVICE_CENTER: 3,
+      INSPECTION: 4,
+      TRANSIT: 5,
+      DAMAGE: 6,
+    };
+    warehouses.sort((a, b) => {
+      const pA = typePriority[a.type] || 99;
+      const pB = typePriority[b.type] || 99;
+      if (pA !== pB) return pA - pB;
+      return a.name.localeCompare(b.name);
+    });
     return { success: true, data: warehouses };
   } catch (error: any) {
     console.error('Failed to get warehouse options:', error);
