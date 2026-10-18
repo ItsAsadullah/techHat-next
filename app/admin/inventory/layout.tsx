@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Warehouse, Settings2, Replace } from 'lucide-react';
+import { LayoutDashboard, Warehouse, Settings2, Replace, ArrowLeftRight, TrendingUp } from 'lucide-react';
 
 export default function InventoryLayout({
   children,
@@ -17,7 +17,9 @@ export default function InventoryLayout({
     { name: 'Stock Ledger', href: '/admin/inventory/ledger', icon: Settings2, exact: false },
     { name: 'Warehouses', href: '/admin/inventory/warehouses', icon: Warehouse, exact: false },
     { name: 'Goods Receive (GRN)', href: '/admin/inventory/grn', icon: Settings2, exact: false },
+    { name: 'Stock Transfers', href: '/admin/inventory/transfers', icon: ArrowLeftRight, exact: false },
     { name: 'Stock Adjustments', href: '/admin/inventory/adjustments', icon: Replace, exact: false },
+    { name: 'Valuation', href: '/admin/inventory/valuation', icon: TrendingUp, exact: false },
   ];
 
   return (

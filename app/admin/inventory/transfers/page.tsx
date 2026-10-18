@@ -50,9 +50,9 @@ export default async function TransfersPage() {
                 <TableRow key={t.id}>
                   <TableCell className="font-medium">{t.transferNumber}</TableCell>
                   <TableCell>{format(new Date(t.date), 'dd MMM yyyy')}</TableCell>
-                  <TableCell>{t.sourceWarehouse.name}</TableCell>
+                  <TableCell>{t.sourceWarehouse?.name || '—'}</TableCell>
                   <TableCell><ArrowRight className="h-4 w-4 text-muted-foreground" /></TableCell>
-                  <TableCell>{t.destinationWarehouse.name}</TableCell>
+                  <TableCell>{t.destWarehouse?.name || t.destinationWarehouse?.name || '—'}</TableCell>
                   <TableCell>{t._count?.items || 0} items</TableCell>
                   <TableCell>
                     <Badge variant={
