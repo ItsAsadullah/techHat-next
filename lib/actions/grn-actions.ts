@@ -110,10 +110,11 @@ export async function getGRNById(id: string) {
                 stock: true,
                 model: true,
                 costPrice: true,
+                barcode: true,
                 category: { select: { name: true } }
               }
             },
-            variant: { select: { id: true, name: true, sku: true, stock: true, price: true } }
+            variant: { select: { id: true, name: true, sku: true, upc: true, stock: true, price: true } }
           }
         }
       },

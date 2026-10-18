@@ -219,14 +219,22 @@ export async function findProductByBarcode(barcode: string): Promise<POSProduct 
       },
     } as any;
 
+    const cleanB = b.trim();
+    const searchTerms = [cleanB];
+    if (cleanB.toUpperCase().startsWith('TH-')) {
+      searchTerms.push(cleanB.substring(3));
+    } else {
+      searchTerms.push('TH-' + cleanB);
+    }
+
     // 1. Try finding by product level first (much faster than OR across relations)
     let product: any = await prisma.product.findFirst({
       where: {
         status: 'ACTIVE',
         OR: [
-          { barcode: { equals: b, mode: 'insensitive' } },
-          { sku: { equals: b, mode: 'insensitive' } },
-          { model: { equals: b, mode: 'insensitive' } },
+          { barcode: { in: searchTerms, mode: 'insensitive' } },
+          { sku: { in: searchTerms, mode: 'insensitive' } },
+          { model: { in: searchTerms, mode: 'insensitive' } },
         ],
       },
       select: SELECT_FIELDS,
@@ -237,8 +245,8 @@ export async function findProductByBarcode(barcode: string): Promise<POSProduct 
       const variantMatch = await prisma.variant.findFirst({
         where: {
           OR: [
-            { sku: { equals: b, mode: 'insensitive' } },
-            { upc: { equals: b, mode: 'insensitive' } },
+            { sku: { in: searchTerms, mode: 'insensitive' } },
+            { upc: { in: searchTerms, mode: 'insensitive' } },
           ],
         },
         select: { productId: true },

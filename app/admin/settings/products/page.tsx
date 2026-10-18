@@ -4,14 +4,24 @@ import {
   CheckCircle2, FileStack, Star, Cpu,
 } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
+import { unstable_cache } from 'next/cache';
+
+const getProductCounts = unstable_cache(
+  async () => {
+    const [categoryCount, brandCount, attrCount, specCount] = await Promise.all([
+      prisma.category.count(),
+      prisma.brand.count(),
+      prisma.attribute.count().catch(() => 0),
+      prisma.specTemplate.count().catch(() => 0),
+    ]);
+    return { categoryCount, brandCount, attrCount, specCount };
+  },
+  ['product-workspace-counts'],
+  { revalidate: 120 }
+);
 
 export default async function ProductsWorkspacePage() {
-  const [categoryCount, brandCount, attrCount, specCount] = await Promise.all([
-    prisma.category.count(),
-    prisma.brand.count(),
-    prisma.attribute.count().catch(() => 0),
-    prisma.specTemplate.count().catch(() => 0),
-  ]);
+  const { categoryCount, brandCount, attrCount, specCount } = await getProductCounts();
 
   const SECTIONS = [
     {

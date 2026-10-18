@@ -2251,3 +2251,95 @@ model profiles {
   created_at DateTime @default(now()) @db.Timestamptz(6)
   updated_at DateTime @default(now()) @db.Timestamptz(6)
 }
+
+// ══════════════════════════════════════════════════════════════════════
+//                            TRAINING CENTER SMS
+// ══════════════════════════════════════════════════════════════════════
+
+model Course {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  description String?
+  thumbnail   String?
+  duration    String?  // e.g. "3 Months"
+  fee         Float
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  batches     Batch[]
+}
+
+model Batch {
+  id          String   @id @default(uuid())
+  name        String   // e.g. "Batch 101"
+  courseId    String
+  instructor  String?
+  schedule    String?  // e.g. "Sat, Mon, Wed (4 PM - 6 PM)"
+  startDate   DateTime?
+  endDate     DateTime?
+  maxStudents Int      @default(30)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course      Course       @relation(fields: [courseId], references: [id])
+  enrollments Enrollment[]
+}
+
+model Student {
+  id          String   @id @default(uuid())
+  firstName   String
+  lastName    String
+  email       String?  @unique
+  phone       String   @unique
+  address     String?
+  avatarUrl   String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  enrollments Enrollment[]
+}
+
+enum EnrollmentStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model Enrollment {
+  id          String   @id @default(uuid())
+  studentId   String
+  batchId     String
+  status      EnrollmentStatus @default(ACTIVE)
+  joinedAt    DateTime @default(now())
+  
+  totalFee    Float
+  discount    Float    @default(0)
+  paidAmount  Float    @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  student     Student  @relation(fields: [studentId], references: [id])
+  batch       Batch    @relation(fields: [batchId], references: [id])
+  payments    FeePayment[]
+
+  @@unique([studentId, batchId])
+}
+
+model FeePayment {
+  id           String   @id @default(uuid())
+  enrollmentId String
+  amount       Float
+  paymentDate  DateTime @default(now())
+  method       String   // e.g. "Cash", "bKash", "Bank"
+  trxId        String?
+  note         String?
+  createdAt    DateTime @default(now())
+
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
+}

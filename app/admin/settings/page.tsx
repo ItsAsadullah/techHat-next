@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { getStoreSettings } from '@/lib/actions/invoice-settings-actions';
 import { prisma } from '@/lib/prisma';
+import { unstable_cache } from 'next/cache';
 import { ConfigSearchTrigger } from './config-search-trigger';
 
 // ─── Module Definitions ────────────────────────────────────────────────────
@@ -208,13 +209,25 @@ const MODULES = [
   },
 ];
 
+const getSettingsCounts = unstable_cache(
+  async () => {
+    const [categoryCount, brandCount, staffCount] = await Promise.all([
+      prisma.category.count(),
+      prisma.brand.count(),
+      prisma.staff.count().catch(() => 0),
+    ]);
+    return { categoryCount, brandCount, staffCount };
+  },
+  ['admin-settings-counts'],
+  { revalidate: 120 }
+);
+
 export default async function ConfigurationCenterPage() {
-  const [store, categoryCount, brandCount, staffCount] = await Promise.all([
+  const [store, counts] = await Promise.all([
     getStoreSettings(),
-    prisma.category.count(),
-    prisma.brand.count(),
-    prisma.staff.count().catch(() => 0),
+    getSettingsCounts(),
   ]);
+  const { categoryCount, brandCount, staffCount } = counts;
 
   const configuredCount = MODULES.filter((m) => m.configured).length;
   const totalSections = MODULES.reduce((acc, m) => acc + m.sections.length, 0);

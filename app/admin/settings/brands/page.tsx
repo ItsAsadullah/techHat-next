@@ -1,23 +1,32 @@
 import { prisma } from '@/lib/prisma';
 import { BrandManager } from '@/components/admin/settings/brand-manager';
 import { Tags } from 'lucide-react';
+import { unstable_cache } from 'next/cache';
 
-export default async function BrandsSettingsPage() {
-  const brands = await prisma.brand.findMany({
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      shortCode: true,
-      logo: true,
-      _count: {
-        select: {
-          products: true,
+const getBrandsList = unstable_cache(
+  async () => {
+    return prisma.brand.findMany({
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        shortCode: true,
+        logo: true,
+        _count: {
+          select: {
+            products: true,
+          },
         },
       },
-    },
-    orderBy: { name: 'asc' },
-  });
+      orderBy: { name: 'asc' },
+    });
+  },
+  ['settings-brands-list'],
+  { revalidate: 300, tags: ['brands'] }
+);
+
+export default async function BrandsSettingsPage() {
+  const brands = await getBrandsList();
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">

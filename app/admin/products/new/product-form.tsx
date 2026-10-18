@@ -34,6 +34,7 @@ import { ProductFAQSection } from '@/components/admin/products/product-form/sect
 import { ProductTagsInput } from '@/components/admin/products/product-form/sections/ProductTagsInput';
 
 import { createProductJSON, updateProductJSON } from '@/lib/actions/product-json-actions';
+import { generateNumericBarcode } from '@/lib/actions/product-enterprise-actions';
 import { ProductFormValues, statusConfig } from '@/components/admin/products/product-form/schemas/product.schema';
 import { AiProductPanel } from '@/components/admin/products/product-form/ai-assistant/AiProductPanel';
 
@@ -249,8 +250,17 @@ export default function ProductForm({ categories, brands, attributesList, catego
     try {
       setLoading(true);
 
+      let finalBarcode = data.barcode?.trim() || '';
+      if (!finalBarcode && !initialData?.id) {
+        const genRes = await generateNumericBarcode();
+        if (genRes.success && genRes.barcode) {
+          finalBarcode = genRes.barcode;
+        }
+      }
+
       const payload = {
         ...data,
+        barcode: finalBarcode || undefined,
         images: data.images || [],
         // Simple products must not carry stale variant data
         variants: data.productVariantType === 'simple' ? [] : data.variants,

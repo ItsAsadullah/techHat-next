@@ -39,44 +39,69 @@ export async function generateSKU(
 }
 
 /**
- * Generate a standard EAN-13 barcode.
- * Uses a fixed country/company prefix (e.g., 890 for local or custom) 
- * + timestamp-based 8 digits + 1 check digit.
- * Ensures it passes EAN-13 validation.
+ * Generate a unique 8-digit numeric barcode (e.g. 10000140).
+ * Numeric-only barcodes use Code 128 Set C (pairs of digits),
+ * resulting in 50%+ shorter physical length, wider bars, and crystal clear printing.
+ * Guaranteed unique across Products and Variants.
  */
-export async function generateBarcode(): Promise<{ success: boolean; barcode?: string; error?: string }> {
+export async function generateNumericBarcode(): Promise<{ success: boolean; barcode?: string; error?: string }> {
   try {
-    // We need 12 digits before the check digit.
-    // Let's use 200 (internal use) + 9 random/sequential digits.
-    // For simplicity, we'll use 200 + Date.now().toString().slice(-9)
-    const prefix = '200';
-    const timestampPart = Date.now().toString().slice(-9);
-    const twelveDigits = prefix + timestampPart;
+    const START_NUM = 10000001;
 
-    let sum = 0;
-    for (let i = 0; i < 12; i++) {
-      const digit = parseInt(twelveDigits[i], 10);
-      sum += (i % 2 === 0) ? digit : digit * 3;
-    }
-    const checkDigit = (10 - (sum % 10)) % 10;
-    
-    const barcode = twelveDigits + checkDigit;
-
-    // Check for uniqueness in DB
-    const existing = await prisma.product.findFirst({
-      where: { barcode }
+    // Find highest 8-digit numeric barcode in DB
+    const products = await prisma.product.findMany({
+      where: { barcode: { not: null } },
+      select: { barcode: true },
+    });
+    const variants = await prisma.variant.findMany({
+      where: { upc: { not: null } },
+      select: { upc: true },
     });
 
-    if (existing) {
-      // Very rare collision, just retry (recursive)
-      return generateBarcode();
+    let highest = START_NUM - 1;
+
+    for (const p of products) {
+      if (p.barcode && /^\d{8}$/.test(p.barcode.trim())) {
+        const val = parseInt(p.barcode.trim(), 10);
+        if (val > highest) highest = val;
+      }
     }
 
-    return { success: true, barcode };
+    for (const v of variants) {
+      if (v.upc && /^\d{8}$/.test(v.upc.trim())) {
+        const val = parseInt(v.upc.trim(), 10);
+        if (val > highest) highest = val;
+      }
+    }
+
+    let candidate = highest + 1;
+    while (true) {
+      const candidateStr = candidate.toString();
+      const existingProduct = await prisma.product.findFirst({
+        where: { barcode: candidateStr },
+        select: { id: true },
+      });
+      const existingVariant = await prisma.variant.findFirst({
+        where: { upc: candidateStr },
+        select: { id: true },
+      });
+
+      if (!existingProduct && !existingVariant) {
+        return { success: true, barcode: candidateStr };
+      }
+      candidate++;
+    }
   } catch (error: any) {
-    console.error('generateBarcode error:', error);
-    return { success: false, error: error?.message || 'Failed to generate barcode' };
+    console.error('generateNumericBarcode error:', error);
+    return { success: false, error: error?.message || 'Failed to generate numeric barcode' };
   }
+}
+
+/**
+ * Backward compatible alias for generateNumericBarcode.
+ */
+export async function generateBarcode(): Promise<{ success: boolean; barcode?: string; error?: string }> {
+  return generateNumericBarcode();
 }
 
 /**

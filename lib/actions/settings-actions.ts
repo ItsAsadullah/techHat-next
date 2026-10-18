@@ -190,15 +190,30 @@ export async function savePOSConfig(config: POSConfig, performedBy?: string) {
 }
 
 export async function initializePOSSettings() {
-  for (const [key, value] of Object.entries(DEFAULT_POS)) {
-    const existing = await prisma.setting.findUnique({ where: { key } });
-    if (!existing) {
-      await prisma.setting.create({
-        data: { key, value: String(value), category: 'pos', updatedBy: 'system' },
+  try {
+    const keys = Object.keys(DEFAULT_POS);
+    const existing = await prisma.setting.findMany({
+      where: { key: { in: keys } },
+      select: { key: true },
+    });
+    const existingKeys = new Set(existing.map((s) => s.key));
+    const missing = Object.entries(DEFAULT_POS).filter(([k]) => !existingKeys.has(k));
+    if (missing.length > 0) {
+      await prisma.setting.createMany({
+        data: missing.map(([key, value]) => ({
+          key,
+          value: String(value),
+          category: 'pos',
+          updatedBy: 'system',
+        })),
+        skipDuplicates: true,
       });
     }
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to initialize POS settings:', error);
+    return { success: false };
   }
-  return { success: true };
 }
 
 // ─────────────────────────────────────────────────────────────

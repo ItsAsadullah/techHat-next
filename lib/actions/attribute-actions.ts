@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_cache } from 'next/cache';
 import { AttributeDataType, AttributeUIType } from '@prisma/client';
 
 export type CreateAttributeData = {
@@ -16,9 +16,9 @@ export type CreateAttributeData = {
   status?: string;
 };
 
-export async function getAttributes() {
-  try {
-    const attributes = await prisma.attribute.findMany({
+const _getAttributesCached = unstable_cache(
+  async () => {
+    return prisma.attribute.findMany({
       orderBy: { name: 'asc' },
       include: {
         values: {
@@ -26,7 +26,14 @@ export async function getAttributes() {
         },
       },
     });
-    return attributes;
+  },
+  ['settings-attributes-list'],
+  { revalidate: 300, tags: ['attributes'] }
+);
+
+export async function getAttributes() {
+  try {
+    return await _getAttributesCached();
   } catch (error) {
     console.error('Failed to fetch attributes:', error);
     return [];

@@ -1,38 +1,42 @@
 import { prisma } from '@/lib/prisma';
 import { CategoryManager } from '@/components/admin/settings/category-manager';
 import { FolderTree } from 'lucide-react';
-import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 
-// Cache the categories fetch
-const getCategoriesTree = cache(async () => {
-    // Fetch categories with only needed fields
-    const categories = await prisma.category.findMany({
-        select: {
-            id: true,
-            name: true,
-            shortCode: true,
-            slug: true,
-            parentId: true,
-            image: true,
-            description: true,
-            _count: {
-                select: { products: true }
-            }
-        },
-        orderBy: { name: 'asc' },
-    });
+// Cache the categories fetch across requests
+const getCategoriesTree = unstable_cache(
+    async () => {
+        // Fetch categories with only needed fields
+        const categories = await prisma.category.findMany({
+            select: {
+                id: true,
+                name: true,
+                shortCode: true,
+                slug: true,
+                parentId: true,
+                image: true,
+                description: true,
+                _count: {
+                    select: { products: true }
+                }
+            },
+            orderBy: { name: 'asc' },
+        });
 
-    const buildTree = (parentId: string | null = null): any[] => {
-        return categories
-            .filter(cat => cat.parentId === parentId)
-            .map(cat => ({
-                ...cat,
-                children: buildTree(cat.id)
-            }));
-    };
+        const buildTree = (parentId: string | null = null): any[] => {
+            return categories
+                .filter(cat => cat.parentId === parentId)
+                .map(cat => ({
+                    ...cat,
+                    children: buildTree(cat.id)
+                }));
+        };
 
-    return buildTree(null);
-});
+        return buildTree(null);
+    },
+    ['categories-tree'],
+    { revalidate: 300, tags: ['categories'] }
+);
 
 export default async function CategoriesSettingsPage() {
     const categories = await getCategoriesTree();
