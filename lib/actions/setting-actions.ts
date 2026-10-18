@@ -107,15 +107,15 @@ export async function getAvailableAiModels() {
 
   const models = [];
 
-  if (hasGemini) {
-    models.push({ value: 'google:gemini-flash-latest', label: 'Gemini Flash Latest (Auto-updated, Fast)' });
-    models.push({ value: 'google:gemini-3.5-flash', label: 'Gemini 3.5 Flash' });
-    models.push({ value: 'google:gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (Powerful)' });
-    models.push({ value: 'google:gemini-2.5-flash', label: 'Gemini 2.5 Flash (Legacy)' });
+  if (hasGroq) {
+    models.push({ value: 'groq:openai/gpt-oss-120b', label: 'Groq GPT-OSS 120B (High Intelligence & Unlimited)' });
+    models.push({ value: 'groq:qwen/qwen3.8-27b', label: 'Groq Qwen 3.8 (Ultra Fast)' });
   }
 
-  if (hasGroq) {
-    models.push({ value: 'groq:llama-4-scout', label: 'Llama 4 Scout by Groq (Lightning Fast)' });
+  if (hasGemini) {
+    models.push({ value: 'google:gemini-3.5-flash', label: 'Google Gemini 3.5 Flash' });
+    models.push({ value: 'google:gemini-3.8-flash', label: 'Google Gemini 3.8 Flash (Latest)' });
+    models.push({ value: 'google:gemini-3.5-flash-lite', label: 'Google Gemini 3.5 Flash Lite' });
   }
 
   if (hasOpenAI) {
@@ -124,7 +124,7 @@ export async function getAvailableAiModels() {
 
   // Fallback if none is configured
   if (models.length === 0) {
-    models.push({ value: 'google:gemini-flash-latest', label: 'Gemini Flash Latest (Please configure API Key in settings)' });
+    models.push({ value: 'google:gemini-3.5-flash', label: 'Gemini 3.5 Flash (Please configure API Key in settings)' });
   }
 
   return models;

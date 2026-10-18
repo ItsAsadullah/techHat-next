@@ -1,7 +1,7 @@
 import { generateObject } from 'ai';
 import { z } from 'zod';
-import { PRODUCT_GENERATION_SYSTEM_PROMPT } from './prompts';
-import { getAiModel } from './provider';
+import { PRODUCT_GENERATION_SYSTEM_PROMPT, DATA_EXTRACTION_PROMPT, SEO_CONTENT_PROMPT, ENRICHMENT_PROMPT } from './prompts';
+import { getAiModel, getModelInfo, getFallbackModels } from './provider';
 
 export const aiProductSchema = z.object({
   description: z.object({
@@ -57,8 +57,6 @@ export const aiProductSchema = z.object({
 });
 
 export type AiProductGenerationResult = z.infer<typeof aiProductSchema>;
-
-import { DATA_EXTRACTION_PROMPT, SEO_CONTENT_PROMPT, ENRICHMENT_PROMPT } from './prompts';
 
 const step1Schema = z.object({
   brand: z.string().nullable().describe('Leave null if not found'),
@@ -136,13 +134,13 @@ export async function generateProductData(
   scrapedContext: string,
   imageAnalysisContext: string,
   imageUrls: string[] = [],
-  modelId: string = 'google:gemini-flash-latest',
-  analysisType: '1-step' | '3-step' = '3-step'
+  modelId: string = 'groq-gpt-oss-120b',
+  analysisType: '1-step' | '3-step' = '1-step'
 ) {
-  try {
-    const aiModel = await getAiModel(modelId);
+  const runWithModel = async (targetModelId: string, mode: '1-step' | '3-step') => {
+    const aiModel = await getAiModel(targetModelId);
 
-    if (analysisType === '1-step') {
+    if (mode === '1-step') {
       const { object } = await generateObject({
         model: aiModel,
         system: PRODUCT_GENERATION_SYSTEM_PROMPT,
@@ -211,33 +209,64 @@ export async function generateProductData(
         ...step3.object,
       };
     }
-  } catch (error: any) {
-    console.error('Error generating product data:', error);
-    // If 3-step fails (e.g. rate limit midway or timeout), attempt a lightweight 1-step recovery
+  };
+
+  // 1. Primary Attempt
+  try {
+    const data = await runWithModel(modelId, analysisType);
+    const info = await getModelInfo(modelId);
+    return {
+      ...data,
+      _meta: {
+        modelUsed: info.name,
+        fallbackUsed: false,
+      }
+    };
+  } catch (primaryError: any) {
+    console.warn(`Primary AI model [${modelId}] failed (${primaryError.message}). Evaluating recovery...`);
+
+    // If 3-step failed on primary, try 1-step on primary first
     if (analysisType === '3-step') {
       try {
-        console.log('Attempting 1-step recovery after 3-step failure...');
-        const aiModel = await getAiModel(modelId);
-        const { object } = await generateObject({
-          model: aiModel,
-          system: PRODUCT_GENERATION_SYSTEM_PROMPT,
-          prompt: `
-            Input Context (Scraped Data):
-            ${scrapedContext}
-            
-            Images Content / Analysis:
-            ${imageAnalysisContext}
-
-            For your reference, here are the exact URLs of the images that were analyzed:
-            ${imageUrls.map((url, i) => `Image ${i + 1}: ${url}`).join('\n')}
-          `,
-          schema: aiProductSchema,
-        });
-        return object;
-      } catch (fallbackErr: any) {
-        throw new Error(`Failed to generate AI product data: ${fallbackErr.message || error.message || 'Unknown error'}`);
+        console.log(`Retrying primary model [${modelId}] with 1-step mode...`);
+        const data = await runWithModel(modelId, '1-step');
+        const info = await getModelInfo(modelId);
+        return {
+          ...data,
+          _meta: {
+            modelUsed: `${info.name} (1-Step Recovery)`,
+            fallbackUsed: false,
+          }
+        };
+      } catch (err: any) {
+        console.warn(`Primary model 1-step recovery also failed:`, err.message);
       }
     }
-    throw new Error(`Failed to generate AI product data: ${error.message || 'Unknown error'}`);
+
+    // 2. Automated Multi-Model Failover
+    console.log(`Engaging automated AI failover pool...`);
+    const fallbackCandidates = await getFallbackModels(modelId);
+
+    let lastError = primaryError;
+    for (const candidate of fallbackCandidates) {
+      try {
+        console.log(`Attempting fallback model: [${candidate.displayName}] (${candidate.modelName})...`);
+        const data = await runWithModel(candidate.id, '1-step');
+        console.log(`Fallback model [${candidate.displayName}] succeeded!`);
+        return {
+          ...data,
+          _meta: {
+            modelUsed: candidate.displayName,
+            fallbackUsed: true,
+            fallbackReason: primaryError.message,
+          }
+        };
+      } catch (candidateErr: any) {
+        console.warn(`Fallback candidate [${candidate.displayName}] failed:`, candidateErr.message);
+        lastError = candidateErr;
+      }
+    }
+
+    throw new Error(`All available AI models failed. Primary model error: ${primaryError.message}. Last fallback error: ${lastError.message}`);
   }
 }

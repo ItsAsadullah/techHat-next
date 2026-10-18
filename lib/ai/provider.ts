@@ -62,5 +62,35 @@ export async function getAiModel(modelId: string) {
   // Fallback default
   if (!geminiKey) throw new Error('No API Keys configured.');
   const google = createGoogleGenerativeAI({ apiKey: geminiKey });
-  return google('gemini-flash-latest');
+  return google('gemini-3.5-flash');
 }
+
+export async function getModelInfo(modelId: string): Promise<{ name: string; provider: string; modelName: string }> {
+  try {
+    const dynamicModels = await getDynamicAiModels();
+    const matched = dynamicModels.find(m => m.id === modelId);
+    if (matched) {
+      return { name: matched.displayName, provider: matched.provider, modelName: matched.modelName };
+    }
+  } catch (e) {
+    // ignore
+  }
+  return { name: modelId, provider: modelId.split(':')[0] || 'unknown', modelName: modelId.split(':')[1] || modelId };
+}
+
+export async function getFallbackModels(excludeModelId?: string) {
+  try {
+    const dynamicModels = await getDynamicAiModels();
+    const candidates = dynamicModels.filter(m => m.id !== excludeModelId);
+    // Prioritize Groq (unlimited, fast), then Google
+    candidates.sort((a, b) => {
+      if (a.provider === 'groq' && b.provider !== 'groq') return -1;
+      if (a.provider !== 'groq' && b.provider === 'groq') return 1;
+      return 0;
+    });
+    return candidates;
+  } catch (e) {
+    return [];
+  }
+}
+

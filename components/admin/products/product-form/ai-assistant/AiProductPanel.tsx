@@ -50,7 +50,9 @@ export function AiProductPanel() {
       const models = await getAvailableAiModels();
       setAvailableModels(models);
       if (models.length > 0) {
-        setModelId(models[0].value);
+        // Prioritize Groq model by default for reliability and no daily quota limits
+        const groqModel = models.find(m => m.label.toLowerCase().includes('groq'));
+        setModelId(groqModel ? groqModel.value : models[0].value);
       }
     }
     fetchModels();
@@ -101,12 +103,16 @@ export function AiProductPanel() {
     setLoading(false);
 
     if (res.success) {
-      toast.success(`AI Analysis Complete in ${elapsedSeconds}s`);
+      if ((res as any).fallbackUsed) {
+        toast.success(`AI জেনারেশন সম্পন্ন হয়েছে! (${(res as any).modelUsed} ব্যাকআপ মডেল দিয়ে)`, { duration: 6000 });
+      } else {
+        toast.success(`AI Analysis Complete in ${elapsedSeconds}s`);
+      }
       setAiResult(res.data);
     } else {
       const errStr = (res.error || '').toLowerCase();
       if (errStr.includes('quota') || errStr.includes('rate limit') || errStr.includes('429') || errStr.includes('exhausted')) {
-        toast.error('AI API কোটা সাময়িকভাবে শেষ হয়েছে (Rate Limit)। ১-২ মিনিট অপেক্ষা করে আবার চেষ্টা করুন অথবা 1-Step মোড ব্যবহার করুন।', { duration: 6000 });
+        toast.error('Google API কোটা শেষ হয়েছে। অনুগ্রহ করে ড্রপডাউন থেকে "Groq" মডেল সিলেক্ট করুন।', { duration: 7000 });
       } else {
         toast.error(res.error || 'Analysis failed');
       }

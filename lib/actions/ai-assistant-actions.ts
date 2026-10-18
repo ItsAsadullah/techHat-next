@@ -51,8 +51,10 @@ export async function analyzeProductAction(formData: {
       visionContext, 
       formData.imageUrls || [], 
       formData.modelId,
-      formData.analysisType || '3-step'
+      formData.analysisType || '1-step'
     );
+
+    const meta = (aiData as any)._meta || {};
 
     // 4. Save Draft to Database
     const draft = await prisma.aiGenerationDraft.create({
@@ -61,7 +63,7 @@ export async function analyzeProductAction(formData: {
         sourceUrls: [formData.officialUrl, ...(formData.competitorUrls || [])].filter(Boolean) as string[],
         imageUrls: formData.imageUrls || [],
         description: aiData.description as any,
-        shortDesc: aiData.description.short as any,
+        shortDesc: aiData.description?.short as any,
         specifications: aiData.specifications as any,
         attributes: aiData.attributes as any,
         variants: aiData.variants as any,
@@ -73,8 +75,20 @@ export async function analyzeProductAction(formData: {
       },
     });
 
-    revalidatePath('/admin/products/new');
-    return { success: true, draftId: draft.id, data: aiData };
+    try {
+      revalidatePath('/admin/products/new');
+    } catch (e) {
+      // safe fallback if called outside Next.js request context
+    }
+
+    return { 
+      success: true, 
+      draftId: draft.id, 
+      data: aiData,
+      modelUsed: meta.modelUsed,
+      fallbackUsed: !!meta.fallbackUsed,
+      fallbackReason: meta.fallbackReason
+    };
   } catch (error: any) {
     console.error('Analyze Product Error:', error);
     return { success: false, error: error.message || 'Failed to analyze product' };
