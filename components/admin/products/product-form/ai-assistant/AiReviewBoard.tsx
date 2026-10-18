@@ -59,10 +59,67 @@ export function AiReviewBoard({ data, onClose, onRegenerate }: AiReviewBoardProp
         }
       }
       if (selectedFields.specs && data.specifications) {
-        const existingSpecs = getValues('productSpecs') || [];
-        const newSpecs = data.specifications.map((s: any) => ({ key: s.key, value: s.value }));
-        setValue('productSpecs', [...existingSpecs, ...newSpecs], { shouldDirty: true });
+        // Filter out existing placeholder empty rows (e.g. { id: '1', key: '', value: '' })
+        const existingSpecs = (getValues('productSpecs') || []).filter(
+          (s: any) => s.key && s.key.trim() && s.value && String(s.value).trim()
+        );
+        
+        // Only accept valid specifications with non-empty key and non-empty value
+        const newSpecs = (data.specifications || [])
+          .filter((s: any) => 
+            s.key && typeof s.key === 'string' && s.key.trim() !== '' &&
+            s.value && typeof s.value === 'string' && s.value.trim() !== '' &&
+            s.value.trim().toLowerCase() !== 'null' && 
+            s.value.trim().toLowerCase() !== 'n/a' &&
+            s.value.trim().toLowerCase() !== 'undefined'
+          )
+          .map((s: any) => ({
+            id: crypto.randomUUID(),
+            key: s.key.trim(),
+            value: String(s.value).trim(),
+          }));
+
+        // Merge without duplicates
+        const finalSpecs = [...existingSpecs];
+        for (const spec of newSpecs) {
+          const exists = finalSpecs.some(e => e.key.toLowerCase() === spec.key.toLowerCase());
+          if (!exists) {
+            finalSpecs.push(spec);
+          }
+        }
+
+        setValue('productSpecs', finalSpecs.length > 0 ? finalSpecs : [{ id: '1', key: '', value: '' }], { shouldDirty: true });
       }
+
+      // Apply attributes if available
+      if (data.attributes && Array.isArray(data.attributes)) {
+        const existingAttrs = (getValues('attributes') || []).filter(
+          (a: any) => a.name && a.name.trim() && a.value && String(a.value).trim()
+        );
+        const newAttrs = data.attributes
+          .filter((a: any) => 
+            a.name && typeof a.name === 'string' && a.name.trim() !== '' &&
+            a.value && typeof a.value === 'string' && a.value.trim() !== '' &&
+            a.value.trim().toLowerCase() !== 'null' &&
+            a.value.trim().toLowerCase() !== 'n/a'
+          )
+          .map((a: any) => ({
+            id: crypto.randomUUID(),
+            name: a.name.trim(),
+            value: String(a.value).trim(),
+          }));
+
+        const finalAttrs = [...existingAttrs];
+        for (const attr of newAttrs) {
+          if (!finalAttrs.some(e => e.name.toLowerCase() === attr.name.toLowerCase())) {
+            finalAttrs.push(attr);
+          }
+        }
+        if (finalAttrs.length > 0) {
+          setValue('attributes', finalAttrs, { shouldDirty: true });
+        }
+      }
+
       if (selectedFields.faqs && data.faqs) {
         const existingFaqs = (getValues('faqs') || []).filter((f: any) => f.question?.trim() || f.answer?.trim());
         const newFaqs = data.faqs.map((f: any) => ({ question: f.question, answer: f.answer }));
@@ -209,31 +266,37 @@ export function AiReviewBoard({ data, onClose, onRegenerate }: AiReviewBoardProp
           )}
 
           {/* Specifications */}
-          {data.specifications && data.specifications.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Checkbox 
-                  id="chk-specs" 
-                  checked={selectedFields.specs} 
-                  onCheckedChange={() => toggleField('specs')} 
-                />
-                <label htmlFor="chk-specs" className="font-medium">Specifications ({data.specifications.length})</label>
-              </div>
-              <div className="pl-7 space-y-2 border-l-2 border-muted ml-2 pb-2">
-                {data.specifications.map((spec: any, i: number) => (
-                  <div key={i} className="flex justify-between items-center text-sm bg-muted/30 p-2 rounded">
-                    <span className="font-medium">{spec.key}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">{spec.value}</span>
-                      {spec.conflictDetected && (
-                        <AlertTriangle className="h-4 w-4 text-amber-500" aria-label="Conflict detected in sources" />
-                      )}
+          {(() => {
+            const validSpecs = (data.specifications || []).filter(
+              (s: any) => s.key && s.key.trim() && s.value && String(s.value).trim() && String(s.value).toLowerCase() !== 'null'
+            );
+            if (validSpecs.length === 0) return null;
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <Checkbox 
+                    id="chk-specs" 
+                    checked={selectedFields.specs} 
+                    onCheckedChange={() => toggleField('specs')} 
+                  />
+                  <label htmlFor="chk-specs" className="font-medium">Specifications ({validSpecs.length})</label>
+                </div>
+                <div className="pl-7 space-y-2 border-l-2 border-muted ml-2 pb-2">
+                  {validSpecs.map((spec: any, i: number) => (
+                    <div key={i} className="flex justify-between items-center text-sm bg-muted/30 p-2 rounded">
+                      <span className="font-medium">{spec.key}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">{spec.value}</span>
+                        {spec.conflictDetected && (
+                          <AlertTriangle className="h-4 w-4 text-amber-500" aria-label="Conflict detected in sources" />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Tags */}
           {(data.tags || data.seo?.keywords) && (

@@ -12,18 +12,18 @@ export const aiProductSchema = z.object({
   }),
   specifications: z.array(
     z.object({
-      key: z.string().describe('e.g., RAM, Processor, Display'),
-      value: z.string().nullable().describe('e.g., 8GB, Snapdragon 8 Gen 2, 6.8" AMOLED'),
-      conflictDetected: z.boolean().describe('True if different sources gave different values'),
-      sources: z.array(z.string()).nullable(),
+      key: z.string().describe('Specification name e.g., RAM, Voltage, Power, Display, Connectivity'),
+      value: z.string().describe('Concrete, non-empty value e.g., 65W, 19V 3.42A, 16GB. MUST NOT BE NULL OR EMPTY.'),
+      conflictDetected: z.boolean().describe('True if conflicting data detected'),
+      sources: z.array(z.string()).nullable().describe('Sources or null'),
     })
-  ),
+  ).describe('Technical specifications. Every row MUST have a valid non-empty value. Do not output rows with null or empty values.'),
   attributes: z.array(
     z.object({
-      name: z.string(),
-      value: z.string().nullable(),
+      name: z.string().describe('Attribute name, e.g. Color, Material, Interface'),
+      value: z.string().describe('Concrete, non-empty attribute value. MUST NOT BE NULL OR EMPTY.'),
     })
-  ),
+  ).describe('Product attributes. Every item MUST have a non-empty value.'),
   variants: z.array(
     z.object({
       name: z.string(),
