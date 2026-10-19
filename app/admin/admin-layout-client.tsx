@@ -59,10 +59,12 @@ function AdminBodyLock({ isPOS }: { isPOS: boolean }) {
       (outerMain as HTMLElement).style.overflow = 'hidden';
     }
     
-    // Hide storefront header only for POS if needed, but since NavbarWrapper returns null, we can just hide it globally for safety
-    const storeHeader = document.querySelector('header.sticky.top-0.z-\\[60\\]') || document.querySelector('header.sticky.top-0');
+    // Hide storefront header only if present outside admin main content
+    const storeHeader = document.querySelector('header.sticky.top-0.z-\\[60\\]');
     const originalDisplay = storeHeader ? (storeHeader as HTMLElement).style.display : '';
-    if (storeHeader) (storeHeader as HTMLElement).style.display = 'none';
+    if (storeHeader && !storeHeader.closest('#admin-main-content')) {
+      (storeHeader as HTMLElement).style.display = 'none';
+    }
 
     // Fix for mobile keyboard causing the page to scroll up and get stuck
     const handleFocusOut = () => {
