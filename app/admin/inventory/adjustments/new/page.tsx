@@ -15,10 +15,8 @@ export default async function NewAdjustmentPage() {
   ]);
 
   return (
-    <div className="p-6">
-      <AdjustmentForm 
-        warehouses={warehouseRes.success ? (warehouseRes.data || []) : []} 
-      />
-    </div>
+    <AdjustmentForm 
+      warehouses={warehouseRes.success ? (warehouseRes.data || []) : []} 
+    />
   );
 }

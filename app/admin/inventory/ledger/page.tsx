@@ -4,6 +4,10 @@ import { LedgerTable } from './ledger-table';
 import { LedgerFilters } from './ledger-filters';
 import { LedgerSummary } from './ledger-summary';
 import { Metadata } from 'next';
+import { BookOpen, ShieldCheck } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Stock Ledger | TechHat ERP',
@@ -35,19 +39,25 @@ export default async function StockLedgerPage({ searchParams }: PageProps) {
   ]);
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Stock Ledger</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Immutable inventory movement history — every transaction recorded permanently
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-full font-mono">
-            {ledgerData.total.toLocaleString()} entries
-          </span>
+    <div className="space-y-5">
+      {/* Header Card */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card p-5 rounded-xl border shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="h-10 w-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+            <BookOpen className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-lg font-bold tracking-tight text-foreground">Immutable Stock Ledger</h1>
+              <Badge variant="secondary" className="font-mono text-xs">
+                {ledgerData.total.toLocaleString()} entries
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+              Permanent audit log of every stock receipt, sale, transfer, and physical count adjustment.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -62,7 +72,7 @@ export default async function StockLedgerPage({ searchParams }: PageProps) {
       />
 
       {/* Table */}
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-muted" />}>
+      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" />}>
         <LedgerTable
           entries={ledgerData.entries}
           total={ledgerData.total}
