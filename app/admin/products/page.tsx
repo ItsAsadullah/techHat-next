@@ -31,11 +31,7 @@ export default async function ProductsPage({
     | 'low'
     | 'out'
     | undefined;
-  const status = (resolvedSearchParams.status as string) as
-    | 'active'
-    | 'draft'
-    | 'inactive'
-    | undefined;
+  const status = (resolvedSearchParams.status as string) || undefined;
 
   // Next.js Turbopack has a known bug where running multiple unstable_cache functions 
   // concurrently via Promise.all can cause the dev server to hang indefinitely.

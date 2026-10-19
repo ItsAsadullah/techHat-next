@@ -47,9 +47,9 @@ export function ProductTableToolbar({ categories, brands }: ProductTableToolbarP
     router.push(`?${params.toString()}`);
   };
 
-  // Count active filters (excluding page, search, limit, and category since category is always visible now)
+  // Count active filters (excluding page, search, and limit)
   const activeFiltersCount = Array.from(searchParams.entries()).filter(
-    ([key]) => key !== 'page' && key !== 'search' && key !== 'limit' && key !== 'category'
+    ([key]) => key !== 'page' && key !== 'search' && key !== 'limit'
   ).length;
 
   return (
@@ -138,7 +138,25 @@ export function ProductTableToolbar({ categories, brands }: ProductTableToolbarP
 
         {/* ── Advanced Filters Container ── */}
         {showFilters && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 md:p-4 bg-slate-50 dark:bg-zinc-900/50 rounded-md border border-slate-200 dark:border-zinc-800 animate-in slide-in-from-top-2 fade-in duration-200">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 p-3 md:p-4 bg-slate-50 dark:bg-zinc-900/50 rounded-md border border-slate-200 dark:border-zinc-800 animate-in slide-in-from-top-2 fade-in duration-200">
+                <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wide">Category</label>
+                    <Select 
+                        value={searchParams.get("category") || "all"} 
+                        onValueChange={(val) => updateParam("category", val === "all" ? null : val)}
+                    >
+                        <SelectTrigger className="bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 h-9 rounded-md focus:ring-1 focus:ring-indigo-500 text-sm font-medium">
+                            <SelectValue placeholder="All Categories" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-md">
+                            <SelectItem value="all" className="font-medium text-slate-500">All Categories</SelectItem>
+                            {categories.map((cat) => (
+                                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
                 <div className="space-y-1.5">
                     <label className="text-[10px] font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wide">Brand</label>
                     <Select 
@@ -186,15 +204,19 @@ export function ProductTableToolbar({ categories, brands }: ProductTableToolbarP
                         </SelectTrigger>
                         <SelectContent className="rounded-md">
                             <SelectItem value="all" className="font-medium text-slate-500">All Status</SelectItem>
-                            <SelectItem value="active" className="text-indigo-600 font-medium">Active</SelectItem>
+                            <SelectItem value="active" className="text-emerald-600 font-medium">Active</SelectItem>
+                            <SelectItem value="PUBLISHED" className="text-blue-600 font-medium">Published</SelectItem>
                             <SelectItem value="draft" className="text-slate-600 font-medium">Draft</SelectItem>
-                            <SelectItem value="inactive" className="text-slate-400 font-medium">Inactive</SelectItem>
+                            <SelectItem value="PENDING_REVIEW" className="text-amber-600 font-medium">Pending Review</SelectItem>
+                            <SelectItem value="ARCHIVED" className="text-orange-600 font-medium">Archived</SelectItem>
+                            <SelectItem value="COMING_SOON" className="text-purple-600 font-medium">Coming Soon</SelectItem>
+                            <SelectItem value="DISCONTINUED" className="text-red-600 font-medium">Discontinued</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
 
                 {/* Per Page */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 col-span-2 md:col-span-1">
                     <label className="text-[10px] font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wide">Per Page</label>
                     <div className="flex items-center gap-2">
                         <Select value={currentLimit} onValueChange={handleLimitChange}>

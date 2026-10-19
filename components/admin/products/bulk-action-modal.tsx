@@ -44,13 +44,13 @@ export function BulkActionModal({
 }: BulkActionModalProps) {
   const [loading, setLoading] = useState(false);
   // Status State
-  const [statusValue, setStatusValue] = useState<string>("active");
+  const [statusValue, setStatusValue] = useState<string>("ACTIVE");
   
   // Delete State
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
   const resetForm = () => {
-    setStatusValue("active");
+    setStatusValue("ACTIVE");
     setDeleteConfirmation("");
   };
 
@@ -65,8 +65,7 @@ export function BulkActionModal({
     try {
       let result;
       if (actionType === 'change_status') {
-        const isActive = statusValue === 'active';
-        result = await bulkUpdateStatus(selectedIds, isActive);
+        result = await bulkUpdateStatus(selectedIds, statusValue);
       } 
       else if (actionType === 'delete') {
         if (deleteConfirmation !== 'DELETE') return;
@@ -102,29 +101,49 @@ export function BulkActionModal({
               <Archive className="h-5 w-5 text-purple-600 mt-0.5" />
               <div>
                 <h4 className="text-sm font-semibold text-purple-900">Update Status</h4>
-                <p className="text-xs text-purple-700">Change visibility for {selectedIds.length} products.</p>
+                <p className="text-xs text-purple-700">Change lifecycle status for {selectedIds.length} products.</p>
               </div>
             </div>
             
-            <RadioGroup value={statusValue} onValueChange={setStatusValue} className="grid grid-cols-2 gap-4 pt-2">
+            <RadioGroup value={statusValue} onValueChange={setStatusValue} className="grid grid-cols-2 gap-3 pt-2">
               <div>
-                <RadioGroupItem value="active" id="active" className="peer sr-only" />
+                <RadioGroupItem value="ACTIVE" id="status-active" className="peer sr-only" />
                 <Label
-                  htmlFor="active"
-                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-transparent p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:text-primary cursor-pointer"
+                  htmlFor="status-active"
+                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-transparent p-3.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-emerald-600 peer-data-[state=checked]:text-emerald-600 cursor-pointer"
                 >
-                  <CheckCircle2 className="mb-2 h-6 w-6" />
+                  <CheckCircle2 className="mb-1.5 h-5 w-5" />
                   Active
                 </Label>
               </div>
               <div>
-                <RadioGroupItem value="draft" id="draft" className="peer sr-only" />
+                <RadioGroupItem value="PUBLISHED" id="status-published" className="peer sr-only" />
                 <Label
-                  htmlFor="draft"
-                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-transparent p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:text-primary cursor-pointer"
+                  htmlFor="status-published"
+                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-transparent p-3.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-blue-600 peer-data-[state=checked]:text-blue-600 cursor-pointer"
                 >
-                  <Archive className="mb-2 h-6 w-6" />
+                  <CheckCircle2 className="mb-1.5 h-5 w-5" />
+                  Published
+                </Label>
+              </div>
+              <div>
+                <RadioGroupItem value="DRAFT" id="status-draft" className="peer sr-only" />
+                <Label
+                  htmlFor="status-draft"
+                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-transparent p-3.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:text-primary cursor-pointer"
+                >
+                  <Archive className="mb-1.5 h-5 w-5" />
                   Draft
+                </Label>
+              </div>
+              <div>
+                <RadioGroupItem value="ARCHIVED" id="status-archived" className="peer sr-only" />
+                <Label
+                  htmlFor="status-archived"
+                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-transparent p-3.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-orange-600 peer-data-[state=checked]:text-orange-600 cursor-pointer"
+                >
+                  <Archive className="mb-1.5 h-5 w-5" />
+                  Archived
                 </Label>
               </div>
             </RadioGroup>

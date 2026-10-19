@@ -120,6 +120,9 @@ export async function createProductJSON(payload: {
           trackWarranty: payload.trackWarranty ?? false,
           minStock: payload.minStock ?? 5,
           reorderPoint: payload.reorderPoint ?? 10,
+          safetyStock: payload.safetyStock ?? 0,
+          reorderQty: payload.reorderQty ?? 0,
+          leadTimeDays: payload.leadTimeDays ?? 0,
           description: payload.description || '',
           shortDesc: payload.shortDesc || null,
           isFlashSale: payload.isFlashSale ?? false,
@@ -331,6 +334,9 @@ export async function updateProductJSON(
           trackWarranty: payload.trackWarranty ?? false,
           minStock: payload.minStock ?? 5,
           reorderPoint: payload.reorderPoint ?? 10,
+          safetyStock: payload.safetyStock ?? 0,
+          reorderQty: payload.reorderQty ?? 0,
+          leadTimeDays: payload.leadTimeDays ?? 0,
           description: payload.description || '',
           shortDesc: payload.shortDesc || null,
           isFlashSale: payload.isFlashSale ?? false,
@@ -350,6 +356,12 @@ export async function updateProductJSON(
           tags: payload.tags || [],
           faqs: payload.faqs ? (payload.faqs as any) : Prisma.JsonNull,
           ...(nextSlug ? { slug: nextSlug } : {}),
+          specifications: (payload.attributes?.length
+            ? payload.attributes.reduce((acc: any, a: any) => {
+              acc[a.name] = (a.values || []).map((v: any) => v.label || v.value).join(', ');
+              return acc;
+            }, {})
+            : Prisma.JsonNull),
           attributes: payload.attributes ? payload.attributes : Prisma.JsonNull,
           advancedSeo: payload.advancedSeo ? payload.advancedSeo : Prisma.JsonNull,
           enrichmentData: payload.enrichmentData ? payload.enrichmentData : Prisma.JsonNull,
@@ -475,6 +487,10 @@ export async function updateProductJSON(
 
       // Refresh images
       if (payload.images !== undefined) {
+        await tx.variant.updateMany({
+          where: { productId: id },
+          data: { productImageId: null },
+        });
         await tx.$executeRaw`DELETE FROM "product_images" WHERE "product_id" = ${id}`;
         if (payload.images.length > 0) {
           const imageInserts = payload.images.map((img, i) =>

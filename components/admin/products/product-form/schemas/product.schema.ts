@@ -29,6 +29,26 @@ export const statusConfig: Record<ProductLifecycleStatus, { label: string; color
  * Product Lifecycle Status serves as the single source of truth for visibility.
  */
 
+// ─── Numeric Preprocessing Helpers (Prevent RHF valueAsNumber NaN Validation Errors) ───
+const optionalNullableNumber = z.preprocess(
+  (val) => {
+    if (val === '' || val === null || val === undefined) return null;
+    const num = typeof val === 'number' ? val : Number(val);
+    return Number.isNaN(num) ? null : num;
+  },
+  z.number().nullable().optional()
+);
+
+const numberWithDefault = (defaultVal: number) =>
+  z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined) return defaultVal;
+      const num = typeof val === 'number' ? val : Number(val);
+      return Number.isNaN(num) ? defaultVal : num;
+    },
+    z.number().default(defaultVal)
+  );
+
 // ─── Product Master Data Schema ───
 export const productSchema = z.object({
   // ── Product Identity ──
@@ -37,7 +57,7 @@ export const productSchema = z.object({
   brandId:        z.string().nullable().optional().or(z.literal('')),
   model:          z.string().nullable().optional().or(z.literal('')),
   unit:           z.string().default('pc'),
-  warrantyMonths: z.number().default(0),
+  warrantyMonths: numberWithDefault(0),
   warrantyType:   z.string().nullable().optional().or(z.literal('')),
 
   // ── Product Classification ──
@@ -50,14 +70,21 @@ export const productSchema = z.object({
   tags: z.array(z.string()).default([]),
 
   // ── Sales Pricing ──
-  price:          z.number().min(0, 'Retail price must be positive'),
-  offerPrice:     z.number().optional().nullable(),
-  onlinePrice:    z.number().optional().nullable(),
-  wholesalePrice: z.number().optional().nullable(),
+  price: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined) return 0;
+      const num = typeof val === 'number' ? val : Number(val);
+      return Number.isNaN(num) ? 0 : num;
+    },
+    z.number().min(0, 'Retail price must be positive')
+  ),
+  offerPrice:     optionalNullableNumber,
+  onlinePrice:    optionalNullableNumber,
+  wholesalePrice: optionalNullableNumber,
   taxClass:       z.string().optional().nullable(),
   // costPrice is READ-ONLY — managed by Purchase Module. Never submitted from form.
   // Kept in schema as optional so edit initialData can pass it for display purposes only.
-  costPrice:      z.number().optional().nullable(),
+  costPrice:      optionalNullableNumber,
 
   // ── Identification ──
   sku:     z.string().nullable().optional().or(z.literal('')),
@@ -69,11 +96,11 @@ export const productSchema = z.object({
   trackExpiry:    z.boolean().default(false),
   trackBatch:     z.boolean().default(false),
   trackWarranty:  z.boolean().default(false),
-  minStock:       z.number().default(5),
-  reorderPoint:   z.number().default(10),
-  safetyStock:    z.number().default(0),
-  reorderQty:     z.number().default(0),
-  leadTimeDays:   z.number().default(0),
+  minStock:       numberWithDefault(5),
+  reorderPoint:   numberWithDefault(10),
+  safetyStock:    numberWithDefault(0),
+  reorderQty:     numberWithDefault(0),
+  leadTimeDays:   numberWithDefault(0),
 
   // ── Merchandising Flags (NOT store visibility — that is controlled by status) ──
   isFlashSale:  z.boolean().default(false),
@@ -187,13 +214,19 @@ export const productSchema = z.object({
       name:           z.string(),
       sku: z.string().nullable().optional(),
       upc: z.string().nullable().optional(),
-      price:          z.number(),
-      offerPrice: z.number().nullable().optional(),
-      cost: z.number().nullable().optional(),
+      price:          numberWithDefault(0),
+      offerPrice:     optionalNullableNumber,
+      cost:           optionalNullableNumber,
       // Read-only ERP fields — kept for display in variant table, never edited
-      stock:          z.number().default(0),
+      stock:          numberWithDefault(0),
       hasSerial:      z.boolean().default(false),
-      serials:        z.array(z.string()).default([]),
+      serials: z.preprocess(
+        (val) => {
+          if (!Array.isArray(val)) return [];
+          return val.map((s: any) => (typeof s === 'string' ? s : s?.serialNumber || '')).filter(Boolean);
+        },
+        z.array(z.string()).default([])
+      ),
       image: z.string().nullable().optional(),
       imageAlt: z.string().nullable().optional(),
       productImageId: z.string().nullable().optional(),

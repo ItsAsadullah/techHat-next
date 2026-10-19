@@ -348,15 +348,22 @@ export async function getProduct(id: string) {
         barcode: true,
         price: true,
         costPrice: true,
+        lastPurchaseCost: true,
         offerPrice: true,
         stock: true,
+        soldCount: true,
         minStock: true,
+        safetyStock: true,
+        reorderQty: true,
+        leadTimeDays: true,
         description: true,
         status: true,
         isFlashSale: true,
         isFeatured: true,
+        isBestSeller: true,
         unit: true,
         warrantyMonths: true,
+        warrantyType: true,
         videoUrl: true,
         trackInventory: true,
         trackSerials: true,
@@ -377,8 +384,14 @@ export async function getProduct(id: string) {
         attributes: true,
         tags: true,
         faqs: true,
+        seoTitle: true,
+        metaDescription: true,
+        advancedSeo: true,
+        enrichmentData: true,
         categoryId: true,
         brandId: true,
+        createdAt: true,
+        updatedAt: true,
         category: {
           select: {
             id: true,
@@ -404,9 +417,17 @@ export async function getProduct(id: string) {
             expense: true,
             offerPrice: true,
             stock: true,
+            minStock: true,
             hasSerial: true,
             image: true,
+            imageAlt: true,
+            productImageId: true,
             attributes: true,
+            variantAttributes: {
+              select: {
+                attributeValueId: true,
+              },
+            },
             serials: {
               select: {
                 id: true,
@@ -450,6 +471,8 @@ export async function getProduct(id: string) {
               select: {
                 poNumber: true,
                 status: true,
+                date: true,
+                createdAt: true,
                 expectedDeliveryDate: true,
                 supplier: {
                   select: {
@@ -503,13 +526,28 @@ export async function getProduct(id: string) {
       product.barcode = sanitizeString(product.barcode);
       product.description = sanitizeString(product.description);
 
-      // Sanitize variant fields
+      // Sanitize variant fields & map relational attributes
       if ((product as any).variants) {
         (product as any).variants.forEach((v: any) => {
           v.name = sanitizeString(v.name);
           v.sku = sanitizeString(v.sku);
           v.upc = sanitizeString(v.upc);
           v.cost = v.costPrice || 0;
+          if (Array.isArray(v.variantAttributes)) {
+            v.attributeValueIds = v.variantAttributes.map((va: any) => va.attributeValueId);
+          }
+          if (v.attributes && typeof v.attributes === 'object' && !Array.isArray(v.attributes)) {
+            const attrsCopy = { ...v.attributes };
+            if ('_customColor' in attrsCopy) {
+              v.customColor = attrsCopy._customColor;
+              delete attrsCopy._customColor;
+            }
+            v.attributes = attrsCopy;
+          }
+          if (Array.isArray(v.serials)) {
+            v.serialObjects = v.serials;
+            v.serials = v.serials.map((s: any) => (typeof s === 'string' ? s : s.serialNumber));
+          }
         });
       }
 
@@ -940,98 +978,7 @@ export async function getProducts({
 }
 
 export async function duplicateProduct(id: string) {
-  try {
-    const product = await prisma.product.findUnique({
-      where: { id },
-      include: {
-        productImages: true,
-        specs: true,
-        variants: true,
-      }
-    });
-
-    if (!product) {
-      return { success: false, error: "Product not found" };
-    }
-
-    // Generate new slug/name
-    const newName = `${product.name} (Copy)`;
-    const newSlug = `${product.slug}-copy-${Date.now()}`;
-
-    // Transaction to create everything
-    const newProduct = await prisma.$transaction(async (tx) => {
-      // Create Product
-      const created = await tx.product.create({
-        data: {
-          name: newName,
-          slug: newSlug,
-          categoryId: product.categoryId,
-          brandId: product.brandId,
-          vendorId: product.vendorId,
-          productVariantType: product.productVariantType,
-          type: product.type,
-          price: product.price,
-          offerPrice: product.offerPrice,
-          costPrice: product.costPrice,
-          stock: product.stock,
-          minStock: product.minStock,
-          description: product.description,
-          shortDesc: product.shortDesc,
-          status: 'DRAFT', // Draft by default
-          isFeatured: false,
-          isFlashSale: false,
-          unit: product.unit,
-          warrantyMonths: product.warrantyMonths,
-          warrantyType: product.warrantyType,
-          videoUrl: product.videoUrl,
-          specifications: product.specifications || undefined,
-          attributes: product.attributes || undefined,
-          sku: product.sku ? `${product.sku}-copy-${Date.now().toString().slice(-4)}` : null,
-          barcode: null,
-
-          // Relations
-          specs: {
-            create: product.specs.map(s => ({
-              name: s.name,
-              value: s.value
-            }))
-          },
-          productImages: {
-            create: product.productImages.map(img => ({
-              url: img.url,
-              publicId: img.publicId,
-              isThumbnail: img.isThumbnail,
-              displayOrder: img.displayOrder,
-              altText: img.altText
-            }))
-          },
-          variants: {
-            create: (product as any).variants.map((v: any) => ({
-              name: v.name,
-              sku: v.sku ? `${v.sku}-copy-${Date.now().toString().slice(-4)}-${Math.floor(Math.random() * 1000)}` : null,
-              upc: null,
-              price: v.price,
-              costPrice: v.costPrice,
-              expense: v.expense,
-              offerPrice: v.offerPrice,
-              stock: v.stock,
-              minStock: v.minStock,
-              hasSerial: false, // Disable serials for duplicate
-              image: v.image,
-              attributes: v.attributes || undefined,
-            }))
-          }
-        }
-      });
-
-      return created;
-    });
-
-    revalidatePath('/admin/products');
-    return { success: true, product: newProduct };
-
-  } catch (error: any) {
-    console.error('Duplicate error:', error);
-    return { success: false, error: (error as any)?.message };
-  }
+  const { duplicateProduct: duplicateProductERP } = await import('./product-duplicate-action');
+  return duplicateProductERP(id);
 }
+

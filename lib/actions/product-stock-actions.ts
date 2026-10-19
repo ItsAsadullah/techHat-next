@@ -13,8 +13,19 @@ export type ProductFilterParams = {
   categoryId?: string;
   brandId?: string;
   stockStatus?: 'in' | 'low' | 'out';
-  status?: 'active' | 'draft' | 'inactive';
+  status?: string;
 };
+
+const VALID_LIFECYCLE_STATUSES = new Set([
+  'DRAFT',
+  'PENDING_REVIEW',
+  'PUBLISHED',
+  'ACTIVE',
+  'ARCHIVED',
+  'DISCONTINUED',
+  'COMING_SOON',
+  'OUT_OF_STOCK',
+]);
 
 export async function getProducts(params: ProductFilterParams) {
   const {
@@ -40,9 +51,15 @@ export async function getProducts(params: ProductFilterParams) {
   if (categoryId) where.categoryId = categoryId;
   if (brandId) where.brandId = brandId;
 
-  // Status mapping (schema uses ProductLifecycleStatus; active = ACTIVE, draft/inactive = DRAFT)
-  if (status === 'active') where.status = 'ACTIVE';
-  if (status === 'inactive' || status === 'draft') where.status = 'DRAFT';
+  // Status mapping (supports both lowercase aliases and full ProductLifecycleStatus values)
+  if (status) {
+    const upper = status.toUpperCase();
+    if (status === 'inactive' || status === 'draft') {
+      where.status = 'DRAFT';
+    } else if (VALID_LIFECYCLE_STATUSES.has(upper)) {
+      where.status = upper;
+    }
+  }
 
   // Stock Status Logic
   if (stockStatus) {
@@ -226,11 +243,19 @@ export async function bulkDeleteProducts(ids: string[]) {
 
 
 
-export async function bulkUpdateStatus(ids: string[], isActive: boolean) {
+export async function bulkUpdateStatus(ids: string[], statusOrActive: boolean | string) {
     try {
+        let nextStatus = 'DRAFT';
+        if (typeof statusOrActive === 'boolean') {
+            nextStatus = statusOrActive ? 'ACTIVE' : 'DRAFT';
+        } else if (typeof statusOrActive === 'string') {
+            const upper = statusOrActive.toUpperCase();
+            nextStatus = VALID_LIFECYCLE_STATUSES.has(upper) ? upper : 'DRAFT';
+        }
+
         await prisma.product.updateMany({
             where: { id: { in: ids } },
-            data: { status: isActive ? 'ACTIVE' : 'DRAFT' }
+            data: { status: nextStatus as any }
         });
 
         revalidatePath('/admin/products');

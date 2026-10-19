@@ -70,6 +70,8 @@ export function useProductForm(options: UseProductFormOptions = {}): UseFormRetu
       seoTitle:        (initialData as any)?.seoTitle || '',
       metaDescription: (initialData as any)?.metaDescription || '',
       slug:            (initialData as any)?.slug || '',
+      advancedSeo:     (initialData as any)?.advancedSeo ?? null,
+      enrichmentData:  (initialData as any)?.enrichmentData ?? null,
 
       images: initialData?.images || [],
 

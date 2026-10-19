@@ -16,9 +16,10 @@ export async function duplicateProduct(
     const source = await prisma.product.findUnique({
       where: { id: productId },
       include: {
-        productImages: { orderBy: { displayOrder: 'asc' } },
-        specs:         true,
-        variants:      true,
+        productImages:     { orderBy: { displayOrder: 'asc' } },
+        specs:             true,
+        variants:          { include: { variantAttributes: true } },
+        productAttributes: { include: { values: true } },
       },
     });
 
@@ -40,6 +41,9 @@ export async function duplicateProduct(
           slug:               newSlug,
           categoryId:         source.categoryId,
           brandId:            source.brandId,
+          vendorId:           source.vendorId,
+          defaultWarehouseId: source.defaultWarehouseId,
+          defaultSupplierId:  source.defaultSupplierId,
           productVariantType: source.productVariantType,
           type:               source.type,
           price:              source.price,
@@ -55,10 +59,10 @@ export async function duplicateProduct(
           trackBatch:         source.trackBatch,
           trackWarranty:      source.trackWarranty,
           minStock:           source.minStock,
+          maxStock:           source.maxStock,
           reorderPoint:       source.reorderPoint,
           description:        source.description,
           shortDesc:          source.shortDesc,
-          isActive: false, // DRAFT → not active
           isFlashSale:        false,
           isFeatured:         false,
           isBestSeller:       source.isBestSeller,
@@ -71,6 +75,9 @@ export async function duplicateProduct(
           barcode:            null, // Must be regenerated — barcodes are unique
           specifications:     source.specifications ?? Prisma.JsonNull,
           attributes:         source.attributes   ?? Prisma.JsonNull,
+          faqs:               source.faqs         ?? Prisma.JsonNull,
+          advancedSeo:        source.advancedSeo  ?? Prisma.JsonNull,
+          enrichmentData:     source.enrichmentData ?? Prisma.JsonNull,
           images:             source.images,
           status:             'DRAFT',
           tags:               source.tags,
@@ -91,6 +98,7 @@ export async function duplicateProduct(
             publicId:     img.publicId,
             isThumbnail:  img.isThumbnail,
             displayOrder: i,
+            altText:      img.altText,
           })),
         });
       }
@@ -106,23 +114,56 @@ export async function duplicateProduct(
         });
       }
 
+      // Duplicate relational product attributes
+      if (source.productAttributes.length > 0) {
+        for (const pa of source.productAttributes) {
+          const newPa = await tx.productAttribute.create({
+            data: {
+              productId:   created.id,
+              attributeId: pa.attributeId,
+            },
+          });
+          if (pa.values.length > 0) {
+            await tx.productAttributeValue.createMany({
+              data: pa.values.map(val => ({
+                productAttributeId: newPa.id,
+                attributeValueId:   val.attributeValueId,
+              })),
+            });
+          }
+        }
+      }
+
       // Duplicate variants (without stock — Inventory Module owns that)
       if (source.variants.length > 0) {
-        for (const v of source.variants) {
-          await tx.variant.create({
+        for (const [idx, v] of source.variants.entries()) {
+          const newVariant = await tx.variant.create({
             data: {
               productId:  created.id,
               name:       v.name,
-              sku:        v.sku ? `${v.sku}-COPY` : null,
+              sku:        v.sku ? `${v.sku}-COPY-${timestamp.toUpperCase()}-${idx + 1}` : null,
               upc:        null, // barcodes must be unique
               price:      v.price,
               costPrice:  v.costPrice,
+              expense:    v.expense,
               offerPrice: v.offerPrice,
               stock:      0,
+              minStock:   v.minStock,
               hasSerial:  false,
+              image:      v.image,
+              imageAlt:   v.imageAlt,
               attributes: v.attributes ?? Prisma.JsonNull,
             },
           });
+
+          if (v.variantAttributes && v.variantAttributes.length > 0) {
+            await tx.variantAttributeValue.createMany({
+              data: v.variantAttributes.map(va => ({
+                variantId:        newVariant.id,
+                attributeValueId: va.attributeValueId,
+              })),
+            });
+          }
         }
       }
 

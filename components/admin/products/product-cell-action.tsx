@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal, Edit, History, Copy, Trash, BoxSelect, Loader2 } from "lucide-react";
+import { MoreHorizontal, Edit, History, Copy, Trash, BoxSelect, Loader2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -105,8 +105,13 @@ export function ProductCellAction({ data }: ProductCellActionProps) {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
+            <Link href={`/admin/products/${data.id}`}>
+              <FileText className="mr-2 h-4 w-4" /> Product Details
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
             <Link href={`/products/${data.slug}`} target="_blank">
-              <BoxSelect className="mr-2 h-4 w-4" /> View Product
+              <BoxSelect className="mr-2 h-4 w-4" /> View on Storefront
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onDuplicate} disabled={isLoading}>
