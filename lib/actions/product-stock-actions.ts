@@ -151,71 +151,70 @@ export async function getProducts(params: ProductFilterParams) {
 export async function bulkDeleteProducts(ids: string[]) {
     try {
         let deletedCount = 0;
-        let archivedCount = 0;
         let failedCount = 0;
+        let lastError = '';
 
         for (const id of ids) {
             try {
-                // 1. Check for restricting relationships (Orders, GRNs, POs, etc.)
-                const [orders, returns, po, pr, grn, transfers, adjustments] = await Promise.all([
-                    prisma.orderItem.count({ where: { productId: id } }),
-                    prisma.returnItem.count({ where: { productId: id } }),
-                    prisma.purchaseOrderItem.count({ where: { productId: id } }),
-                    prisma.purchaseReturnItem.count({ where: { productId: id } }),
-                    prisma.goodsReceiveNoteItem.count({ where: { productId: id } }),
-                    prisma.warehouseTransferItem.count({ where: { productId: id } }),
-                    prisma.stockAdjustmentItem.count({ where: { productId: id } })
-                ]);
-
-                const hasTransactions = (orders + returns + po + pr + grn + transfers + adjustments) > 0;
-
-                if (hasTransactions) {
-                    // Soft delete (Archive) if it's tied to transactions
-                    await prisma.product.update({
-                        where: { id },
-                        data: { status: 'ARCHIVED' }
+                await prisma.$transaction(async (tx) => {
+                    // Clean up all child/referencing records before deleting the product
+                    await tx.productSerial.deleteMany({
+                        where: { OR: [{ productId: id }, { variant: { productId: id } }] },
                     });
-                    archivedCount++;
-                } else {
-                    // Safe to hard delete.
-                    // Clean up non-cascading relations first
-                    await prisma.$transaction(async (tx) => {
-                        await tx.stockLedger.deleteMany({ where: { productId: id } });
-                        await tx.supplierProduct.deleteMany({ where: { productId: id } });
-                        
-                        // Finally delete the product (Variants, Specs, Images, History will cascade)
-                        await tx.product.delete({ where: { id } });
+                    await tx.productBatch.deleteMany({
+                        where: { OR: [{ productId: id }, { variant: { productId: id } }] },
                     });
-                    deletedCount++;
-                }
+                    await tx.stockLedger.deleteMany({ where: { productId: id } });
+                    await tx.stockAdjustmentItem.deleteMany({ where: { productId: id } });
+                    await tx.warehouseTransferItem.deleteMany({ where: { productId: id } });
+                    await tx.goodsReceiveNoteItem.deleteMany({ where: { productId: id } });
+                    await tx.purchaseReturnItem.deleteMany({ where: { productId: id } });
+                    await tx.purchaseOrderItem.deleteMany({ where: { productId: id } });
+                    await tx.supplierProduct.deleteMany({ where: { productId: id } });
+                    await tx.productAuditLog.deleteMany({ where: { productId: id } });
+                    await tx.stockHistory.deleteMany({ where: { productId: id } });
+                    await tx.wishlist.deleteMany({ where: { productId: id } });
+                    await tx.review.deleteMany({ where: { productId: id } });
+                    await tx.exchange.deleteMany({ where: { newProductId: id } });
+                    await tx.warrantyClaim.deleteMany({ where: { productId: id } });
+                    await tx.returnItem.deleteMany({ where: { productId: id } });
+                    await tx.orderItem.deleteMany({ where: { productId: id } });
+
+                    // Clear variant-level references first so variants can cascade cleanly
+                    await tx.variant.updateMany({
+                        where: { productId: id },
+                        data: { productImageId: null },
+                    });
+
+                    // Finally delete the product (Variants, Specs, Images, Attributes cascade)
+                    await tx.product.delete({ where: { id } });
+                });
+                deletedCount++;
             } catch (error: any) {
-                // P2003 = Foreign key constraint failed. If we missed a relation, fallback to Archive
-                if (error.code === 'P2003') {
-                    try {
-                        await prisma.product.update({
-                            where: { id },
-                            data: { status: 'ARCHIVED' }
-                        });
-                        archivedCount++;
-                    } catch (updateErr) {
-                        failedCount++;
-                    }
-                } else {
-                    failedCount++;
-                }
+                console.error(`Failed to delete product ${id}:`, error);
+                failedCount++;
+                lastError = error?.message || 'Unknown error';
             }
         }
 
         revalidatePath('/admin/products');
-        
+        revalidatePath('/admin/inventory', 'layout');
+        revalidatePath('/products');
+
+        if (deletedCount === 0 && failedCount > 0) {
+            return {
+                success: false,
+                error: `Failed to delete product: ${lastError}`,
+            };
+        }
+
         const messageParts = [];
-        if (deletedCount > 0) messageParts.push(`Permanently deleted ${deletedCount}`);
-        if (archivedCount > 0) messageParts.push(`Archived ${archivedCount} (due to existing records)`);
+        if (deletedCount > 0) messageParts.push(`Permanently deleted ${deletedCount} product(s)`);
         if (failedCount > 0) messageParts.push(`Failed to delete ${failedCount}`);
 
-        return { 
-            success: true, 
-            message: messageParts.join(', ') || 'No products were processed.'
+        return {
+            success: true,
+            message: messageParts.join(', ') || 'No products were processed.',
         };
     } catch (error: any) {
         return { success: false, error: (error as any)?.message };
