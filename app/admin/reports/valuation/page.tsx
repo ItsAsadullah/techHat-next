@@ -5,6 +5,8 @@ import { Calculator, Download } from 'lucide-react';
 import { ExportValuationButton } from './components/export-valuation-button';
 import { format } from 'date-fns';
 
+export const dynamic = 'force-dynamic';
+
 export default async function InventoryValuationPage() {
   const res = await getInventoryValuation();
   const data = res.success ? res.data : { items: [], grandTotalValue: 0 };

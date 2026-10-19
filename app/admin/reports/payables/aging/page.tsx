@@ -3,6 +3,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export default async function PayablesAgingPage() {
   const res = await getPayablesAging();
   const agingData = (res.data as any[]) || [];

@@ -3,6 +3,8 @@ import { AdminLayoutClient } from './admin-layout-client';
 import { prisma } from '@/lib/prisma';
 import { unstable_cache } from 'next/cache';
 
+export const dynamic = 'force-dynamic';
+
 const ADMIN_ROLES = ['SUPER_ADMIN', 'STAFF'];
 
 // ✅ Module-level cache — correct pattern so cache persists across requests

@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { CalendarClock } from 'lucide-react';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export default async function PayablesSummaryPage() {
   const res = await getPayablesSummary();
   const summary = (res.data as any) || { totalPayable: 0, totalAdvance: 0, supplierCount: 0, suppliers: [] };
