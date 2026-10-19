@@ -75,7 +75,27 @@ export async function createProductJSON(payload: {
 }) {
   try {
     const status = payload.status || 'DRAFT';
-    const slug = payload.slug?.trim() || buildSlug(payload.name);
+    let slug = payload.slug?.trim() || buildSlug(payload.name);
+    const existingSlug = await prisma.product.findUnique({ where: { slug }, select: { id: true } });
+    if (existingSlug) {
+      slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
+    }
+
+    let sku = payload.sku?.trim() || null;
+    if (sku) {
+      const existingSku = await prisma.product.findFirst({ where: { sku }, select: { id: true } });
+      if (existingSku) {
+        sku = `${sku}-${String(Date.now()).slice(-3)}`;
+      }
+    }
+
+    let barcode = payload.barcode?.trim() || null;
+    if (barcode) {
+      const existingBarcode = await prisma.product.findFirst({ where: { barcode }, select: { id: true } });
+      if (existingBarcode) {
+        barcode = String(10000000 + (Date.now() % 9000000));
+      }
+    }
 
     const product = await prisma.$transaction(async (tx) => {
       const newProduct = await tx.product.create({
@@ -110,8 +130,8 @@ export async function createProductJSON(payload: {
           warrantyType: payload.warrantyType || null,
           videoUrl: payload.videoUrl || null,
           model: payload.model || null,
-          sku: payload.sku?.trim() || null,
-          barcode: payload.barcode?.trim() || null,
+          sku,
+          barcode,
           seoTitle: payload.seoTitle || null,
           metaDescription: payload.metaDescription || null,
           tags: payload.tags || [],
@@ -237,7 +257,7 @@ export async function createProductJSON(payload: {
 export async function updateProductJSON(
   id: string,
   payload: Parameters<typeof createProductJSON>[0]
-) {
+): Promise<{ success: boolean; product?: any; productId?: string; error?: string }> {
   try {
     const status = payload.status || 'DRAFT';
 
@@ -245,6 +265,48 @@ export async function updateProductJSON(
       where: { id },
       select: { status: true, name: true, sku: true },
     });
+
+    // If the product was already deleted from the database while the edit form was open,
+    // gracefully re-create it as a new product so the user's edits are not lost.
+    if (!current) {
+      return await createProductJSON({
+        ...payload,
+        status: payload.status === 'ARCHIVED' ? 'DRAFT' : (payload.status || 'DRAFT'),
+      });
+    }
+
+    let nextSlug = payload.slug?.trim();
+    if (nextSlug) {
+      const existingSlug = await prisma.product.findFirst({
+        where: { slug: nextSlug, id: { not: id } },
+        select: { id: true },
+      });
+      if (existingSlug) {
+        nextSlug = `${nextSlug}-${Date.now().toString(36).slice(-4)}`;
+      }
+    }
+
+    let nextSku = payload.sku?.trim() || null;
+    if (nextSku) {
+      const existingSku = await prisma.product.findFirst({
+        where: { sku: nextSku, id: { not: id } },
+        select: { id: true },
+      });
+      if (existingSku) {
+        nextSku = `${nextSku}-${String(Date.now()).slice(-3)}`;
+      }
+    }
+
+    let nextBarcode = payload.barcode?.trim() || null;
+    if (nextBarcode) {
+      const existingBarcode = await prisma.product.findFirst({
+        where: { barcode: nextBarcode, id: { not: id } },
+        select: { id: true },
+      });
+      if (existingBarcode) {
+        nextBarcode = String(10000000 + (Date.now() % 9000000));
+      }
+    }
 
     const product = await prisma.$transaction(async (tx) => {
       const updated = await tx.product.update({
@@ -277,13 +339,13 @@ export async function updateProductJSON(
           warrantyType: payload.warrantyType || null,
           videoUrl: payload.videoUrl || null,
           model: payload.model || null,
-          sku: payload.sku?.trim() || null,
-          barcode: payload.barcode?.trim() || null,
+          sku: nextSku,
+          barcode: nextBarcode,
           seoTitle: payload.seoTitle || null,
           metaDescription: payload.metaDescription || null,
           tags: payload.tags || [],
           faqs: payload.faqs ? (payload.faqs as any) : Prisma.JsonNull,
-          ...(payload.slug ? { slug: payload.slug } : {}),
+          ...(nextSlug ? { slug: nextSlug } : {}),
           attributes: payload.attributes ? payload.attributes : Prisma.JsonNull,
           advancedSeo: payload.advancedSeo ? payload.advancedSeo : Prisma.JsonNull,
           enrichmentData: payload.enrichmentData ? payload.enrichmentData : Prisma.JsonNull,
