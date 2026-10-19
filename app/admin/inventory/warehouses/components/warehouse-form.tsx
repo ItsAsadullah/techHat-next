@@ -66,19 +66,19 @@ export function WarehouseForm({ initialData, isEditMode }: WarehouseFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6 max-w-3xl pb-10">
-      <div className="flex items-center justify-between bg-background p-4 rounded-xl border shadow-sm sticky top-[138px] z-30">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5 max-w-4xl pb-10">
+      <div className="flex items-center justify-between bg-card p-4 sm:px-5 rounded-xl border shadow-xs">
         <div className="flex items-center gap-3">
-          <Button type="button" variant="ghost" size="icon" onClick={() => router.back()}>
+          <Button type="button" variant="outline" size="icon" className="h-9 w-9 rounded-lg shrink-0" onClick={() => router.push('/admin/inventory/warehouses')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-xl font-bold">{isEditMode ? 'Edit Warehouse' : 'New Warehouse'}</h1>
-            <p className="text-xs text-muted-foreground">Fill in the details for this storage facility.</p>
+            <h1 className="text-lg sm:text-xl font-bold">{isEditMode ? 'Edit Warehouse' : 'New Warehouse'}</h1>
+            <p className="text-xs text-muted-foreground">Configure details and operational status for this storage facility.</p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" size="sm" className="h-9" disabled={loading}>
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             {isEditMode ? 'Save Changes' : 'Create Warehouse'}
           </Button>

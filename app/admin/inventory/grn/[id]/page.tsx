@@ -106,11 +106,11 @@ export default function GRNDetailsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6 pb-24 max-w-[1200px] mx-auto">
+    <div className="flex flex-col gap-5 pb-16">
       {/* Header */}
-      <div className="flex items-center justify-between sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b py-3 -mx-6 px-6 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-card border rounded-xl p-4 sm:px-5 shadow-xs">
         <div className="flex items-center gap-3">
-          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push('/admin/inventory/grn')}>
+          <Button type="button" variant="outline" size="icon" className="h-9 w-9 rounded-lg shrink-0" onClick={() => router.push('/admin/inventory/grn')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>

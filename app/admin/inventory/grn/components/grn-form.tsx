@@ -219,20 +219,29 @@ export function GRNForm({ approvedPOs, warehouses }: GRNFormProps) {
 
   return (
     <>
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full pb-12">
-      {/* Header */}
-      <div className="flex items-center justify-between sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b py-2 shadow-sm">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full pb-12">
+      {/* Header Card */}
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-card border rounded-xl p-4 sm:px-5 shadow-xs">
         <div className="flex items-center gap-3">
-          <Button type="button" variant="ghost" size="icon" onClick={() => router.back()} className="h-8 w-8">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => router.push('/admin/inventory/grn')}
+            className="h-9 w-9 rounded-lg shrink-0"
+            aria-label="Back to GRN list"
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-lg font-bold">Receive Goods</h1>
-            <p className="text-[11px] text-muted-foreground hidden sm:block">Receive goods against an approved Purchase Order.</p>
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight">Receive Goods (GRN)</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Inspect and receive inbound supplier shipment against an approved Purchase Order.
+            </p>
           </div>
         </div>
-        <Button type="submit" disabled={loading || poLoading} size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs">
-          {loading ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <PackageCheck className="mr-2 h-3 w-3" />}
+        <Button type="submit" disabled={loading || poLoading} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 px-4 text-xs font-semibold shadow-xs">
+          {loading ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <PackageCheck className="mr-2 h-3.5 w-3.5" />}
           Receive & Lock Stock
         </Button>
       </div>
