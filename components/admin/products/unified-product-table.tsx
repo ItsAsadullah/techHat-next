@@ -21,6 +21,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Package, PackagePlus, PackageMinus, Archive, Trash2, CheckSquare, Loader2, ArrowUpRight, ArrowDownRight, History, MoreVertical, Plus, Minus, X } from "lucide-react";
 import { BulkActionModal, BulkActionType } from "./bulk-action-modal";
+import { ProductCellAction } from "./product-cell-action";
 import { getProducts } from "@/lib/actions/product-stock-actions";
 import {
   DropdownMenu,
@@ -356,20 +357,9 @@ export function UnifiedProductTable<TData, TValue>({
                   </div>
                 </div>
 
-                {/* Dropdown Menu replacing actions */}
-                <div className="shrink-0">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <button className="w-6 h-8 flex items-center justify-center text-slate-400 transition-colors">
-                                <MoreVertical className="w-4 h-4" />
-                            </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-32 rounded-md">
-                            <DropdownMenuItem asChild className="rounded font-medium cursor-pointer text-sm">
-                              <Link href={`/admin/products/edit/${product.id}`}>Edit Product</Link>
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                {/* Actions */}
+                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <ProductCellAction data={product} />
                 </div>
               </div>
               

@@ -48,49 +48,60 @@ export function ProductLedgerHistory({ ledgerEntries }: LedgerHistoryProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {ledgerEntries.map((entry) => (
-              <tr key={entry.id} className="hover:bg-muted/30 transition-colors">
-                <td className="px-4 py-3 whitespace-nowrap text-xs">
-                  {format(new Date(entry.date), 'dd MMM yyyy, HH:mm')}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-col gap-1">
-                    <span className={`inline-flex w-fit px-2 py-0.5 rounded text-[10px] font-bold tracking-wider ${TYPE_COLORS[entry.referenceType] || 'bg-gray-100 text-gray-700'}`}>
-                      {entry.referenceType}
-                    </span>
-                    <span className="text-xs font-mono text-muted-foreground truncate max-w-[120px]" title={entry.remarks || entry.referenceId}>
-                      {entry.remarks || entry.referenceId}
-                    </span>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {entry.warehouse?.name || '—'}
-                </td>
-                <td className="px-4 py-3 text-right font-mono text-muted-foreground">
-                  {entry.openingQty}
-                </td>
-                <td className="px-4 py-3 text-right font-mono">
-                  {entry.inQty > 0 ? (
-                    <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center justify-end gap-1">
-                      <ArrowDownRight className="h-3 w-3" /> {entry.inQty}
-                    </span>
-                  ) : '-'}
-                </td>
-                <td className="px-4 py-3 text-right font-mono">
-                  {entry.outQty > 0 ? (
-                    <span className="text-rose-600 dark:text-rose-400 font-medium flex items-center justify-end gap-1">
-                      <ArrowUpRight className="h-3 w-3" /> {entry.outQty}
-                    </span>
-                  ) : '-'}
-                </td>
-                <td className="px-4 py-3 text-right font-mono font-medium">
-                  {entry.closingQty}
-                </td>
-                <td className="px-4 py-3 text-right font-mono text-xs text-indigo-600">
-                  ৳{entry.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </td>
-              </tr>
-            ))}
+            {ledgerEntries.map((entry) => {
+              const rawDate = entry.createdAt || entry.date;
+              const parsedDate = rawDate ? new Date(rawDate) : null;
+              const formattedDate = parsedDate && !isNaN(parsedDate.getTime())
+                ? format(parsedDate, 'dd MMM yyyy, HH:mm')
+                : '—';
+              const openingQty = entry.openingQty ?? ((entry.balanceQty ?? 0) - (entry.inQty ?? 0) + (entry.outQty ?? 0));
+              const closingQty = entry.closingQty ?? entry.balanceQty ?? 0;
+              const noteText = entry.note || entry.remarks || entry.referenceId;
+
+              return (
+                <tr key={entry.id} className="hover:bg-muted/30 transition-colors">
+                  <td className="px-4 py-3 whitespace-nowrap text-xs">
+                    {formattedDate}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-1">
+                      <span className={`inline-flex w-fit px-2 py-0.5 rounded text-[10px] font-bold tracking-wider ${TYPE_COLORS[entry.referenceType] || 'bg-gray-100 text-gray-700'}`}>
+                        {entry.referenceType}
+                      </span>
+                      <span className="text-xs font-mono text-muted-foreground truncate max-w-[200px]" title={noteText}>
+                        {noteText}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {entry.warehouse?.name || '—'}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono text-muted-foreground">
+                    {openingQty}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono">
+                    {entry.inQty > 0 ? (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center justify-end gap-1">
+                        <ArrowDownRight className="h-3 w-3" /> {entry.inQty}
+                      </span>
+                    ) : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono">
+                    {entry.outQty > 0 ? (
+                      <span className="text-rose-600 dark:text-rose-400 font-medium flex items-center justify-end gap-1">
+                        <ArrowUpRight className="h-3 w-3" /> {entry.outQty}
+                      </span>
+                    ) : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono font-medium">
+                    {closingQty}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono text-xs text-indigo-600">
+                    ৳{Number(entry.unitCost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

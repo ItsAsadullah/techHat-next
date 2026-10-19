@@ -40,10 +40,16 @@ export function ProductPurchaseHistory({ poItems }: PurchaseHistoryProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {poItems.map((item) => (
+            {poItems.map((item) => {
+              const rawDate = item.purchaseOrder?.date || item.purchaseOrder?.orderDate;
+              const parsedDate = rawDate ? new Date(rawDate) : null;
+              const formattedDate = parsedDate && !isNaN(parsedDate.getTime())
+                ? format(parsedDate, 'dd MMM yyyy')
+                : '—';
+              return (
               <tr key={item.id} className="hover:bg-muted/30 transition-colors">
                 <td className="px-4 py-3 whitespace-nowrap text-xs">
-                  {format(new Date(item.purchaseOrder.orderDate), 'dd MMM yyyy')}
+                  {formattedDate}
                 </td>
                 <td className="px-4 py-3">
                   <Link href={`/admin/purchases/${item.purchaseOrder.id}`} className="font-medium text-primary hover:underline">
@@ -73,7 +79,8 @@ export function ProductPurchaseHistory({ poItems }: PurchaseHistoryProps) {
                   </Badge>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { duplicateProduct } from "@/lib/actions/product-actions";
 import { bulkDeleteProducts } from "@/lib/actions/product-stock-actions";
 import { useConfirm } from "@/components/providers/confirm-provider";
+import { StockHistoryModal } from "./stock-history-modal";
 
 interface ProductCellActionProps {
   data: any; // Product type
@@ -112,7 +113,11 @@ export function ProductCellAction({ data }: ProductCellActionProps) {
             <Copy className="mr-2 h-4 w-4" />
             {isLoading ? "Duplicating..." : "Duplicate"}
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setShowHistory(true)}>
+          <DropdownMenuItem
+            onSelect={() => {
+              setTimeout(() => setShowHistory(true), 50);
+            }}
+          >
             <History className="mr-2 h-4 w-4" /> View Stock History
           </DropdownMenuItem>
           <DropdownMenuSeparator />
@@ -125,6 +130,13 @@ export function ProductCellAction({ data }: ProductCellActionProps) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <StockHistoryModal
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+        productId={data.id}
+        productName={data.name}
+      />
     </div>
   );
 }
