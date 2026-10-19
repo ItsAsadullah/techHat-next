@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
@@ -841,13 +841,10 @@ export async function getVendorDashboardStats() {
 
 export async function getProductsForPurchase(search?: string) {
   try {
-    const where: any = { isActive: true };
+    const { buildProductSearchOR } = await import('@/lib/utils/product-search');
+    const where: any = { status: 'ACTIVE' };
     if (search && search.trim()) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { sku: { contains: search, mode: 'insensitive' } },
-        { barcode: { contains: search, mode: 'insensitive' } },
-      ];
+      where.OR = buildProductSearchOR(search);
     }
 
     const products = await prisma.product.findMany({
@@ -856,6 +853,7 @@ export async function getProductsForPurchase(search?: string) {
         id: true,
         name: true,
         sku: true,
+        model: true,
         barcode: true,
         stock: true,
         costPrice: true,

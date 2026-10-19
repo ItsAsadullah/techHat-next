@@ -113,22 +113,26 @@ export function POSProductGrid({ categories, onProductSelect, searchInputRef, in
     setSearchQuery(value);
     if (!selectedCategory) {
       if (value.trim().length > 0) {
-        const q = value.toLowerCase();
+        const q = value.trim().toLowerCase();
+        const qCompact = q.replace(/[\s-_]+/g, '');
         const getScore = (p: POSProduct) => {
           let score = 0;
           const name = p.name.toLowerCase();
+          const nameCompact = name.replace(/[\s-_]+/g, '');
           const sku = p.sku?.toLowerCase() || '';
+          const skuCompact = sku.replace(/[\s-_]+/g, '');
           const model = p.model?.toLowerCase() || '';
+          const modelCompact = model.replace(/[\s-_]+/g, '');
           const barcode = p.barcode?.toLowerCase() || '';
-          if (model === q) score += 1000;
-          else if (model.startsWith(q)) score += 500;
-          else if (model.includes(q)) score += 100;
+          if (model === q || (qCompact && modelCompact === qCompact)) score += 1000;
+          else if (model.startsWith(q) || (qCompact && modelCompact.startsWith(qCompact))) score += 500;
+          else if (model.includes(q) || (qCompact && modelCompact.includes(qCompact))) score += 100;
           if (name === q) score += 800;
           else if (name.startsWith(q)) score += 400;
-          else if (name.includes(q)) score += 50;
+          else if (name.includes(q) || (qCompact && nameCompact.includes(qCompact))) score += 50;
           if (sku === q || barcode === q) score += 600;
           else if (sku.startsWith(q) || barcode.startsWith(q)) score += 300;
-          else if (sku.includes(q) || barcode.includes(q)) score += 30;
+          else if (sku.includes(q) || barcode.includes(q) || (qCompact && skuCompact.includes(qCompact))) score += 30;
           for (const v of p.variants) {
             const vsku = v.sku?.toLowerCase() || '';
             if (vsku === q) score += 600;

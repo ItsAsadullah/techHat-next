@@ -216,17 +216,9 @@ export async function GET(req: NextRequest) {
 
     // Text search
     if (q.trim().length > 0) {
+      const { buildProductSearchOR } = await import('@/lib/utils/product-search');
       const sanitized = q.trim().replace(/[\r\n]+/g, '');
-      baseWhere.OR = [
-        { name: { contains: sanitized, mode: 'insensitive' } },
-        { sku: { contains: sanitized, mode: 'insensitive' } },
-        { barcode: { contains: sanitized, mode: 'insensitive' } },
-        { model: { contains: sanitized, mode: 'insensitive' } },
-        { brand: { is: { name: { contains: sanitized, mode: 'insensitive' } } } },
-        { category: { is: { name: { contains: sanitized, mode: 'insensitive' } } } },
-        { variants: { some: { sku: { contains: sanitized, mode: 'insensitive' } } } },
-        { variants: { some: { upc: { contains: sanitized, mode: 'insensitive' } } } },
-      ];
+      baseWhere.OR = buildProductSearchOR(sanitized);
     }
 
     // Ordering

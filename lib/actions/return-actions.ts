@@ -97,13 +97,14 @@ export async function getRecentSalesForReturn({
     };
 
     if (search && search.trim()) {
+      const { buildProductSearchOR } = await import('@/lib/utils/product-search');
       const q = search.trim();
       where.OR = [
         { orderNumber: { contains: q, mode: 'insensitive' } },
         { customerPhone: { contains: q } },
         { customerName: { contains: q, mode: 'insensitive' } },
         { items: { some: { productName: { contains: q, mode: 'insensitive' } } } },
-        { items: { some: { product: { sku: { contains: q, mode: 'insensitive' } } } } },
+        { items: { some: { product: { OR: buildProductSearchOR(q) } } } },
         { items: { some: { variant: { sku: { contains: q, mode: 'insensitive' } } } } },
       ];
     }

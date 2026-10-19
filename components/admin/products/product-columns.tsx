@@ -22,6 +22,7 @@ export type ProductColumn = {
   minStock: number;
   updatedAt: Date;
   sku: string | null;
+  model?: string | null;
   slug: string | null;
 };
 
@@ -81,10 +82,15 @@ export const columns: ColumnDef<ProductColumn>[] = [
     cell: ({ row }) => (
         <div className="flex flex-col gap-1 py-1">
             <span className="font-bold text-gray-900 truncate max-w-[200px]" title={row.original.name}>{row.original.name}</span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[10px] font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded border border-gray-200">
                     {row.original.sku || row.original.variants?.[0]?.sku || "NO SKU"}
                 </span>
+                {row.original.model && (
+                    <span className="text-[10px] font-mono bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200" title={`Model: ${row.original.model}`}>
+                        {row.original.model}
+                    </span>
+                )}
             </div>
         </div>
     )

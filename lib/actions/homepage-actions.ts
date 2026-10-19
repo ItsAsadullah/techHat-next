@@ -624,39 +624,14 @@ export async function searchProducts(query: string, limit = 20) {
   const term = query.trim();
   if (!term) return { products: [], categories: [] };
   try {
+    const { buildProductSearchOR } = await import('@/lib/utils/product-search');
     const [products, categories] = await Promise.all([
       prisma.product.findMany({
         where: {
           status: 'ACTIVE',
           OR: [
-            { name: { contains: term, mode: 'insensitive' } },
-            { sku: { contains: term, mode: 'insensitive' } },
-            { model: { contains: term, mode: 'insensitive' } },
-            { barcode: { contains: term, mode: 'insensitive' } },
+            ...buildProductSearchOR(term),
             { shortDesc: { contains: term, mode: 'insensitive' } },
-            { category: { name: { contains: term, mode: 'insensitive' } } },
-            { brand: { name: { contains: term, mode: 'insensitive' } } },
-            {
-              variants: {
-                some: {
-                  OR: [
-                    { name: { contains: term, mode: 'insensitive' } },
-                    { sku: { contains: term, mode: 'insensitive' } },
-                    { upc: { contains: term, mode: 'insensitive' } },
-                  ],
-                },
-              },
-            },
-            {
-              specs: {
-                some: {
-                  OR: [
-                    { name: { contains: term, mode: 'insensitive' } },
-                    { value: { contains: term, mode: 'insensitive' } },
-                  ],
-                },
-              },
-            },
           ],
         },
         select: {

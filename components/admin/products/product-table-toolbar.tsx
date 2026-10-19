@@ -63,7 +63,7 @@ export function ProductTableToolbar({ categories, brands }: ProductTableToolbarP
                     <Search className="h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
                 </div>
                 <Input
-                    placeholder="Search products, SKU..."
+                    placeholder="Search products, model, SKU, barcode..."
                     className="pl-8 h-8 md:h-9 bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all rounded text-[13px] font-medium text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500"
                     defaultValue={searchParams.get("search")?.toString()}
                     onChange={(e) => handleSearch(e.target.value)}

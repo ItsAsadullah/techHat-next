@@ -54,20 +54,14 @@ export interface POSProduct {
 
 export async function searchPOSProducts(query: string, categoryId?: string): Promise<POSProduct[]> {
   try {
+    const { buildProductSearchOR, extractModelFromSpecs } = await import('@/lib/utils/product-search');
     const where: any = {
       status: 'ACTIVE',
     };
 
     if (query && query.trim().length > 0) {
       const q = sanitizeInput(query);
-      where.OR = [
-        { name: { contains: q, mode: 'insensitive' } },
-        { sku: { contains: q, mode: 'insensitive' } },
-        { model: { contains: q, mode: 'insensitive' } },
-        { barcode: { contains: q, mode: 'insensitive' } },
-        { variants: { some: { sku: { contains: q, mode: 'insensitive' } } } },
-        { variants: { some: { upc: { contains: q, mode: 'insensitive' } } } },
-      ];
+      where.OR = buildProductSearchOR(q);
     }
 
     if (categoryId) {
@@ -87,6 +81,9 @@ export async function searchPOSProducts(query: string, categoryId?: string): Pro
         costPrice: true,
         stock: true,
         category: { select: { name: true } },
+        specs: {
+          select: { name: true, value: true },
+        },
         productImages: {
           where: { isThumbnail: true },
           select: { url: true },
@@ -114,7 +111,7 @@ export async function searchPOSProducts(query: string, categoryId?: string): Pro
       id: p.id,
       name: p.name,
       sku: p.sku,
-      model: p.model,
+      model: p.model || extractModelFromSpecs(p.specs),
       barcode: p.barcode,
       price: p.price,
       offerPrice: p.offerPrice,

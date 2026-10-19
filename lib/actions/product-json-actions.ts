@@ -129,7 +129,9 @@ export async function createProductJSON(payload: {
           warrantyMonths: payload.warrantyMonths || 0,
           warrantyType: payload.warrantyType || null,
           videoUrl: payload.videoUrl || null,
-          model: payload.model || null,
+          model: payload.model?.trim() || (Array.isArray(payload.productSpecs)
+            ? payload.productSpecs.find((s) => ['model', 'model number', 'model name', 'model no', 'mpn'].includes((s.key || '').trim().toLowerCase()))?.value?.trim() || null
+            : null),
           sku,
           barcode,
           seoTitle: payload.seoTitle || null,
@@ -338,7 +340,9 @@ export async function updateProductJSON(
           warrantyMonths: payload.warrantyMonths || 0,
           warrantyType: payload.warrantyType || null,
           videoUrl: payload.videoUrl || null,
-          model: payload.model || null,
+          model: payload.model?.trim() || (Array.isArray(payload.productSpecs)
+            ? payload.productSpecs.find((s) => ['model', 'model number', 'model name', 'model no', 'mpn'].includes((s.key || '').trim().toLowerCase()))?.value?.trim() || null
+            : null),
           sku: nextSku,
           barcode: nextBarcode,
           seoTitle: payload.seoTitle || null,

@@ -103,6 +103,8 @@ export function UnifiedProductTable<TData, TValue>({
           minStock: p.minStock,
           updatedAt: p.updatedAt,
           sku: p.sku,
+          model: p.model || null,
+          slug: p.slug,
         })) as unknown as TData[];
         
         setLocalData((prev) => [...prev, ...formatted]);

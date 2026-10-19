@@ -37,11 +37,12 @@ export async function getStockLedger(filter: LedgerFilter = {}) {
   if (productId) where.productId = productId;
   if (referenceType) where.referenceType = referenceType as any;
 
-  if (search) {
+  if (search && search.trim()) {
+    const { buildProductSearchOR } = await import('@/lib/utils/product-search');
     where.OR = [
       { note: { contains: search, mode: 'insensitive' } },
       { referenceId: { contains: search, mode: 'insensitive' } },
-      { product: { name: { contains: search, mode: 'insensitive' } } },
+      { product: { OR: buildProductSearchOR(search) } },
     ];
   }
 
@@ -55,7 +56,7 @@ export async function getStockLedger(filter: LedgerFilter = {}) {
       take: limit,
       include: {
         warehouse: { select: { id: true, name: true, code: true } },
-        product: { select: { id: true, name: true, sku: true } },
+        product: { select: { id: true, name: true, sku: true, model: true } },
         variant: { select: { id: true, name: true, sku: true } },
       },
     }),

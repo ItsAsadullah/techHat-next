@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath, unstable_cache } from 'next/cache';
 import { StockAction } from '@prisma/client';
 import { InventoryService } from '@/lib/services/inventory-service';
+import { buildProductSearchOR, extractModelFromSpecs } from '@/lib/utils/product-search';
 
 export type ProductFilterParams = {
   page?: number;
@@ -30,13 +31,9 @@ export async function getProducts(params: ProductFilterParams) {
 
   const where: any = {};
 
-  // Search logic
-  if (search) {
-    where.OR = [
-      { name: { contains: search, mode: 'insensitive' } },
-      { sku: { contains: search, mode: 'insensitive' } },
-      { barcode: { contains: search, mode: 'insensitive' } },
-    ];
+  // Search logic (includes name, model, sku, barcode, brand, category, specs, variants, and hyphen/space variations)
+  if (search && search.trim()) {
+    where.OR = buildProductSearchOR(search);
   }
 
   // Filters
@@ -52,10 +49,6 @@ export async function getProducts(params: ProductFilterParams) {
     if (stockStatus === 'out') {
       where.stock = { lte: 0 };
     } else if (stockStatus === 'low') {
-      // For low stock, we need stock > 0 AND stock <= minStock
-      // Since minStock is a column, Prisma where syntax doesn't support comparing two columns directly in standard findMany without raw or extensions.
-      // But we can fetch products and filter in JS if needed, OR just approximate low stock as <= 5.
-      // Let's use a raw query just to get IDs for low stock, or just approximate.
       const lowStockProducts = await prisma.$queryRaw<any[]>`
         SELECT id FROM "products" WHERE stock > 0 AND stock <= COALESCE("minStock", 5)
       `;
@@ -73,6 +66,8 @@ export async function getProducts(params: ProductFilterParams) {
       name: true,
       slug: true,
       sku: true,
+      model: true,
+      barcode: true,
       price: true,
       offerPrice: true,
       costPrice: true,
@@ -89,6 +84,12 @@ export async function getProducts(params: ProductFilterParams) {
         select: {
           id: true,
           name: true,
+        }
+      },
+      specs: {
+        select: {
+          name: true,
+          value: true,
         }
       },
       productImages: {
@@ -127,8 +128,10 @@ export async function getProducts(params: ProductFilterParams) {
 
   const mappedProducts = products.map((p) => {
     const pStock = stockMap.get(p.id)?.availableStock || 0;
+    const resolvedModel = p.model || extractModelFromSpecs(p.specs);
     return {
       ...p,
+      model: resolvedModel,
       stock: pStock, // Replaced cached stock with Ledger Available Stock
       variants: p.variants.map((v) => ({
         ...v,

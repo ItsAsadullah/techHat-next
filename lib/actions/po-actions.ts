@@ -120,14 +120,14 @@ export async function getPurchaseOrderById(id: string) {
 
 export async function searchProductsForPO(query: string) {
   try {
+    const { buildProductSearchOR } = await import('@/lib/utils/product-search');
     const isId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query);
 
     const products = await prisma.product.findMany({
-      where: query ? {
+      where: query && query.trim() ? {
         OR: [
           ...(isId ? [{ id: query }] : []),
-          { name: { contains: query, mode: 'insensitive' } },
-          { sku: { contains: query, mode: 'insensitive' } },
+          ...buildProductSearchOR(query),
         ]
       } : {},
       take: 50,
@@ -136,6 +136,7 @@ export async function searchProductsForPO(query: string) {
         id: true,
         name: true,
         sku: true,
+        model: true,
         costPrice: true,
         lastPurchaseCost: true,
         reorderPoint: true,

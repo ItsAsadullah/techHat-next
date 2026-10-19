@@ -128,11 +128,11 @@ export async function getAllProductsPageData(
   const where: Prisma.ProductWhereInput = { status: ProductLifecycleStatus.ACTIVE };
 
   if (filters.q && filters.q.trim()) {
+    const { buildProductSearchOR } = await import('@/lib/utils/product-search');
     const q = filters.q.trim();
     where.OR = [
-      { name: { contains: q, mode: 'insensitive' } },
+      ...buildProductSearchOR(q),
       { shortDesc: { contains: q, mode: 'insensitive' } },
-      { brand: { name: { contains: q, mode: 'insensitive' } } },
     ];
   }
 

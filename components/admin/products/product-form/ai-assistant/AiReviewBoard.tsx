@@ -96,6 +96,18 @@ export function AiReviewBoard({ data, onClose, onRegenerate }: AiReviewBoardProp
         }
 
         setValue('productSpecs', finalSpecs.length > 0 ? finalSpecs : [{ id: '1', key: '', value: '' }], { shouldDirty: true });
+
+        // If the Model field is empty, auto-populate it from extracted specifications
+        const currentModel = getValues('model');
+        if (!currentModel || !String(currentModel).trim()) {
+          const modelSpec = finalSpecs.find((s: any) => {
+            const k = (s.key || '').trim().toLowerCase();
+            return k === 'model' || k === 'model number' || k === 'model name' || k === 'model no' || k === 'mpn';
+          });
+          if (modelSpec?.value) {
+            setValue('model', String(modelSpec.value).trim(), { shouldDirty: true });
+          }
+        }
       }
 
       if (selectedFields.faqs && data.faqs) {

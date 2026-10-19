@@ -61,6 +61,7 @@ export default async function ProductsPage({
     minStock: p.minStock,
     updatedAt: p.updatedAt,
     sku: p.sku,
+    model: (p as any).model || null,
     slug: p.slug,
   }));
 
