@@ -1414,6 +1414,8 @@ model StockAdjustmentItem {
   productId         String   @map("product_id")
   variantId         String?  @map("variant_id")
   quantity          Int
+  systemQty         Int?     @map("system_qty")
+  actualQty         Int?     @map("actual_qty")
   unitCost          Float    @default(0) @map("unit_cost")
   createdAt         DateTime @default(now()) @map("created_at")
 

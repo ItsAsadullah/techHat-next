@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { Download, ChevronLeft, ChevronRight, ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
 interface LedgerEntry {
   id: string;
@@ -118,8 +119,10 @@ export function LedgerTable({ entries, totalPages, currentPage, filter }: Ledger
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1">
                       <span className={`inline-flex w-fit px-2 py-0.5 rounded text-[10px] font-bold tracking-wider ${TYPE_COLORS[entry.referenceType] || 'bg-gray-100 text-gray-700'}`}>
-                        {entry.referenceType}
+                        {entry.referenceType.replaceAll('_', ' ')}
                       </span>
+                      {['TRANSFER', 'TRANSFER_DISPATCH', 'TRANSFER_RECEIPT', 'ADJUSTMENT'].includes(entry.referenceType) && <Link className="text-xs text-primary hover:underline" href={`/admin/inventory/${entry.referenceType === 'ADJUSTMENT' ? 'adjustments' : 'transfers'}/${entry.referenceId}`}>View record →</Link>}
+                      {entry.note && <span className="text-xs text-muted-foreground line-clamp-2 max-w-52" title={entry.note}>{entry.note}</span>}
                       <span className="text-xs font-mono text-muted-foreground truncate max-w-[120px]" title={entry.referenceId}>
                         {entry.referenceId.split('-').pop() || entry.referenceId}
                       </span>

@@ -6,6 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ArrowRight, FileText, Package, Truck } from 'lucide-react';
 import { TransferStatusActions } from './components/transfer-status-actions';
+import Link from 'next/link';
+
+export const dynamic = 'force-dynamic';
 
 export default async function TransferDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -19,12 +22,23 @@ export default async function TransferDetailPage({ params }: { params: Promise<{
 
   return (
     <div className="space-y-6">
+      <Link href="/admin/inventory/transfers" className="text-sm text-muted-foreground hover:text-primary print:hidden">← All transfers</Link>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Transfer {transfer.transferNumber}</h1>
           <p className="text-muted-foreground">Created on {format(new Date(transfer.createdAt), 'dd MMM yyyy, hh:mm a')}</p>
         </div>
         <TransferStatusActions transfer={transfer} />
+      </div>
+
+      <div className="rounded-xl border bg-card p-5 space-y-4">
+        <ol className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {['DRAFT', 'APPROVED', 'IN_TRANSIT', 'RECEIVED'].map((status, index) => {
+            const complete = transfer.status !== 'CANCELLED' && ['DRAFT', 'APPROVED', 'IN_TRANSIT', 'RECEIVED'].indexOf(transfer.status) >= index;
+            return <li key={status} aria-current={transfer.status === status ? 'step' : undefined} className={`rounded-lg p-3 text-sm ${complete ? 'bg-primary/10 text-primary font-semibold' : 'bg-muted/40 text-muted-foreground'}`}><span className="mr-2">{index + 1}.</span>{['Draft', 'Reserved', 'In transit', 'Received'][index]}</li>;
+          })}
+        </ol>
+        <p className="text-sm text-muted-foreground">{transfer.status === 'CANCELLED' ? 'This transfer was cancelled. No stock was moved.' : transfer.status === 'IN_TRANSIT' ? 'Goods are on the way. Confirm receipt only after checking every quantity at the destination. Resolve any shortage before confirming full receipt.' : transfer.status === 'RECEIVED' ? 'The transfer is complete. Both warehouse movements are recorded in the stock ledger.' : transfer.status === 'APPROVED' ? 'Stock is reserved at the source. Dispatch when the goods physically leave the warehouse.' : 'Review the route and quantities, then approve to reserve stock.'}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -48,7 +62,7 @@ export default async function TransferDetailPage({ params }: { params: Promise<{
               </TableHeader>
               <TableBody>
                 {transfer.items.map((item: any) => {
-                  const unitCost = item.variant?.costPrice || item.product.costPrice || 0;
+                  const unitCost = item.unitCost;
                   const totalValue = unitCost * item.quantity;
                   return (
                     <TableRow key={item.id}>

@@ -7,8 +7,12 @@ import { Plus, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 
-export default async function TransfersPage() {
-  const res = await getTransfers();
+export const dynamic = 'force-dynamic';
+
+export default async function TransfersPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string }> }) {
+  const filters = await searchParams;
+  const res = await getTransfers({ search: filters.q, status: filters.status });
+  if (!res.success) throw new Error(res.error || 'Unable to load transfers.');
   const transfers = res.success ? res.data : [];
 
   return (
@@ -26,10 +30,16 @@ export default async function TransfersPage() {
         </Link>
       </div>
 
+      <form className="rounded-xl border bg-card p-4 flex flex-wrap gap-3">
+        <input name="q" aria-label="Search transfers" defaultValue={filters.q} placeholder="Search transfer number or warehouse…" className="min-w-48 flex-1 rounded-md border bg-background px-3 py-2 text-sm" />
+        <select name="status" aria-label="Transfer status" defaultValue={filters.status || ''} className="rounded-md border bg-background px-3 py-2 text-sm"><option value="">All statuses</option><option value="DRAFT">Draft</option><option value="APPROVED">Ready to dispatch</option><option value="IN_TRANSIT">In transit</option><option value="RECEIVED">Received</option><option value="CANCELLED">Cancelled</option></select>
+        <Button type="submit">Apply filters</Button><Button variant="outline" asChild><Link href="/admin/inventory/transfers">Reset</Link></Button>
+      </form>
+
       <Card>
         <CardHeader>
           <CardTitle>Transfer History</CardTitle>
-          <CardDescription>A list of all recent and pending warehouse transfers.</CardDescription>
+          <CardDescription>Up to 200 matching transfers, newest first. Filter by warehouse or status to find a transfer.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -61,7 +71,7 @@ export default async function TransfersPage() {
                       t.status === 'CANCELLED' ? 'destructive' :
                       'outline'
                     }>
-                      {t.status}
+                      {t.status === 'APPROVED' ? 'Ready to dispatch' : t.status.replaceAll('_', ' ')}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">

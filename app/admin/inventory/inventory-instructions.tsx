@@ -42,9 +42,9 @@ export function InventoryInstructions() {
                 ১. ড্যাশবোর্ড স্ট্যাটাস
               </h3>
               <ul className="space-y-2 text-sm text-muted-foreground list-disc pl-5">
-                <li><strong className="text-foreground">Physical Stock:</strong> বর্তমানে আপনার গোডাউনে থাকা মোট প্রোডাক্টের সংখ্যা।</li>
-                <li><strong className="text-foreground">Reserved Stock:</strong> কাস্টমার অর্ডার করেছে কিন্তু এখনো শিপিং বা ডেলিভারি হয়নি এমন প্রোডাক্ট।</li>
-                <li><strong className="text-foreground">Available to Sell:</strong> ফিজিক্যাল স্টক থেকে রিজার্ভড স্টক বাদ দিলে যা থাকে। অর্থাৎ, বর্তমানে ওয়েবসাইটের কাস্টমাররা এই পরিমাণ অর্ডার করতে পারবে।</li>
+                <li><strong className="text-foreground">Owned Stock:</strong> গুদামে থাকা এবং ট্রান্সফারের পথে থাকা সব মালিকানাধীন পণ্যের সংখ্যা।</li>
+                <li><strong className="text-foreground">Reserved Stock:</strong> পেন্ডিং অর্ডার এবং অনুমোদিত বা পথে থাকা ট্রান্সফারের জন্য সংরক্ষিত পণ্য।</li>
+                <li><strong className="text-foreground">Available to Sell:</strong> Owned Stock থেকে Reserved Stock বাদ দিলে যা থাকে। অর্থাৎ, বর্তমানে ওয়েবসাইটের কাস্টমাররা এই পরিমাণ অর্ডার করতে পারবে।</li>
               </ul>
             </section>
 
@@ -72,7 +72,7 @@ export function InventoryInstructions() {
                     ট্রান্সফার (Transfers)
                   </h4>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    এক গোডাউন থেকে অন্য গোডাউনে স্টক স্থানান্তর। এটি সোর্স গোডাউন থেকে স্টক কমায় এবং ডেস্টিনেশন গোডাউনে স্টক বাড়ায়।
+                    Draft তৈরি করে Approve করলে স্টক রিজার্ভ হয়। Dispatch করলে উৎস গুদাম থেকে স্টক কমে ও In transit থাকে। গন্তব্যে সব পণ্য গুনে Confirm full receipt করলে সেখানে স্টক বাড়ে। পাঠানোর পরে ট্রান্সফার বাতিল করা যায় না।
                   </p>
                 </div>
 
@@ -82,7 +82,7 @@ export function InventoryInstructions() {
                     অ্যাডজাস্টমেন্ট (Adjustments)
                   </h4>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    সিস্টেমের স্টক এবং বাস্তব স্টকের মধ্যে অমিল দূর করতে ব্যবহৃত হয়। অতিরিক্ত প্রোডাক্ট পাওয়া গেলে "Addition" এবং নষ্ট/হারিয়ে গেলে "Deduction" ব্যবহার করুন। ড্যামেজ হিসেবে ডিডাক্ট করলে তা "Damaged Stock" এ যোগ হবে।
+                    গুদাম ও কারণ বেছে বাস্তবে ব্যবহারযোগ্য মোট পরিমাণ লিখুন। সিস্টেম নিজে পার্থক্য হিসাব করবে। Draft রিভিউ করে Approve করলে স্টক বদলাবে। গণনার পরে স্টক মুভ হলে নতুন করে গণনা করতে হবে। Damage, Theft ও Expired দিয়ে কেবল স্টক কমানো যাবে।
                   </p>
                 </div>
               </div>

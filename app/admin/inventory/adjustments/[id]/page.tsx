@@ -15,13 +15,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getAdjustmentById, approveAdjustment } from '@/lib/actions/adjustment-actions';
+import { getAdjustmentById, approveAdjustment, rejectAdjustment } from '@/lib/actions/adjustment-actions';
 import { useConfirm } from '@/components/providers/confirm-provider';
 
 export default function AdjustmentDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  type AdjItem = { id: string; productId: string; systemQty: number; actualQty: number; adjustedQty: number; product: { name: string; sku: string }; variant?: { name: string; sku: string } | null };
+  type AdjItem = { id: string; productId: string; systemQty: number | null; actualQty: number | null; quantity: number; product: { name: string; sku: string }; variant?: { name: string; sku: string } | null };
   // Use a flexible type that accepts any shape from the action
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [adj, setAdj] = useState<any>(null);
@@ -31,31 +31,30 @@ export default function AdjustmentDetailsPage() {
 
   useEffect(() => {
     async function load() {
-      const res = await getAdjustmentById(params.id as string);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (res.success) setAdj((res as any).data);
-      else toast.error('Failed to load Adjustment');
-      setLoading(false);
+      try {
+        const res = await getAdjustmentById(params.id as string);
+        if (res.success) setAdj(res.data);
+        else toast.error(res.error || 'Failed to load adjustment');
+      } catch { toast.error('Unable to load adjustment. Please refresh.'); }
+      finally { setLoading(false); }
     }
     load();
   }, [params.id]);
 
   const handleApprove = async () => {
-    if (!(await confirm('Are you sure you want to Approve this Adjustment? This will IMMUTABLY update the Stock Ledger. This action cannot be undone.'))) return;
+    if (!(await confirm('Are you sure you want to Approve this Adjustment? This applies the counted difference to warehouse stock and records it in the ledger. Check the quantities before continuing.'))) return;
     
     setActionLoading(true);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const res = await approveAdjustment((adj as any).id);
-    if (res.success) {
+    try {
+      const res = await approveAdjustment(adj.id);
+      if (!res.success) throw new Error(res.error || 'Failed to approve adjustment');
       toast.success('Stock Adjustment Approved & Ledger Updated!');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setAdj((prev: any) => prev ? { ...prev, status: 'APPROVED' } : prev);
       router.refresh();
-    } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      toast.error((res as any).error || 'Failed to approve adjustment');
-    }
-    setActionLoading(false);
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to approve adjustment.'); }
+    finally { setActionLoading(false); }
   };
 
   if (loading) {
@@ -69,23 +68,23 @@ export default function AdjustmentDetailsPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'DRAFT': return 'secondary';
-      case 'PENDING_APPROVAL': return 'warning';
-      case 'APPROVED': return 'success';
+      case 'PENDING_APPROVAL': return 'outline';
+      case 'APPROVED': return 'default';
       case 'REJECTED': return 'destructive';
       default: return 'secondary';
     }
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6 pb-24 max-w-[1200px] mx-auto">
+    <div className="flex flex-col gap-6 pb-12 max-w-[1200px] mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b py-3 -mx-6 px-6 shadow-sm">
+      <div className="flex flex-wrap gap-4 items-center justify-between border-b pb-4">
         <div className="flex items-center gap-3">
           <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push('/admin/inventory/adjustments')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-bold font-mono">{adj.adjustmentNumber}</h1>
               <Badge variant={getStatusColor(adj.status) as 'secondary' | 'destructive' | 'default' | 'outline'} className="text-[10px] uppercase">
                 {adj.status === 'APPROVED' ? <><Lock className="mr-1 h-3 w-3" /> LOCKED (APPROVED)</> : adj.status}
@@ -95,11 +94,22 @@ export default function AdjustmentDetailsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Printer className="mr-2 h-4 w-4" /> Print
           </Button>
 
+          {['DRAFT', 'PENDING_APPROVAL'].includes(adj.status) && <Button variant="outline" size="sm" disabled={actionLoading} onClick={async () => {
+            if (!(await confirm('Reject this adjustment? Stock will stay unchanged.'))) return;
+            setActionLoading(true);
+            try {
+              const result = await rejectAdjustment(adj.id);
+              if (!result.success) throw new Error(result.error);
+              setAdj((prev: typeof adj) => ({ ...prev, status: 'REJECTED' }));
+              toast.success('Adjustment rejected');
+            } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to reject adjustment.'); }
+            finally { setActionLoading(false); }
+          }}>Reject draft</Button>}
           {adj.status === 'DRAFT' && (
             <Button size="sm" onClick={handleApprove} disabled={actionLoading} className="bg-green-600 hover:bg-green-700">
               {actionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
@@ -108,6 +118,8 @@ export default function AdjustmentDetailsPage() {
           )}
         </div>
       </div>
+
+      {adj.items.some((item: AdjItem) => item.systemQty === null) && <p className="rounded-lg border bg-amber-500/10 p-4 text-sm">This older record has no saved system or counted quantities. The variance is preserved. For an unapproved draft, reject it and create a fresh count.</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Main Details */}
@@ -133,10 +145,10 @@ export default function AdjustmentDetailsPage() {
                       {item.variant && <div className="text-xs text-muted-foreground">{item.variant.name}</div>}
                       <div className="text-[10px] font-mono text-muted-foreground">{item.variant?.sku || item.product.sku}</div>
                     </TableCell>
-                    <TableCell className="text-center font-mono text-muted-foreground">{item.systemQty}</TableCell>
-                    <TableCell className="text-center font-mono font-medium">{item.actualQty}</TableCell>
-                    <TableCell className={`text-center font-bold font-mono ${item.adjustedQty > 0 ? 'text-green-600' : item.adjustedQty < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
-                      {item.adjustedQty > 0 ? `+${item.adjustedQty}` : item.adjustedQty}
+                    <TableCell className="text-center font-mono text-muted-foreground">{item.systemQty ?? '—'}</TableCell>
+                    <TableCell className="text-center font-mono font-medium">{item.actualQty ?? '—'}</TableCell>
+                    <TableCell className={`text-center font-bold font-mono ${item.quantity > 0 ? 'text-green-600' : item.quantity < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                      {item.quantity > 0 ? `+${item.quantity}` : item.quantity}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -24,6 +24,8 @@ const REF_TYPES = [
   { value: 'RETURN', label: '↩️ Return' },
   { value: 'ADJUSTMENT', label: '⚙️ Adjustment' },
   { value: 'TRANSFER', label: '🔄 Transfer' },
+  { value: 'TRANSFER_DISPATCH', label: 'Transfer dispatch' },
+  { value: 'TRANSFER_RECEIPT', label: 'Transfer receipt' },
   { value: 'PO', label: '📋 Purchase Order' },
 ];
 

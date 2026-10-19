@@ -2,197 +2,83 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import Link from 'next/link';
+import { ArrowRight, ArrowLeftRight, Loader2, Package, Trash2, Save } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
-import { Plus, Trash2, Save } from 'lucide-react';
-import { createTransfer } from '@/lib/actions/transfer-actions';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { createTransfer, getTransferStock } from '@/lib/actions/transfer-actions';
+import { ProductPicker, InventorySelection } from '../../../components/product-picker';
+import { useConfirm } from '@/components/providers/confirm-provider';
 
-export function TransferForm({ warehouses, products }: { warehouses: any[], products: any[] }) {
+type Item = InventorySelection & { quantity: number; available: number; physical: number };
+type Warehouse = { id: string; name: string; code: string };
+export function TransferForm({ warehouses }: { warehouses: Warehouse[] }) {
   const router = useRouter();
-  
-  const [loading, setLoading] = useState(false);
+  const confirm = useConfirm();
   const [sourceId, setSourceId] = useState('');
   const [destinationId, setDestinationId] = useState('');
   const [note, setNote] = useState('');
-  const [transferCost, setTransferCost] = useState('0');
-  
-  const [items, setItems] = useState([{ productId: '', variantId: '', quantity: 1 }]);
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const total = items.reduce((sum, item) => sum + (Number.isFinite(item.quantity) ? item.quantity : 0), 0);
+  const invalid = !items.length || items.some(i => !Number.isSafeInteger(i.quantity) || i.quantity < 1 || i.quantity > i.available);
+  const source = warehouses.find(w => w.id === sourceId);
+  const destination = warehouses.find(w => w.id === destinationId);
 
-  const handleAddItem = () => setItems([...items, { productId: '', variantId: '', quantity: 1 }]);
-  const handleRemoveItem = (index: number) => setItems(items.filter((_, i) => i !== index));
-
-  const handleItemChange = (index: number, field: string, value: any) => {
-    const newItems = [...items];
-    (newItems[index] as any)[field] = value;
-    
-    // Auto-select first variant if product changes
-    if (field === 'productId') {
-      const product = products.find(p => p.id === value);
-      if (product?.variants?.length > 0) {
-        newItems[index].variantId = product.variants[0].id;
-      } else {
-        newItems[index].variantId = '';
-      }
-    }
-    setItems(newItems);
-  };
-
-  const onSubmit = async () => {
-    if (!sourceId || !destinationId) {
-      toast.error('Validation Error', { description: 'Please select both source and destination' });
-      return;
-    }
-    if (sourceId === destinationId) {
-      toast.error('Validation Error', { description: 'Source and destination cannot be the same' });
-      return;
-    }
-
-    const validItems = items.filter(i => i.productId && i.quantity > 0);
-    if (validItems.length === 0) {
-      toast.error('Validation Error', { description: 'Add at least one valid item' });
-      return;
-    }
-
+  async function changeSource(value: string) {
+    if (items.length && !(await confirm('Changing the source clears the selected items because stock belongs to a specific warehouse. Continue?'))) return;
+    setSourceId(value); setItems([]);
+    if (value === destinationId) setDestinationId('');
+  }
+  async function addItem(selection: InventorySelection) {
+    if (items.some(i => i.productId === selection.productId && i.variantId === selection.variantId)) throw new Error('This item is already in the transfer. Update its quantity below.');
+    setAdding(true);
+    try {
+      const result = await getTransferStock(sourceId, selection.productId, selection.variantId);
+      if (!result.success || result.available === undefined || result.physical === undefined) throw new Error(result.error || 'Could not load source stock.');
+      if (result.available < 1) throw new Error('No unreserved stock available for this item at the source.');
+      setItems(prev => [...prev, { ...selection, quantity: 1, available: result.available!, physical: result.physical! }]);
+    } finally { setAdding(false); }
+  }
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (loading || invalid || !sourceId || !destinationId || sourceId === destinationId) return;
     setLoading(true);
-    const res = await createTransfer({
-      sourceId,
-      destinationId,
-      unitCost: parseFloat(transferCost),
-      note,
-      items: validItems
-    });
-    setLoading(false);
-
-    if (res.success) {
-      toast.success('Transfer Draft Created Successfully');
-      router.push(`/admin/inventory/transfers/${res.data?.id}`);
-    } else {
-      toast.error('Error', { description: res.error });
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Routing Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Source Warehouse</Label>
-              <Select value={sourceId} onValueChange={setSourceId}>
-                <SelectTrigger><SelectValue placeholder="Select Source" /></SelectTrigger>
-                <SelectContent>
-                  {warehouses.map(w => (
-                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Destination Warehouse</Label>
-              <Select value={destinationId} onValueChange={setDestinationId}>
-                <SelectTrigger><SelectValue placeholder="Select Destination" /></SelectTrigger>
-                <SelectContent>
-                  {warehouses.map(w => (
-                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Transfer Info</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Transfer Cost (Shipping, Handling)</Label>
-              <Input type="number" value={transferCost} onChange={e => setTransferCost(e.target.value)} />
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Reason for transfer..." />
-            </div>
-          </CardContent>
-        </Card>
+    try {
+      const result = await createTransfer({ sourceId, destinationId, note, items: items.map(i => ({ productId: i.productId, variantId: i.variantId, quantity: i.quantity })) });
+      if (!result.success || !result.data) throw new Error(result.error || 'Could not create transfer.');
+      toast.success('Transfer draft saved. Review and approve it before dispatch.');
+      router.push(`/admin/inventory/transfers/${result.data.id}`);
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not save transfer.'); }
+    finally { setLoading(false); }
+  }
+  if (warehouses.length < 2) return <div className="rounded-xl border border-dashed p-8 text-center space-y-3"><Package className="mx-auto h-9 w-9 text-muted-foreground" /><h2 className="font-semibold">Set up your transfer route</h2><p className="text-sm text-muted-foreground">You need at least two active warehouses to move stock.</p><Button asChild><Link href="/admin/inventory/warehouses/new">Add warehouse</Link></Button></div>;
+  return <form onSubmit={submit} className="space-y-6">
+    <div className="rounded-xl border bg-primary/5 p-4 flex flex-wrap gap-x-6 gap-y-2 text-sm"><strong>1. Create draft</strong><span className="text-muted-foreground">2. Approve & reserve</span><span className="text-muted-foreground">3. Dispatch stock</span><span className="text-muted-foreground">4. Confirm receipt</span></div>
+    <fieldset disabled={loading || adding} className="grid gap-6 lg:grid-cols-[1fr_300px] disabled:opacity-70">
+      <div className="space-y-6 min-w-0">
+        <section className="rounded-xl border bg-card p-5 space-y-4"><h2 className="font-semibold flex gap-2 items-center"><ArrowLeftRight className="h-4 w-4" /> Transfer route</h2>
+          <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>From warehouse</Label><Select value={sourceId} onValueChange={changeSource} disabled={loading || adding}><SelectTrigger aria-label="Source warehouse"><SelectValue placeholder="Choose source" /></SelectTrigger><SelectContent>{warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name} · {w.code}</SelectItem>)}</SelectContent></Select></div>
+          <div className="space-y-2"><Label>To warehouse</Label><Select value={destinationId} onValueChange={setDestinationId} disabled={loading || adding}><SelectTrigger aria-label="Destination warehouse"><SelectValue placeholder="Choose destination" /></SelectTrigger><SelectContent>{warehouses.filter(w => w.id !== sourceId).map(w => <SelectItem key={w.id} value={w.id}>{w.name} · {w.code}</SelectItem>)}</SelectContent></Select></div></div>
+        </section>
+        <section className="rounded-xl border bg-card p-5 space-y-4"><div><h2 className="font-semibold">Products to transfer</h2><p className="text-xs text-muted-foreground mt-1">Available quantities account for pending orders and approved transfers.</p></div>
+          <ProductPicker disabled={!sourceId || loading || adding} onSelect={addItem} />
+          {!items.length && <div className="rounded-lg border border-dashed py-10 text-center text-muted-foreground"><Package className="h-8 w-8 mx-auto mb-3 opacity-50" /><p className="text-sm">Search and add your first product</p></div>}
+          {items.map((item, index) => <div key={`${item.productId}:${item.variantId || ''}`} className="rounded-lg border p-4 flex flex-wrap items-center gap-4">
+            <div className="flex-1 min-w-40"><p className="font-medium text-sm">{item.name}</p><p className="font-mono text-xs text-muted-foreground">{item.sku}</p><p className="text-xs mt-2 text-muted-foreground">On hand: {item.physical} · <span className="text-emerald-700 dark:text-emerald-400">Available: {item.available}</span></p></div>
+            <div className="w-28"><Label htmlFor={`qty-${index}`} className="text-xs">Transfer qty</Label><Input id={`qty-${index}`} type="number" min={1} max={item.available} step={1} required value={Number.isNaN(item.quantity) ? '' : item.quantity} onChange={e => setItems(prev => prev.map((row, i) => i === index ? { ...row, quantity: e.target.value === '' ? NaN : Number(e.target.value) } : row))} aria-invalid={item.quantity > item.available || item.quantity < 1} /></div>
+            <Button variant="ghost" size="icon" type="button" aria-label={`Remove ${item.name}`} onClick={() => setItems(prev => prev.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+            {item.quantity > item.available && <p role="alert" className="w-full text-xs text-destructive">Quantity exceeds the available stock.</p>}
+          </div>)}
+        </section>
+        <section className="rounded-xl border bg-card p-5 space-y-2"><Label htmlFor="transfer-note">Transfer note</Label><Textarea id="transfer-note" value={note} onChange={e => setNote(e.target.value)} placeholder="Reason for transfer, delivery instructions or a reference…" maxLength={2000} /></section>
       </div>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Transfer Items</CardTitle>
-          <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
-            <Plus className="h-4 w-4 mr-2" /> Add Item
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {items.map((item, index) => {
-            const product = products.find(p => p.id === item.productId);
-            
-            return (
-              <div key={index} className="flex flex-col sm:flex-row gap-4 items-start sm:items-end p-4 border rounded-lg bg-muted/20">
-                <div className="flex-1 space-y-2 w-full">
-                  <Label>Product</Label>
-                  <Select value={item.productId} onValueChange={(val) => handleItemChange(index, 'productId', val)}>
-                    <SelectTrigger><SelectValue placeholder="Select Product" /></SelectTrigger>
-                    <SelectContent>
-                      {products.map(p => (
-                        <SelectItem key={p.id} value={p.id}>{p.name} ({p.sku})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {product?.variants?.length > 0 && (
-                  <div className="flex-1 space-y-2 w-full">
-                    <Label>Variant</Label>
-                    <Select value={item.variantId} onValueChange={(val) => handleItemChange(index, 'variantId', val)}>
-                      <SelectTrigger><SelectValue placeholder="Select Variant" /></SelectTrigger>
-                      <SelectContent>
-                        {product.variants.map((v: any) => (
-                          <SelectItem key={v.id} value={v.id}>{v.name} ({v.sku})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <div className="w-full sm:w-32 space-y-2">
-                  <Label>Quantity</Label>
-                  <Input 
-                    type="number" 
-                    min="1" 
-                    value={item.quantity} 
-                    onChange={e => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)} 
-                  />
-                </div>
-
-                <Button type="button" variant="destructive" size="icon" onClick={() => handleRemoveItem(index)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-end gap-4">
-        <Button variant="outline" onClick={() => router.back()}>Cancel</Button>
-        <Button onClick={onSubmit} disabled={loading}>
-          <Save className="h-4 w-4 mr-2" />
-          Create Transfer Draft
-        </Button>
-      </div>
-    </div>
-  );
+      <aside className="rounded-xl border bg-card p-5 space-y-5 h-fit lg:sticky lg:top-24"><h2 className="font-semibold">Transfer summary</h2><div className="text-sm space-y-2"><p>{source?.name || 'Source warehouse'}</p><ArrowRight className="h-4 w-4 text-muted-foreground" /><p>{destination?.name || 'Destination warehouse'}</p></div><div className="border-t pt-4 space-y-2 text-sm"><p className="flex justify-between"><span>Product lines</span><strong>{items.length}</strong></p><p className="flex justify-between"><span>Total units</span><strong>{total}</strong></p></div><p className="text-xs text-muted-foreground">Saving a draft does not move or reserve stock. Availability is checked again when you approve and dispatch.</p><Button type="submit" className="w-full" disabled={loading || adding || invalid || !sourceId || !destinationId}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save transfer draft</Button><Button asChild variant="outline" className="w-full"><Link href="/admin/inventory/transfers">Back to transfers</Link></Button></aside>
+    </fieldset>
+  </form>;
 }

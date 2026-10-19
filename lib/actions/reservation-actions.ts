@@ -110,40 +110,8 @@ export async function getDamagedStock(productId: string, variantId?: string) {
 }
 
 export async function syncReservedStock(productId: string) {
-  try {
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
-      include: { variants: true }
-    });
-
-    if (!product) return;
-
-    if (product.variants.length > 0) {
-      let totalReserved = 0;
-      for (const variant of product.variants) {
-        const { data: resQty } = await getReservedStock(productId, variant.id);
-        const qty = typeof resQty === 'number' ? resQty : 0;
-        await prisma.variant.update({
-          where: { id: variant.id },
-          data: { stock: qty }
-        });
-        totalReserved += qty;
-      }
-      
-      await prisma.product.update({
-        where: { id: productId },
-        data: { stock: totalReserved }
-      });
-    } else {
-      const { data: resQty } = await getReservedStock(productId);
-      const qty = typeof resQty === 'number' ? resQty : 0;
-      await prisma.product.update({
-        where: { id: productId },
-        data: { stock: qty }
-      });
-    }
-
-  } catch (error: any) {
-    console.error('Failed to sync reserved stock:', error);
-  }
+  // Reservations are a separate cache; never replace physical stock with them.
+  const result = await getReservedStock(productId);
+  if (!result.success) throw new Error(result.error || 'Failed to calculate reservations');
+  await prisma.product.update({ where: { id: productId }, data: { reservedStock: result.data } });
 }

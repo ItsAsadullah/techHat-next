@@ -1,8 +1,9 @@
 import { prisma } from '@/lib/prisma';
+import { Prisma, StockLedger } from '@prisma/client';
 
 
 export type CreateStockLedgerParams = {
-  referenceType: String;
+  referenceType: string;
   referenceId: string;
   warehouseId: string;
   productId: string;
@@ -12,6 +13,7 @@ export type CreateStockLedgerParams = {
   unitCost?: number;
   remarks?: string;
   createdBy?: string;
+  affectsGlobalStock?: boolean;
 };
 
 /**
@@ -23,16 +25,18 @@ export type CreateStockLedgerParams = {
  */
 export async function createStockLedgerEntry(
   params: CreateStockLedgerParams,
-  tx?: any // Prisma.TransactionClient
-) {
-  const db = tx || prisma;
+  tx?: Prisma.TransactionClient
+): Promise<StockLedger> {
+  if (!tx) return prisma.$transaction(client => createStockLedgerEntry(params, client), { isolationLevel: 'Serializable' });
+  const db = tx;
   
-  const inQty = params.inQty || 0;
-  const outQty = params.outQty || 0;
+  const inQty = params.inQty ?? 0;
+  const outQty = params.outQty ?? 0;
   
-  if (inQty === 0 && outQty === 0) {
-    throw new Error('StockLedger entry must have either inQty or outQty > 0');
+  if (![inQty, outQty].every(q => Number.isSafeInteger(q) && q >= 0) || (inQty > 0) === (outQty > 0)) {
+    throw new Error('A stock movement must contain one positive whole-number quantity.');
   }
+  if (params.unitCost !== undefined && (!Number.isFinite(params.unitCost) || params.unitCost < 0)) throw new Error('Unit cost must be a non-negative number.');
 
   // 1. Fetch current Product & Variant to get the old Moving Average Cost and Global Stock
   const product = await db.product.findUnique({
@@ -49,9 +53,10 @@ export async function createStockLedgerEntry(
   if (params.variantId) {
     const variant = await db.variant.findUnique({
       where: { id: params.variantId },
-      select: { stock: true, costPrice: true }
+      select: { stock: true, costPrice: true, productId: true }
     });
     if (!variant) throw new Error('Variant not found for Stock Ledger update');
+    if (variant.productId !== params.productId) throw new Error('Variant does not belong to this product.');
     
     oldVariantStock = variant.stock;
     // For variable products, we might want to track MAC at the variant level
@@ -61,13 +66,14 @@ export async function createStockLedgerEntry(
 
   // 2. Calculate New Moving Average Cost (MAC)
   let newMAC = oldMAC;
-  let transactionUnitCost = params.unitCost || oldMAC;
+  let transactionUnitCost = params.unitCost ?? oldMAC;
 
   if (inQty > 0 && params.unitCost !== undefined) {
     // Only inward movements change the Moving Average Cost
-    const oldTotalValue = oldGlobalStock * oldMAC;
+    const costStock = params.variantId ? oldVariantStock : oldGlobalStock;
+    const oldTotalValue = costStock * oldMAC;
     const newInwardValue = inQty * params.unitCost;
-    const newTotalStock = oldGlobalStock + inQty;
+    const newTotalStock = costStock + inQty;
     
     if (newTotalStock > 0) {
       newMAC = (oldTotalValue + newInwardValue) / newTotalStock;
@@ -79,16 +85,16 @@ export async function createStockLedgerEntry(
 
   // 3. Determine Warehouse Opening/Closing Qty
   // Fetch the last ledger entry for this specific Warehouse + Product/Variant
-  const lastLedger = await db.stockLedger.findFirst({
+  const warehouseLedger = await db.stockLedger.aggregate({
     where: {
       warehouseId: params.warehouseId,
       productId: params.productId,
       variantId: params.variantId || null
     },
-    orderBy: { createdAt: 'desc' }
+    _sum: { inQty: true, outQty: true }
   });
 
-  const warehouseOpeningQty = lastLedger ? lastLedger.balanceQty : 0;
+  const warehouseOpeningQty = (warehouseLedger._sum.inQty ?? 0) - (warehouseLedger._sum.outQty ?? 0);
   const warehouseClosingQty = warehouseOpeningQty + inQty - outQty;
 
   if (warehouseClosingQty < 0) {
@@ -108,11 +114,12 @@ export async function createStockLedgerEntry(
       balanceQty: warehouseClosingQty,
       unitCost: transactionUnitCost,
       totalValue: totalValue,
-      note: params.remarks
+      note: params.createdBy ? `${params.remarks || ''} [Staff: ${params.createdBy}]` : params.remarks
     }
   });
 
   // 5. Update Product/Variant Global Cache
+  if (params.affectsGlobalStock === false) return ledgerEntry;
   const globalStockDelta = inQty - outQty;
 
   if (params.variantId) {

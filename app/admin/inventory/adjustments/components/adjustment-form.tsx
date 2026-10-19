@@ -1,355 +1,80 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, Loader2, ArrowLeft, Plus, Trash2, Search as SearchIcon, Settings2 } from 'lucide-react';
+import Link from 'next/link';
+import { Save, Loader2, Trash2, ClipboardCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { createAdjustment, getSystemQtyForAdjustment, AdjustmentFormData } from '@/lib/actions/adjustment-actions';
-import { searchProductsForPO } from '@/lib/actions/po-actions';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { createAdjustment, getSystemQtyForAdjustment } from '@/lib/actions/adjustment-actions';
+import { ProductPicker, InventorySelection } from '../../components/product-picker';
+import { useConfirm } from '@/components/providers/confirm-provider';
 
 export type StockAdjustmentReason = 'COUNT' | 'DAMAGE' | 'THEFT' | 'EXPIRED';
-
-interface Warehouse { id: string; name: string; }
-interface AdjFormProps {
-  warehouses: Warehouse[];
-}
-
-export function AdjustmentForm({ warehouses }: AdjFormProps) {
+type Item = InventorySelection & { systemQty: number; actualQty: number };
+const reasons = { COUNT: 'Physical count', DAMAGE: 'Damaged goods', THEFT: 'Lost or stolen', EXPIRED: 'Expired goods' };
+export function AdjustmentForm({ warehouses }: { warehouses: { id: string; name: string }[] }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-
-  // Core Form State
-  const [warehouseId, setWarehouseId] = useState('');
+  const confirm = useConfirm();
+  const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id || '');
   const [reason, setReason] = useState<StockAdjustmentReason>('COUNT');
   const [note, setNote] = useState('');
-
-  type SearchVariant = { id: string; name: string; sku: string; costPrice?: number };
-  type SearchProduct = { 
-    id: string; 
-    name: string; 
-    sku: string; 
-    costPrice?: number; 
-    variants?: SearchVariant[];
-    variations?: SearchVariant[]; 
-  };
-  type AdjItem = { id: string; productId: string; variantId: string | null; name: string; variantName: string | null; sku: string; systemQty: number; actualQty: number; adjustedQty: number; unitCost: number };
-  const [items, setItems] = useState<AdjItem[]>([]);
-
-  useEffect(() => {
-    if (warehouses && warehouses.length > 0 && !warehouseId) {
-      setWarehouseId(warehouses[0].id);
-    }
-  }, [warehouses, warehouseId]);
-
-  // Product Search State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchProduct[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-
-  // Product Search Effect
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(async () => {
-      if (searchQuery.length >= 2) {
-        setIsSearching(true);
-        const res = await searchProductsForPO(searchQuery);
-        if (('data' in res)) setSearchResults(('data' in res ? res.data : null) || []);
-        setIsSearching(false);
-      } else {
-        setSearchResults([]);
-      }
-    }, 400);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery]);
-
-  const addProductToAdjustment = async (product: SearchProduct, variant: SearchVariant | null = null) => {
-    if (!warehouseId) return toast.error('Please select a warehouse first');
-
-    // Check if already added
-    const exists = items.find(i => i.productId === product.id && i.variantId === (variant?.id || null));
-    if (exists) return toast.error('Product already added to list');
-
-    const loadingToast = toast.loading('Fetching physical stock...');
-    const { qty } = await getSystemQtyForAdjustment(product.id, variant ? variant.id : null, warehouseId);
-    toast.dismiss(loadingToast);
-    
-    const systemQty = qty || 0;
-
-    setItems(prev => [
-      ...prev,
-      {
-        id: Math.random().toString(),
-        productId: product.id,
-        variantId: variant ? variant.id : null,
-        name: product.name,
-        variantName: variant ? variant.name : null,
-        sku: variant ? variant.sku : product.sku,
-        systemQty,
-        actualQty: systemQty,
-        adjustedQty: 0,
-        unitCost: variant ? (variant.costPrice || product.costPrice || 0) : (product.costPrice || 0),
-      }
-    ]);
-    setSearchQuery('');
-    setSearchResults([]);
-  };
-
-  const updateItem = (id: string, field: string, value: number) => {
-    setItems(prev => prev.map(item => {
-      if (item.id === id) {
-        const updated = { ...item, [field]: value };
-        if (field === 'actualQty') {
-          updated.adjustedQty = value - updated.systemQty;
-        } else if (field === 'adjustedQty') {
-          updated.actualQty = updated.systemQty + value;
-        }
-        return updated;
-      }
-      return item;
-    }));
-  };
-
-  const removeItem = (id: string) => {
-    setItems(prev => prev.filter(item => item.id !== id));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!warehouseId) return toast.error('Please select a warehouse.');
-    if (!reason) return toast.error('Please select a reason.');
-    if (items.length === 0) return toast.error('Please add at least one item to adjust.');
-
-    setLoading(true);
-
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const changed = items.filter(i => Number.isFinite(i.actualQty) && i.actualQty !== i.systemQty);
+  const added = changed.reduce((sum, i) => sum + Math.max(0, i.actualQty - i.systemQty), 0);
+  const removed = changed.reduce((sum, i) => sum + Math.max(0, i.systemQty - i.actualQty), 0);
+  const invalid = items.some(i => !Number.isSafeInteger(i.actualQty) || i.actualQty < 0 || (reason !== 'COUNT' && i.actualQty > i.systemQty));
+  async function changeWarehouse(value: string) {
+    if (items.length && !(await confirm('Changing warehouse clears this count. Continue with a new count?'))) return;
+    setWarehouseId(value); setItems([]);
+  }
+  async function addItem(selection: InventorySelection) {
+    if (items.some(i => i.productId === selection.productId && i.variantId === selection.variantId)) throw new Error('This item is already in your count.');
+    setAdding(true);
     try {
-      const payload: AdjustmentFormData = {
-        warehouseId,
-        reason,
-        note,
-        items: items.map(i => ({
-          productId: i.productId,
-          variantId: i.variantId ?? undefined,
-          systemQty: i.systemQty,
-          actualQty: i.actualQty,
-          adjustedQty: i.adjustedQty,
-          unitCost: i.unitCost,
-        }))
-      };
-
-      const res = await createAdjustment(payload);
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((res as any).id) {
-        toast.success('Adjustment Draft created!');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        router.push(`/admin/inventory/adjustments/${(res as any).id}`);
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        toast.error((res as any).message || 'Something went wrong.');
-      }
-    } catch (error) {
-      toast.error('Failed to submit form.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6 max-w-[1400px] mx-auto pb-24">
-      {/* Header */}
-      <div className="flex items-center justify-between sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b py-3 -mx-6 px-6 shadow-sm">
-        <div className="flex items-center gap-3">
-          <Button type="button" variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold">New Stock Adjustment</h1>
-            <p className="text-xs text-muted-foreground">Draft a new inventory correction.</p>
-          </div>
-        </div>
-        <Button type="submit" disabled={loading}>
-          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          Draft Adjustment
-        </Button>
+      const result = await getSystemQtyForAdjustment(selection.productId, selection.variantId, warehouseId);
+      if (!result.success) throw new Error(result.error || 'Could not load warehouse stock.');
+      setItems(prev => [...prev, { ...selection, systemQty: result.qty, actualQty: result.qty }]);
+    } finally { setAdding(false); }
+  }
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (loading || invalid || !changed.length || !note.trim()) return;
+    setLoading(true);
+    try {
+      const result = await createAdjustment({ warehouseId, reason, note, items: changed.map(i => ({ ...i, adjustedQty: i.actualQty - i.systemQty })) });
+      if (!result.success || !result.id) throw new Error(result.message);
+      toast.success('Count saved as a draft. Review it before applying the stock adjustment.');
+      router.push(`/admin/inventory/adjustments/${result.id}`);
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not save adjustment.'); }
+    finally { setLoading(false); }
+  }
+  if (!warehouses.length) return <div className="p-8 border rounded-xl text-center space-y-3"><h2 className="font-semibold">Create a warehouse before counting stock</h2><Button asChild><Link href="/admin/inventory/warehouses/new">Add warehouse</Link></Button></div>;
+  return <form onSubmit={submit} className="space-y-6 max-w-6xl mx-auto">
+    <div><h1 className="text-3xl font-bold tracking-tight">New stock adjustment</h1><p className="text-muted-foreground mt-2">Count the stock you can physically use, then review the difference before approval.</p></div>
+    <div className="rounded-xl border bg-amber-500/5 p-4 text-sm"><strong>Count → Review → Approve.</strong> Stock changes only after approval. If stock moves after your count, a fresh count will be required.</div>
+    <fieldset disabled={loading || adding} className="grid gap-6 lg:grid-cols-[1fr_300px] disabled:opacity-70">
+      <div className="space-y-6 min-w-0">
+        <section className="rounded-xl border bg-card p-5 grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Warehouse</Label><Select value={warehouseId} onValueChange={changeWarehouse} disabled={loading || adding}><SelectTrigger aria-label="Warehouse to count"><SelectValue /></SelectTrigger><SelectContent>{warehouses.map(w => <SelectItem value={w.id} key={w.id}>{w.name}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label>Reason</Label><Select value={reason} onValueChange={value => setReason(value as StockAdjustmentReason)} disabled={loading || adding}><SelectTrigger aria-label="Adjustment reason"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(reasons).map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent></Select></div></section>
+        <section className="rounded-xl border bg-card p-5 space-y-4"><div><h2 className="font-semibold">Count sheet</h2><p className="text-xs text-muted-foreground mt-1">{reason === 'COUNT' ? 'Enter the total units physically counted at this warehouse.' : 'Enter the usable units remaining after removing damaged, lost or expired goods.'}</p></div><ProductPicker disabled={!warehouseId || loading || adding} onSelect={addItem} />
+          {!items.length && <div className="border border-dashed rounded-lg p-10 text-center text-muted-foreground"><ClipboardCheck className="h-8 w-8 mx-auto mb-3 opacity-50" /><p className="text-sm">Add products to start counting</p></div>}
+          {items.map((item, index) => {
+            const delta = item.actualQty - item.systemQty;
+            const bad = item.actualQty < 0 || !Number.isSafeInteger(item.actualQty) || (reason !== 'COUNT' && delta > 0);
+            return <div key={`${item.productId}:${item.variantId || ''}`} className="border rounded-lg p-4 space-y-3"><div className="flex items-start justify-between"><div><p className="font-medium text-sm">{item.name}</p><p className="text-xs font-mono text-muted-foreground">{item.sku}</p></div><Button type="button" variant="ghost" size="icon" aria-label={`Remove ${item.name}`} onClick={() => setItems(prev => prev.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>
+              <div className="grid grid-cols-3 gap-3 items-end"><div><p className="text-xs text-muted-foreground mb-2">System stock</p><p className="font-mono py-2">{item.systemQty}</p></div><div className="space-y-2"><Label htmlFor={`count-${index}`} className="text-xs">Counted / usable</Label><Input id={`count-${index}`} type="number" min={0} max={reason === 'COUNT' ? 2147483647 : item.systemQty} step={1} required value={Number.isNaN(item.actualQty) ? '' : item.actualQty} aria-invalid={bad} onChange={e => setItems(prev => prev.map((row, i) => i === index ? { ...row, actualQty: e.target.value === '' ? NaN : Number(e.target.value) } : row))} /></div><div><p className="text-xs text-muted-foreground mb-2">Difference</p><p className={`font-mono font-semibold py-2 ${delta < 0 ? 'text-red-600' : delta > 0 ? 'text-emerald-600' : ''}`}>{Number.isNaN(delta) ? '—' : delta > 0 ? `+${delta}` : delta}</p></div></div>
+              {bad && <p role="alert" className="text-xs text-destructive">Enter a non-negative whole number{reason !== 'COUNT' ? ' no greater than the system stock' : ''}.</p>}
+            </div>;
+          })}
+        </section>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4">
-        {/* Main Section */}
-        <div className="md:col-span-3 space-y-6">
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Warehouse <span className="text-red-500">*</span></Label>
-              <Select value={warehouseId} onValueChange={setWarehouseId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select warehouse..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {warehouses.map(w => (
-                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Reason <span className="text-red-500">*</span></Label>
-              <Select value={reason} onValueChange={(val) => setReason(val as StockAdjustmentReason)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select reason..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="COUNT">Physical Count (Reconciliation)</SelectItem>
-                  <SelectItem value="DAMAGE">Damaged Goods</SelectItem>
-                  <SelectItem value="THEFT">Lost or Stolen</SelectItem>
-                  <SelectItem value="EXPIRED">Expired Items</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-            <div className="p-4 border-b bg-muted/20">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Settings2 className="h-5 w-5 text-primary" /> Adjusted Items
-              </h3>
-            </div>
-            
-            <div className="p-4 border-b relative">
-              <div className="relative">
-                <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search products by name or SKU to add..."
-                  className="pl-9 h-10"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                {isSearching && <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />}
-              </div>
-              
-              {searchResults.length > 0 && (
-                <div className="absolute top-full left-4 right-4 mt-1 bg-popover text-popover-foreground border rounded-md shadow-lg z-50 max-h-[300px] overflow-y-auto">
-                  {searchResults.map((product) => {
-                    const productVariants = product.variants || product.variations || [];
-                    return (
-                      <div key={product.id} className="p-2 border-b last:border-0">
-                        {productVariants.length > 0 ? (
-                          <div className="space-y-1">
-                            <div className="text-sm font-semibold px-2 text-muted-foreground">{product.name} (Select Variant)</div>
-                            {productVariants.map((v) => (
-                              <button
-                                key={v.id}
-                                type="button"
-                                onClick={() => addProductToAdjustment(product, v)}
-                                className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded flex justify-between items-center"
-                              >
-                                <span>{v.name} <span className="text-xs text-muted-foreground ml-2 font-mono">{v.sku}</span></span>
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => addProductToAdjustment(product)}
-                            className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded flex justify-between items-center"
-                          >
-                            <span className="font-medium">{product.name} <span className="text-xs text-muted-foreground ml-2 font-mono">{product.sku}</span></span>
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-muted/10">
-                  <TableRow>
-                    <TableHead className="w-[300px]">Product / SKU</TableHead>
-                    <TableHead className="w-[120px] text-center">System Qty</TableHead>
-                    <TableHead className="w-[140px] text-center">Actual Qty</TableHead>
-                    <TableHead className="w-[140px] text-center">Adjustment (+/-)</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                        No items added. Search products to adjust.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {items.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        <div className="font-medium text-sm">{item.name}</div>
-                        {item.variantName && <div className="text-xs text-muted-foreground">{item.variantName}</div>}
-                        <div className="text-[10px] font-mono text-muted-foreground mt-0.5">{item.sku}</div>
-                      </TableCell>
-                      <TableCell className="text-center font-mono text-muted-foreground bg-muted/20">
-                        {item.systemQty}
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" className="h-8 text-center"
-                          value={item.actualQty}
-                          onChange={(e) => updateItem(item.id, 'actualQty', parseInt(e.target.value) || 0)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" className={`h-8 text-center font-bold ${item.adjustedQty > 0 ? 'text-green-600' : item.adjustedQty < 0 ? 'text-red-600' : ''}`}
-                          value={item.adjustedQty}
-                          onChange={(e) => updateItem(item.id, 'adjustedQty', parseInt(e.target.value) || 0)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeItem(item.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          <div className="rounded-xl border bg-card p-6 shadow-sm">
-            <h2 className="text-sm font-semibold mb-3">Adjustment Notes</h2>
-            <Textarea 
-              value={note} 
-              onChange={(e) => setNote(e.target.value)} 
-              placeholder="Why is this adjustment being made?" 
-              className="min-h-[120px]"
-            />
-          </div>
-        </div>
-      </div>
-    </form>
-  );
+      <aside className="rounded-xl border bg-card p-5 space-y-5 h-fit lg:sticky lg:top-24"><h2 className="font-semibold">Adjustment summary</h2><div className="space-y-2 text-sm"><p className="flex justify-between"><span>Changed items</span><strong>{changed.length}</strong></p><p className="flex justify-between"><span>Units added</span><strong className="text-emerald-600">+{added}</strong></p><p className="flex justify-between"><span>Units removed</span><strong className="text-red-600">−{removed}</strong></p></div><div className="border-t pt-4 space-y-2"><Label htmlFor="count-note">Reason / count reference *</Label><Textarea id="count-note" value={note} onChange={e => setNote(e.target.value)} required maxLength={2000} placeholder="Who counted, what happened, and any supporting reference…" /></div><p className="text-xs text-muted-foreground">Unchanged items are omitted. Approval records the change in the stock ledger.</p><Button type="submit" className="w-full" disabled={loading || adding || invalid || !changed.length || !note.trim()}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save adjustment draft</Button><Button asChild variant="outline" className="w-full"><Link href="/admin/inventory/adjustments">Back to adjustments</Link></Button></aside>
+    </fieldset>
+  </form>;
 }

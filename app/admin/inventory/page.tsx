@@ -5,15 +5,18 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { InventoryInstructions } from './inventory-instructions';
 
+export const dynamic = 'force-dynamic';
+
 export default async function InventoryDashboard() {
   const res = await getInventoryDashboardStats();
   const stats = res.success ? res.data : null;
+  if (!stats) throw new Error(res.error || 'Unable to load inventory. Please try again.');
 
   return (
-    <div className="space-y-6 max-w-[1400px] mx-auto p-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-[1400px] mx-auto">
+      <div className="flex flex-wrap gap-4 items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Inventory Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Inventory overview</h1>
           <p className="text-sm text-muted-foreground mt-2">
             Overview of your physical stock, reserves, and warehouse movements.
           </p>
@@ -21,16 +24,32 @@ export default async function InventoryDashboard() {
         <InventoryInstructions />
       </div>
 
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { title: 'Receive goods', description: 'Check a delivery against its purchase order', href: 'grn/new', marker: '01' },
+          { title: 'Transfer stock', description: 'Move goods between your warehouses', href: 'transfers/new', marker: '02' },
+          { title: 'Count & adjust', description: 'Reconcile physical stock with your records', href: 'adjustments/new', marker: '03' },
+          { title: 'Browse warehouses', description: 'See stock held at each location', href: 'warehouses', marker: '04' },
+        ].map(action => <Link key={action.href} href={`/admin/inventory/${action.href}`} className="group rounded-xl border bg-card p-5 hover:border-primary/50 hover:shadow-sm transition-all"><div className="flex justify-between items-center mb-3"><span className="text-xs font-mono text-muted-foreground">{action.marker}</span><ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" /></div><h2 className="font-semibold">{action.title}</h2><p className="text-xs text-muted-foreground mt-1">{action.description}</p></Link>)}
+      </div>
+
+      <div className="rounded-xl border bg-card p-5 flex flex-wrap items-center gap-4 sm:gap-8">
+        <div><h2 className="font-semibold">Needs attention</h2><p className="text-xs text-muted-foreground mt-1">Keep stock moving through each step</p></div>
+        <Link href="/admin/inventory/transfers" className="text-sm hover:underline"><strong className="text-xl mr-2">{stats.pendingTransfers}</strong>Draft / ready transfers</Link>
+        <Link href="/admin/inventory/adjustments" className="text-sm hover:underline"><strong className="text-xl mr-2">{stats.pendingAdjustments}</strong>Counts to review</Link>
+        <Link href="/admin/inventory/transfers?status=IN_TRANSIT" className="text-sm hover:underline"><strong className="text-xl mr-2">{stats.totalInTransitStock}</strong>Units in transit</Link>
+      </div>
+
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
         <Card className="shadow-sm border-l-4 border-l-blue-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Physical Stock</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Owned Stock</CardTitle>
             <Package className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalStockQty?.toLocaleString() || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">Total in warehouses</p>
+            <p className="text-xs text-muted-foreground mt-1">Warehouses + in transit</p>
           </CardContent>
         </Card>
 
@@ -52,7 +71,7 @@ export default async function InventoryDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">{stats?.totalAvailableStock?.toLocaleString() || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">Physical - Reserved</p>
+            <p className="text-xs text-muted-foreground mt-1">Owned − reserved</p>
           </CardContent>
         </Card>
 
@@ -69,12 +88,12 @@ export default async function InventoryDashboard() {
 
         <Card className="shadow-sm border-l-4 border-l-red-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Damaged Stock</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Damage Written Off</CardTitle>
             <Activity className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalDamagedStock?.toLocaleString() || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">From adjustments</p>
+            <p className="text-xs text-muted-foreground mt-1">Cumulative approved losses</p>
           </CardContent>
         </Card>
 
@@ -89,6 +108,8 @@ export default async function InventoryDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {stats.inTransit.length > 0 && <Card><CardHeader><CardTitle>Expected at destination</CardTitle><CardDescription>Transfers waiting for a physical receipt check.</CardDescription></CardHeader><CardContent className="space-y-3">{stats.inTransit.map(transfer => <Link href={`/admin/inventory/transfers/${transfer.id}`} key={transfer.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4 hover:bg-muted/30"><div><p className="font-mono text-sm font-medium">{transfer.transferNumber}</p><p className="text-xs text-muted-foreground mt-1">{transfer.sourceWarehouse.name} → {transfer.destWarehouse.name}</p></div><span className="text-sm">{transfer.items.reduce((sum, item) => sum + item.quantity, 0)} units · Check receipt →</span></Link>)}</CardContent></Card>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Recent GRNs */}

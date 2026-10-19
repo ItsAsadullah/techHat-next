@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { inventoryTransaction, refreshInventory, requireInventoryUser } from '@/lib/inventory/server';
 
 export interface WarehouseFormData {
   name: string;
@@ -192,6 +193,9 @@ export async function getWarehouseById(id: string) {
 
 export async function createWarehouse(data: WarehouseFormData) {
   try {
+    await requireInventoryUser();
+    if (!data.name.trim() || !data.code.trim()) throw new Error('Warehouse name and code are required.');
+    data = { ...data, name: data.name.trim(), code: data.code.trim().toUpperCase() };
     const existing = await prisma.warehouse.findUnique({ where: { code: data.code } });
     if (existing) throw new Error('Warehouse code already exists');
 
@@ -215,12 +219,24 @@ export async function createWarehouse(data: WarehouseFormData) {
 
 export async function updateWarehouse(id: string, data: WarehouseFormData) {
   try {
+    await requireInventoryUser();
+    if (!data.name.trim() || !data.code.trim()) throw new Error('Warehouse name and code are required.');
+    data = { ...data, name: data.name.trim(), code: data.code.trim().toUpperCase() };
     const existing = await prisma.warehouse.findUnique({ where: { code: data.code } });
     if (existing && existing.id !== id) {
       throw new Error('Warehouse code already exists for another warehouse');
     }
 
-    const warehouse = await prisma.warehouse.update({
+    const warehouse = await inventoryTransaction(async tx => {
+      if (!data.isActive) {
+        const stock = await tx.stockLedger.groupBy({ by: ['productId', 'variantId'], where: { warehouseId: id }, _sum: { inQty: true, outQty: true } });
+        if (stock.some(item => (item._sum.inQty ?? 0) !== (item._sum.outQty ?? 0))) throw new Error('Move or reconcile all stock before deactivating this warehouse.');
+        const pending = await tx.warehouseTransfer.count({ where: { OR: [{ sourceId: id }, { destinationId: id }], status: { in: ['DRAFT', 'APPROVED', 'IN_TRANSIT'] } } });
+        if (pending) throw new Error('Complete or cancel pending transfers before deactivating this warehouse.');
+        const adjustments = await tx.stockAdjustment.count({ where: { warehouseId: id, status: { in: ['DRAFT', 'PENDING_APPROVAL'] } } });
+        if (adjustments) throw new Error('Resolve draft adjustments before deactivating this warehouse.');
+      }
+      return tx.warehouse.update({
       where: { id },
       data: {
         name: data.name,
@@ -229,10 +245,12 @@ export async function updateWarehouse(id: string, data: WarehouseFormData) {
         address: data.address,
         isActive: data.isActive,
       },
+      });
     });
 
     revalidatePath('/admin/inventory/warehouses');
     revalidatePath(`/admin/inventory/warehouses/${id}`);
+    refreshInventory();
     return { success: true, data: warehouse };
   } catch (error: any) {
     console.error('Failed to update warehouse:', error);
@@ -242,6 +260,7 @@ export async function updateWarehouse(id: string, data: WarehouseFormData) {
 
 export async function getInventoryDashboardStats() {
   try {
+    await requireInventoryUser();
     // Total Products Count
     const totalProducts = await prisma.product.count({ where: { status: 'ACTIVE' } });
     
@@ -277,7 +296,7 @@ export async function getInventoryDashboardStats() {
 
     for (const p of simpleProducts) {
       totalStockQty += p.stock;
-      const cost = p.lastPurchaseCost || p.costPrice || 0;
+      const cost = p.costPrice ?? 0;
       totalStockValue += (p.stock * cost);
     }
     
@@ -347,11 +366,23 @@ export async function getInventoryDashboardStats() {
     const totalDamagedStock = Math.abs(stockAdjustments._sum.quantity || 0);
 
     const totalAvailableStock = Math.max(0, totalStockQty - totalReservedStock);
+    const [pendingTransfers, pendingAdjustments, inTransit, inTransitMovements] = await Promise.all([
+      prisma.warehouseTransfer.count({ where: { status: { in: ['DRAFT', 'APPROVED'] } } }),
+      prisma.stockAdjustment.count({ where: { status: { in: ['DRAFT', 'PENDING_APPROVAL'] } } }),
+      prisma.warehouseTransfer.findMany({ where: { status: 'IN_TRANSIT' }, select: { id: true, transferNumber: true, sourceWarehouse: { select: { name: true } }, destWarehouse: { select: { name: true } }, items: { select: { quantity: true } } }, orderBy: { updatedAt: 'desc' } }),
+      prisma.stockLedger.groupBy({ by: ['referenceId'], where: { referenceType: 'TRANSFER_DISPATCH' }, _sum: { outQty: true } }),
+    ]);
+    const transitIds = new Set(inTransit.map(t => t.id));
+    const totalInTransitStock = inTransitMovements.filter(m => transitIds.has(m.referenceId)).reduce((sum, m) => sum + (m._sum.outQty ?? 0), 0);
 
     return {
       success: true,
       data: {
         totalProducts,
+        pendingTransfers,
+        pendingAdjustments,
+        inTransit: inTransit.slice(0, 5),
+        totalInTransitStock,
         activeWarehouses,
         totalStockQty,
         totalReservedStock,
