@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Loader2, Search, Plus, X, Package, ChevronDown, ChevronUp } from 'lucide-react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { Search, Loader2, Package, X, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { searchInventoryProducts } from '@/lib/actions/inventory-search-actions';
 
 export type InventorySelection = {
@@ -27,15 +25,16 @@ export function ProductPicker({
 }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult>([]);
-  const [busy, setBusy] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [addingKey, setAddingKey] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const [isOpen, setIsOpen] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Load products (initial load without query, or debounced on query change)
+  // Fetch products (initial empty search or debounced query)
   const fetchProducts = useCallback(async (searchQuery: string) => {
     if (disabled) return;
-    setBusy(true);
+    setIsSearching(true);
     setError('');
     try {
       const data = await searchInventoryProducts(searchQuery);
@@ -43,11 +42,11 @@ export function ProductPicker({
     } catch {
       setError('Could not load products. Please try again.');
     } finally {
-      setBusy(false);
+      setIsSearching(false);
     }
   }, [disabled]);
 
-  // Initial load when warehouse is selected / picker enabled
+  // Initial load when component is mounted and warehouse is ready
   useEffect(() => {
     if (!disabled) {
       fetchProducts('');
@@ -56,7 +55,7 @@ export function ProductPicker({
     }
   }, [disabled, fetchProducts]);
 
-  // Debounced search on user input
+  // Debounced search on typing
   useEffect(() => {
     if (disabled) return;
     const timer = setTimeout(() => {
@@ -65,34 +64,16 @@ export function ProductPicker({
     return () => clearTimeout(timer);
   }, [query, disabled, fetchProducts]);
 
-  // Flatten products and variants into selectable items
-  const flatItems = useMemo<InventorySelection[]>(() => {
-    const list: InventorySelection[] = [];
-    for (const product of results) {
-      if (product.variants && product.variants.length > 0) {
-        for (const v of product.variants) {
-          list.push({
-            productId: product.id,
-            variantId: v.id,
-            name: `${product.name} · ${v.name}`,
-            sku: v.sku || product.sku,
-            unitCost: v.costPrice ?? product.costPrice ?? 0,
-            image: v.image || product.images?.[0] || null,
-          });
-        }
-      } else {
-        list.push({
-          productId: product.id,
-          variantId: undefined,
-          name: product.name,
-          sku: product.sku,
-          unitCost: product.costPrice ?? 0,
-          image: product.images?.[0] || null,
-        });
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
       }
     }
-    return list;
-  }, [results]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   async function handleSelect(item: InventorySelection) {
     const key = `${item.productId}:${item.variantId || ''}`;
@@ -100,6 +81,8 @@ export function ProductPicker({
     setError('');
     try {
       await onSelect(item);
+      setIsOpen(false);
+      setQuery('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add item.');
     } finally {
@@ -108,161 +91,220 @@ export function ProductPicker({
   }
 
   return (
-    <div className="space-y-3">
-      {/* Search Bar & Toggle */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            aria-label="Search products by name or SKU"
-            placeholder={
-              disabled
-                ? 'Select a warehouse to view and add products'
-                : 'Search product name or SKU (or browse list below)…'
-            }
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              if (!isOpen) setIsOpen(true);
-            }}
-            onFocus={() => {
-              if (!isOpen) setIsOpen(true);
-            }}
-            disabled={disabled}
-            className="pl-9 pr-8 h-10 bg-background"
-          />
-          {query && (
-            <button
-              type="button"
-              aria-label="Clear search"
-              onClick={() => setQuery('')}
-              className="absolute right-2.5 top-2.5 p-0.5 rounded-full hover:bg-muted text-muted-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-
-        {!disabled && (
-          <Button
+    <div className="relative w-full" ref={containerRef}>
+      {/* Search Bar matching Purchase Order's SmartProductSelector */}
+      <div className="relative">
+        <Search className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
+        <Input
+          placeholder={
+            disabled
+              ? 'Select a warehouse to add products...'
+              : 'Search by SKU, Barcode, Product Name, or click to choose...'
+          }
+          className="pl-11 pr-10 h-12 text-sm sm:text-base rounded-xl border border-input shadow-sm focus-visible:ring-2 focus-visible:ring-primary bg-background"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            if (!isOpen) setIsOpen(true);
+          }}
+          onFocus={() => {
+            if (!disabled) setIsOpen(true);
+          }}
+          onClick={() => {
+            if (!disabled) setIsOpen(true);
+          }}
+          disabled={disabled}
+        />
+        {isSearching ? (
+          <Loader2 className="absolute right-3.5 top-3.5 h-5 w-5 animate-spin text-muted-foreground" />
+        ) : query ? (
+          <button
             type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setIsOpen((prev) => !prev)}
-            className="h-10 shrink-0 gap-1.5 text-xs font-medium"
+            aria-label="Clear search"
+            onClick={() => {
+              setQuery('');
+              fetchProducts('');
+            }}
+            className="absolute right-3 top-3 p-1 rounded-full hover:bg-muted text-muted-foreground"
           >
-            {busy ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : isOpen ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-            <span>{isOpen ? 'Hide Products' : `Browse Products (${flatItems.length})`}</span>
-          </Button>
-        )}
+            <X className="h-4 w-4" />
+          </button>
+        ) : null}
       </div>
 
       {error && (
-        <div className="p-2.5 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs">
+        <div className="mt-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs">
           {error}
         </div>
       )}
 
-      {/* Product List Panel */}
-      {!disabled && isOpen && (
-        <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-2.5 bg-muted/30 border-b text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">
+      {/* Floating Dropdown Overlay like Purchase Order */}
+      {isOpen && !disabled && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-2xl z-50 max-h-[420px] overflow-y-auto">
+          {/* Subheader */}
+          <div className="px-3 py-2 bg-muted/40 border-b flex items-center justify-between text-xs text-muted-foreground font-medium sticky top-0 z-10 backdrop-blur-sm">
+            <span>
               {query.trim()
-                ? `Search results for "${query}" (${flatItems.length})`
-                : `Available Products (${flatItems.length})`}
+                ? `Search results for "${query}" (${results.length})`
+                : `Available Products (${results.length})`}
             </span>
-            <span className="hidden sm:inline">Click &ldquo;+ Add&rdquo; to add to list</span>
+            <span className="text-[11px]">Click a product to add</span>
           </div>
 
-          {/* List items */}
-          <div
-            className="max-h-72 overflow-y-auto divide-y divide-border/60"
-            aria-label="Product list"
-          >
-            {busy && flatItems.length === 0 ? (
-              <div className="py-10 text-center text-muted-foreground text-sm flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading product list…
+          <div className="p-2 grid gap-1.5">
+            {isSearching && results.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground text-sm flex items-center justify-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>Searching products...</span>
               </div>
-            ) : flatItems.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground text-sm">
+            ) : results.length === 0 ? (
+              <div className="py-10 text-center text-muted-foreground text-sm">
                 {query.trim()
                   ? `No products match "${query}". Try another name or SKU.`
                   : 'No active products found.'}
               </div>
             ) : (
-              flatItems.map((item) => {
-                const key = `${item.productId}:${item.variantId || ''}`;
-                const isAddingThis = addingKey === key;
-
-                return (
-                  <div
-                    key={key}
-                    className="flex items-center justify-between gap-3 p-3 hover:bg-muted/40 transition-colors"
-                  >
-                    {/* Product Info */}
-                    <div className="flex items-center gap-3 min-w-0">
-                      {item.image ? (
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-9 h-9 rounded-md object-cover border shrink-0 bg-muted"
-                        />
-                      ) : (
-                        <div className="w-9 h-9 rounded-md bg-muted flex items-center justify-center shrink-0 border text-muted-foreground">
-                          <Package className="h-4 w-4" />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {item.name}
-                        </p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          {item.sku && (
-                            <span className="text-[11px] font-mono text-muted-foreground">
-                              {item.sku}
-                            </span>
-                          )}
-                          {item.unitCost > 0 && (
-                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4">
-                              ৳{item.unitCost.toLocaleString()}
-                            </Badge>
-                          )}
-                        </div>
+              results.map((product) => (
+                <div key={product.id}>
+                  {product.variants && product.variants.length > 0 ? (
+                    /* Product with variants */
+                    <div className="space-y-1 p-2 bg-muted/30 rounded-lg border border-border/60">
+                      <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground px-2 py-1 uppercase tracking-wider">
+                        <Package className="w-3.5 h-3.5" />
+                        <span className="truncate">{product.name}</span>
                       </div>
-                    </div>
+                      {product.variants.map((v) => {
+                        const key = `${product.id}:${v.id}`;
+                        const isAdding = addingKey === key;
+                        const item: InventorySelection = {
+                          productId: product.id,
+                          variantId: v.id,
+                          name: `${product.name} · ${v.name}`,
+                          sku: v.sku || product.sku,
+                          unitCost: v.costPrice || product.costPrice || 0,
+                          image: v.imageUrl,
+                        };
 
-                    {/* Add Button */}
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      disabled={isAddingThis || addingKey !== null}
-                      onClick={() => handleSelect(item)}
-                      className="shrink-0 h-8 px-3 gap-1 hover:bg-primary hover:text-primary-foreground transition-colors"
-                    >
-                      {isAddingThis ? (
-                        <>
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          <span className="text-xs">Adding…</span>
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="h-3.5 w-3.5" />
-                          <span className="text-xs font-medium">Add</span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                );
-              })
+                        return (
+                          <button
+                            key={v.id}
+                            type="button"
+                            disabled={addingKey !== null}
+                            onClick={() => handleSelect(item)}
+                            className="w-full text-left p-2.5 hover:bg-card bg-transparent rounded-lg border border-transparent hover:border-border hover:shadow-sm transition-all group flex items-center justify-between gap-3 disabled:opacity-50"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              {v.imageUrl ? (
+                                <img
+                                  src={v.imageUrl}
+                                  alt={v.name}
+                                  className="w-10 h-10 rounded-md object-cover border border-border shrink-0 bg-background"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center border shrink-0 text-muted-foreground">
+                                  <Package className="w-5 h-5 text-muted-foreground" />
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <div className="font-semibold text-sm group-hover:text-primary transition-colors truncate">
+                                  {v.name}
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[10px] font-mono px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
+                                    {v.sku || product.sku || 'No SKU'}
+                                  </span>
+                                  <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                                    Stock: {v.stock}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="text-right flex items-center gap-3 shrink-0">
+                              <div className="text-sm font-mono font-bold">
+                                ৳{(v.costPrice || product.costPrice || 0).toLocaleString()}
+                              </div>
+                              {isAdding ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                              ) : (
+                                <span className="p-1.5 rounded-md bg-muted group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                                  <Plus className="w-3.5 h-3.5" />
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* Single product without variants */
+                    (() => {
+                      const key = `${product.id}:`;
+                      const isAdding = addingKey === key;
+                      const item: InventorySelection = {
+                        productId: product.id,
+                        variantId: undefined,
+                        name: product.name,
+                        sku: product.sku,
+                        unitCost: product.costPrice || 0,
+                        image: product.imageUrl,
+                      };
+
+                      return (
+                        <button
+                          key={product.id}
+                          type="button"
+                          disabled={addingKey !== null}
+                          onClick={() => handleSelect(item)}
+                          className="w-full text-left p-3 hover:bg-muted/50 bg-card rounded-lg border border-border/50 hover:border-border transition-all group flex items-center justify-between gap-3 disabled:opacity-50"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            {product.imageUrl ? (
+                              <img
+                                src={product.imageUrl}
+                                alt={product.name}
+                                className="w-10 h-10 rounded-md object-cover border border-border shrink-0 bg-background"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center border shrink-0 text-muted-foreground">
+                                <Package className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <div className="font-semibold text-sm group-hover:text-primary transition-colors truncate">
+                                {product.name}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                {product.sku && (
+                                  <span className="text-[10px] font-mono px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
+                                    {product.sku}
+                                  </span>
+                                )}
+                                <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                                  Stock: {product.stock}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right flex items-center gap-3 shrink-0">
+                            <div className="text-sm font-mono font-bold">
+                              ৳{(product.costPrice || 0).toLocaleString()}
+                            </div>
+                            {isAdding ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                            ) : (
+                              <span className="p-1.5 rounded-md bg-muted group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                                <Plus className="w-3.5 h-3.5" />
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })()
+                  )}
+                </div>
+              ))
             )}
           </div>
         </div>
