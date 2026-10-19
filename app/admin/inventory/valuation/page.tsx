@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { getWarehouses } from '@/lib/actions/warehouse-actions';
 import { Package, TrendingUp, Tag, Building2, ShieldCheck, Layers } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { ValuationReportActions } from './valuation-report-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,7 @@ export default async function ValuationPage() {
             </p>
           </div>
         </div>
+        <ValuationReportActions items={sortedItems} />
       </div>
 
       {/* Top KPI Cards */}

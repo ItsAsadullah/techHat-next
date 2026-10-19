@@ -120,37 +120,151 @@ export async function getLedgerForProduct(productId: string, variantId: string, 
   });
 }
 
-// Export to CSV: returns raw data for streaming
+// Export to CSV: returns raw data for streaming (with UTF-8 BOM for Excel Bangla/BDT support)
 export async function exportLedgerCSV(filter: LedgerFilter = {}) {
-  const { entries } = await getStockLedger({ ...filter, limit: 10000, page: 1 });
+  const { entries, summary } = await getStockLedger({ ...filter, limit: 10000, page: 1 });
 
   const headers = [
-    'Date', 'Warehouse', 'Reference Type', 'Reference ID',
-    'Product', 'SKU', 'Variant', 'Opening Qty', 'In Qty', 'Out Qty',
-    'Closing Qty', 'Unit Cost', 'Total Value', 'Remarks'
+    'Date & Time',
+    'Warehouse Name',
+    'Warehouse Code',
+    'Transaction Type',
+    'Reference / Note',
+    'Product Name',
+    'Variant',
+    'SKU',
+    'Opening Qty',
+    'Stock In (+)',
+    'Stock Out (-)',
+    'Running Balance',
+    'Unit Cost (BDT)',
+    'Total Value (BDT)',
   ];
 
-  const rows = entries.map((e) => [
-    new Date(e.createdAt).toLocaleDateString('en-BD'),
-    e.warehouseId,
-    e.referenceType,
-    e.referenceId,
-    e.product.name,
-    e.product.sku || '',
-    e.variant?.name || '',
-    '', // openingQty placeholder
-    e.inQty,
-    e.outQty,
-    e.balanceQty,
-    e.unitCost.toFixed(2),
-    e.totalValue.toFixed(2),
-    e.note || '',
+  const rows = entries.map((e) => {
+    const openingQty = e.balanceQty - e.inQty + e.outQty;
+    return [
+      new Date(e.createdAt).toLocaleString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      e.warehouse?.name || '',
+      e.warehouse?.code || '',
+      e.referenceType,
+      e.note || e.referenceId || '',
+      e.product.name,
+      e.variant?.name || '',
+      e.variant?.sku || e.product.sku || '',
+      openingQty,
+      e.inQty,
+      e.outQty,
+      e.balanceQty,
+      e.unitCost.toFixed(2),
+      e.totalValue.toFixed(2),
+    ];
+  });
+
+  // Add summary footer row
+  rows.push([
+    'TOTAL SUMMARY',
+    '',
+    '',
+    `${summary.totalEntries} Transactions`,
+    '',
+    '',
+    '',
+    '',
+    '',
+    summary.totalIn,
+    summary.totalOut,
+    summary.totalIn - summary.totalOut,
+    '',
+    summary.totalValue.toFixed(2),
   ]);
 
-  const csvContent = [
-    headers.join(','),
-    ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
-  ].join('\n');
+  const csvContent =
+    '\uFEFF' +
+    [
+      headers.join(','),
+      ...rows.map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')),
+    ].join('\n');
 
   return { success: true, csv: csvContent };
 }
+
+export async function getLedgerPDFReportData(filter: LedgerFilter = {}) {
+  const { entries, summary } = await getStockLedger({ ...filter, limit: 5000, page: 1 });
+
+  // Build product-wise reconciliation summary from the ledger entries (chronological order)
+  const chronological = [...entries].reverse();
+  const reconciliationMap = new Map<
+    string,
+    {
+      key: string;
+      productId: string;
+      variantId: string | null;
+      productName: string;
+      variantName: string | null;
+      sku: string;
+      warehouseCode: string;
+      warehouseName: string;
+      openingStock: number;
+      totalIn: number;
+      totalOut: number;
+      closingStock: number;
+      unitCost: number;
+      totalValue: number;
+      txCount: number;
+    }
+  >();
+
+  for (const e of chronological) {
+    const key = `${e.warehouse.id}_${e.product.id}_${e.variant?.id || 'base'}`;
+    const existing = reconciliationMap.get(key);
+    const entryOpening = e.balanceQty - e.inQty + e.outQty;
+
+    if (!existing) {
+      reconciliationMap.set(key, {
+        key,
+        productId: e.product.id,
+        variantId: e.variant?.id || null,
+        productName: e.product.name,
+        variantName: e.variant?.name || null,
+        sku: e.variant?.sku || e.product.sku || 'N/A',
+        warehouseCode: e.warehouse.code,
+        warehouseName: e.warehouse.name,
+        openingStock: entryOpening,
+        totalIn: e.inQty,
+        totalOut: e.outQty,
+        closingStock: e.balanceQty,
+        unitCost: e.unitCost,
+        totalValue: e.balanceQty * e.unitCost,
+        txCount: 1,
+      });
+    } else {
+      existing.totalIn += e.inQty;
+      existing.totalOut += e.outQty;
+      existing.closingStock = e.balanceQty;
+      if (e.unitCost > 0) {
+        existing.unitCost = e.unitCost;
+      }
+      existing.totalValue = existing.closingStock * existing.unitCost;
+      existing.txCount += 1;
+    }
+  }
+
+  const reconciliationItems = Array.from(reconciliationMap.values()).sort((a, b) =>
+    a.productName.localeCompare(b.productName)
+  );
+
+  return {
+    success: true,
+    entries,
+    summary,
+    reconciliationItems,
+  };
+}
+

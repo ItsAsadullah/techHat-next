@@ -2,10 +2,12 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
-import { Download, ChevronLeft, ChevronRight, ArrowDownRight, ArrowUpRight } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, ArrowDownRight, ArrowUpRight, FileText, ClipboardCheck, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { getLedgerPDFReportData } from '@/lib/actions/ledger-viewer-actions';
+import { openInventoryPDFReport } from '@/components/admin/inventory/inventory-pdf-report';
 
 interface LedgerEntry {
   id: string;
@@ -46,6 +48,7 @@ export function LedgerTable({ entries, total, totalPages, currentPage }: LedgerT
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isExporting, setIsExporting] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState<'combined' | 'reconciliation' | null>(null);
 
   const handlePageChange = (newPage: number) => {
     if (newPage < 1 || newPage > totalPages) return;
@@ -58,7 +61,7 @@ export function LedgerTable({ entries, total, totalPages, currentPage }: LedgerT
     try {
       setIsExporting(true);
       const params = new URLSearchParams(searchParams.toString());
-      toast.info('Export started. Check your downloads.');
+      toast.info('CSV ডাউনলোড শুরু হয়েছে...');
       window.open(`/api/export/ledger?${params.toString()}`, '_blank');
     } catch (error) {
       toast.error('Export failed');
@@ -67,21 +70,92 @@ export function LedgerTable({ entries, total, totalPages, currentPage }: LedgerT
     }
   };
 
+  const handleOpenPDF = async (mode: 'combined' | 'reconciliation') => {
+    try {
+      setIsGeneratingPdf(mode);
+      const filterObj = {
+        dateFrom: searchParams.get('dateFrom') || undefined,
+        dateTo: searchParams.get('dateTo') || undefined,
+        warehouseId: searchParams.get('warehouseId') || undefined,
+        productId: searchParams.get('productId') || undefined,
+        referenceType: searchParams.get('referenceType') || undefined,
+        search: searchParams.get('search') || undefined,
+      };
+
+      const res = await getLedgerPDFReportData(filterObj);
+      if (!res.success) {
+        toast.error('PDF রিপোর্ট তৈরি করতে সমস্যা হয়েছে');
+        return;
+      }
+
+      openInventoryPDFReport({
+        defaultMode: mode,
+        defaultOrientation: 'portrait',
+        filterSummary: {
+          dateFrom: filterObj.dateFrom,
+          dateTo: filterObj.dateTo,
+          warehouse: res.entries[0]?.warehouse?.name && filterObj.warehouseId ? res.entries[0].warehouse.name : undefined,
+          referenceType: filterObj.referenceType,
+          search: filterObj.search,
+        },
+        summary: res.summary,
+        reconciliationItems: res.reconciliationItems,
+        ledgerEntries: res.entries,
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error('PDF রিপোর্ট ওপেন করতে ব্যর্থ হয়েছে');
+    } finally {
+      setIsGeneratingPdf(null);
+    }
+  };
+
   return (
     <div className="bg-card border rounded-xl shadow-sm overflow-hidden flex flex-col">
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/20">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b bg-muted/20">
         <span className="text-xs font-medium text-muted-foreground">
           Showing <span className="font-mono font-semibold text-foreground">{entries.length}</span> of{' '}
           <span className="font-mono font-semibold text-foreground">{total.toLocaleString()}</span> immutable records
         </span>
-        <button
-          onClick={handleExport}
-          disabled={isExporting}
-          className="flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 shadow-xs"
-        >
-          <Download className="h-3.5 w-3.5" />
-          {isExporting ? 'Exporting...' : 'Export CSV'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleOpenPDF('reconciliation')}
+            disabled={isGeneratingPdf !== null}
+            className="flex items-center gap-1.5 text-xs font-semibold bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-xs cursor-pointer"
+          >
+            {isGeneratingPdf === 'reconciliation' ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <ClipboardCheck className="h-3.5 w-3.5" />
+            )}
+            স্টক মিলকরণ শিট (PDF)
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleOpenPDF('combined')}
+            disabled={isGeneratingPdf !== null}
+            className="flex items-center gap-1.5 text-xs font-semibold bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 shadow-xs cursor-pointer"
+          >
+            {isGeneratingPdf === 'combined' ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <FileText className="h-3.5 w-3.5" />
+            )}
+            লেজার ও হিসাব PDF রিপোর্ট
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={isExporting}
+            className="flex items-center gap-1.5 text-xs font-semibold border border-border bg-background text-foreground px-3 py-1.5 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 shadow-xs cursor-pointer"
+          >
+            <Download className="h-3.5 w-3.5" />
+            {isExporting ? 'Exporting...' : 'Export CSV'}
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto max-h-[680px] overflow-y-auto">

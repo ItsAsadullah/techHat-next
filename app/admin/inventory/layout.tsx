@@ -11,12 +11,14 @@ import {
   ArrowLeftRight,
   ClipboardCheck,
   TrendingUp,
+  Scale,
 } from 'lucide-react';
 import { InventoryInstructions } from './inventory-instructions';
 
 const NAV_ITEMS = [
   { name: 'Overview', href: '/admin/inventory', icon: LayoutDashboard, exact: true },
   { name: 'Stock Ledger', href: '/admin/inventory/ledger', icon: History, exact: false },
+  { name: 'হিসাব মেলানো (Reconcile)', href: '/admin/inventory/reconciliation', icon: Scale, exact: false },
   { name: 'Warehouses', href: '/admin/inventory/warehouses', icon: Warehouse, exact: false },
   { name: 'Goods Receive (GRN)', href: '/admin/inventory/grn', icon: PackageCheck, exact: false },
   { name: 'Stock Transfers', href: '/admin/inventory/transfers', icon: ArrowLeftRight, exact: false },

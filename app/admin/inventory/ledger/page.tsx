@@ -4,8 +4,10 @@ import { LedgerTable } from './ledger-table';
 import { LedgerFilters } from './ledger-filters';
 import { LedgerSummary } from './ledger-summary';
 import { Metadata } from 'next';
-import { BookOpen, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
+import { BookOpen, ShieldCheck, Scale } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +60,14 @@ export default async function StockLedgerPage({ searchParams }: PageProps) {
               Permanent audit log of every stock receipt, sale, transfer, and physical count adjustment.
             </p>
           </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button asChild variant="outline" size="sm" className="gap-2 border-indigo-200 bg-indigo-50/70 text-indigo-700 hover:bg-indigo-100">
+            <Link href="/admin/inventory/reconciliation">
+              <Scale className="h-4 w-4" />
+              ইনভেন্টরি হিসাব মেলানো (Reconcile & Audit)
+            </Link>
+          </Button>
         </div>
       </div>
 
