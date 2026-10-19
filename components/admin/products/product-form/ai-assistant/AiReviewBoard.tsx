@@ -58,14 +58,21 @@ export function AiReviewBoard({ data, onClose, onRegenerate }: AiReviewBoardProp
           setValue('tags', uniqueTags, { shouldDirty: true });
         }
       }
-      if (selectedFields.specs && data.specifications) {
+      if (selectedFields.specs && (data.specifications || data.attributes)) {
         // Filter out existing placeholder empty rows (e.g. { id: '1', key: '', value: '' })
         const existingSpecs = (getValues('productSpecs') || []).filter(
           (s: any) => s.key && s.key.trim() && s.value && String(s.value).trim()
         );
         
         // Only accept valid specifications with non-empty key and non-empty value
-        const newSpecs = (data.specifications || [])
+        const rawSpecs = [
+          ...(Array.isArray(data.specifications) ? data.specifications : []),
+          ...(Array.isArray(data.attributes)
+            ? data.attributes.map((a: any) => ({ key: a?.name, value: a?.value }))
+            : []),
+        ];
+
+        const newSpecs = rawSpecs
           .filter((s: any) => 
             s.key && typeof s.key === 'string' && s.key.trim() !== '' &&
             s.value && typeof s.value === 'string' && s.value.trim() !== '' &&
@@ -89,35 +96,6 @@ export function AiReviewBoard({ data, onClose, onRegenerate }: AiReviewBoardProp
         }
 
         setValue('productSpecs', finalSpecs.length > 0 ? finalSpecs : [{ id: '1', key: '', value: '' }], { shouldDirty: true });
-      }
-
-      // Apply attributes if available
-      if (data.attributes && Array.isArray(data.attributes)) {
-        const existingAttrs = (getValues('attributes') || []).filter(
-          (a: any) => a.name && a.name.trim() && a.value && String(a.value).trim()
-        );
-        const newAttrs = data.attributes
-          .filter((a: any) => 
-            a.name && typeof a.name === 'string' && a.name.trim() !== '' &&
-            a.value && typeof a.value === 'string' && a.value.trim() !== '' &&
-            a.value.trim().toLowerCase() !== 'null' &&
-            a.value.trim().toLowerCase() !== 'n/a'
-          )
-          .map((a: any) => ({
-            id: crypto.randomUUID(),
-            name: a.name.trim(),
-            value: String(a.value).trim(),
-          }));
-
-        const finalAttrs = [...existingAttrs];
-        for (const attr of newAttrs) {
-          if (!finalAttrs.some(e => e.name.toLowerCase() === attr.name.toLowerCase())) {
-            finalAttrs.push(attr);
-          }
-        }
-        if (finalAttrs.length > 0) {
-          setValue('attributes', finalAttrs, { shouldDirty: true });
-        }
       }
 
       if (selectedFields.faqs && data.faqs) {

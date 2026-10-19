@@ -84,10 +84,25 @@ export const productSchema = z.object({
   description: z.string().nullable().optional().or(z.literal('')),
   shortDesc:   z.string().nullable().optional().or(z.literal('')),
   videoUrl:    z.string().nullable().optional().or(z.literal('')),
-  faqs:        z.array(z.object({
-    question: z.string().min(1, 'Question is required'),
-    answer: z.string().min(1, 'Answer is required'),
-  })).default([]),
+  faqs: z.preprocess(
+    (val) => {
+      if (!Array.isArray(val)) return [];
+      return val.filter(
+        (f: any) =>
+          f &&
+          typeof f.question === 'string' &&
+          f.question.trim().length > 0 &&
+          typeof f.answer === 'string' &&
+          f.answer.trim().length > 0
+      );
+    },
+    z.array(
+      z.object({
+        question: z.string().min(1, 'Question is required'),
+        answer: z.string().min(1, 'Answer is required'),
+      })
+    ).default([])
+  ),
 
   // ── SEO ──
   seoTitle:        z.string().nullable().optional().or(z.literal('')),
@@ -113,20 +128,58 @@ export const productSchema = z.object({
     })
   ).default([]),
 
-  attributes: z.array(
-    z.object({
-      id:          z.string(),
-      attributeId: z.string().optional(),
-      name:        z.string().min(1, 'Attribute must be selected'),
-      values:      z.array(
-        z.object({
-          id: z.string(),
-          label: z.string(),
-          shortCode: z.string().nullable().optional()
+  attributes: z.preprocess(
+    (val) => {
+      if (!Array.isArray(val)) return [];
+      return val
+        .map((a: any) => {
+          if (!a || typeof a !== 'object') return null;
+          const name = typeof a.name === 'string' ? a.name.trim() : '';
+          if (!name) return null;
+          let values = Array.isArray(a.values) ? a.values : [];
+          if (values.length === 0 && typeof a.value === 'string' && a.value.trim()) {
+            values = [{ id: a.id || '1', label: a.value.trim() }];
+          }
+          values = values
+            .map((v: any) => {
+              if (typeof v === 'string' && v.trim()) {
+                return { id: v.trim(), label: v.trim() };
+              }
+              if (v && typeof v === 'object' && typeof v.label === 'string' && v.label.trim()) {
+                return {
+                  id: String(v.id || v.label.trim()),
+                  label: v.label.trim(),
+                  shortCode: v.shortCode ?? null,
+                };
+              }
+              return null;
+            })
+            .filter(Boolean);
+          if (values.length === 0) return null;
+          return {
+            id: String(a.id || name),
+            attributeId: typeof a.attributeId === 'string' ? a.attributeId : undefined,
+            name,
+            values,
+          };
         })
-      ).min(1, 'At least one value must be selected'),
-    })
-  ).default([]),
+        .filter(Boolean);
+    },
+    z.array(
+      z.object({
+        id:          z.string(),
+        attributeId: z.string().optional(),
+        name:        z.string().min(1, 'Attribute must be selected'),
+        values:      z.array(
+          z.object({
+            id: z.string(),
+            label: z.string(),
+            shortCode: z.string().nullable().optional()
+          })
+        ).min(1, 'At least one value must be selected'),
+      })
+    ).default([])
+  ),
 
   variants: z.array(
     z.object({
